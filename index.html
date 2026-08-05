@@ -1853,12 +1853,14 @@ select.work-only.form-control { max-width: 190px; }
             <!-- Персонал -->
             <div id="personnelTab" class="reg-tab">
                 <div class="form-row" style="margin-bottom:10px;">
+                    <input type="hidden" id="regEmpEditId">
                     <input type="text" id="regEmpName" class="form-control" placeholder="Name">
                     <input type="text" id="regEmpInitials" class="form-control" placeholder="Initials">
                     <input type="text" id="regEmpBadge" class="form-control" placeholder="Badge/ID">
                     <select id="regEmpWs" class="form-control"></select>
                     <select id="regEmpPost" class="form-control"></select>
-                    <button class="btn" onclick="addRegistryEmp()" data-i18n="Add">Add</button>
+                    <button class="btn" id="regEmpSaveBtn" onclick="addRegistryEmp()" data-i18n="Add">Add</button>
+                    <button class="btn btn-muted" id="regEmpCancelBtn" onclick="cancelEditEmp()" style="display:none;" data-i18n="Cancel">Cancel</button>
                 </div>
                 <div class="table-scroll">
                     <table>
@@ -4681,6 +4683,7 @@ const Actions = {
     'retire':        id => doAction('Administrator', () => Ops.openRetireModal(id)),
     'return':        id => Ops.returnTool(id),
     'remove-emp':    id => Ops.removeEmp(id),
+    'edit-emp':      id => editRegistryEmp(id),
     'restore-tool':  id => doAction('Administrator', () => Ops.restoreTool(id)),
     'photo-del':     id => { const [tid, i] = id.split(':'); doAction('Tool Crib Manager', () => Photos.remove(tid, +i)); },
     'remove-rbac':   id => removeRbacUser(+id),
@@ -5334,7 +5337,10 @@ function renderRegistryLists() {
         <td>${Utils.esc(emp.initials)}</td><td>${Utils.esc(emp.badge || '')}</td>
         <td>${Utils.esc(emp.defaultWs || emp.workstation)}</td><td>${Utils.esc(emp.defaultPost || emp.post)}</td>
         <td>${Ops.careBadge(emp)}</td>
-        <td><button class="btn btn-danger audit-btn" data-action="remove-emp" data-id="${Utils.esc(emp.id)}">✖</button></td>
+        <td>
+            <button class="btn btn-muted audit-btn" data-action="edit-emp" data-id="${Utils.esc(emp.id)}" title="Edit">✎</button>
+            <button class="btn btn-danger audit-btn" data-action="remove-emp" data-id="${Utils.esc(emp.id)}" title="Delete">✖</button>
+        </td>
     </tr>`).join('');
 }
 
@@ -5579,6 +5585,27 @@ function rollbackLastCascade() {
     }
 }
 
+function editRegistryEmp(id) {
+    const emp = Store.getEmp(id);
+    if (!emp) return;
+    document.getElementById('regEmpEditId').value = emp.id;
+    document.getElementById('regEmpName').value = emp.name;
+    document.getElementById('regEmpInitials').value = emp.initials || '';
+    document.getElementById('regEmpBadge').value = emp.badge || '';
+    document.getElementById('regEmpWs').value = emp.defaultWs || emp.workstation || '';
+    document.getElementById('regEmpWs').dispatchEvent(new Event('change'));
+    setTimeout(() => { document.getElementById('regEmpPost').value = emp.defaultPost || emp.post || ''; }, 50);
+    document.getElementById('regEmpSaveBtn').innerText = T('Save');
+    document.getElementById('regEmpCancelBtn').style.display = 'inline-block';
+}
+
+function cancelEditEmp() {
+    document.getElementById('regEmpEditId').value = '';
+    ['regEmpName', 'regEmpInitials', 'regEmpBadge'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('regEmpSaveBtn').innerText = T('Add');
+    document.getElementById('regEmpCancelBtn').style.display = 'none';
+}
+
 function addRegistryEmp() {
     const name = document.getElementById('regEmpName').value.trim();
     if (!name) return;
@@ -5586,15 +5613,34 @@ function addRegistryEmp() {
     const badge = document.getElementById('regEmpBadge').value.trim();
     const ws = document.getElementById('regEmpWs').value;
     const post = document.getElementById('regEmpPost').value;
-    // Генерация ID без коллизий: EMP-NN по максимальному существующему номеру
-    const maxNum = Math.max(0, ...Store.personnel.map(p => parseInt((p.id.match(/EMP-(\d+)/) || [0, 0])[1])));
-    const id = 'EMP-' + String(maxNum + 1).padStart(2, '0');
-    Store.personnel.push({ id, name, initials, badge, workstation: ws, post, defaultWs: ws, defaultPost: post, history: ['Created in system'] });
-    Store.log('EMP_ADD', `${id} ${name}`);
+    const editId = document.getElementById('regEmpEditId').value;
+    
+    if (editId) {
+        const emp = Store.getEmp(editId);
+        if (emp) {
+            emp.name = name;
+            emp.initials = initials;
+            emp.badge = badge;
+            emp.defaultWs = ws;
+            emp.workstation = ws;
+            emp.defaultPost = post;
+            emp.post = post;
+            emp.history = emp.history || [];
+            emp.history.unshift('Profile edited');
+            Store.log('EMP_EDIT', `${editId} ${name}`);
+        }
+    } else {
+        const maxNum = Math.max(0, ...Store.personnel.map(p => parseInt((p.id.match(/EMP-(\d+)/) || [0, 0])[1])));
+        const id = 'EMP-' + String(maxNum + 1).padStart(2, '0');
+        Store.personnel.push({ id, name, initials, badge, workstation: ws, post, defaultWs: ws, defaultPost: post, history: ['Created in system'] });
+        Store.log('EMP_ADD', `${id} ${name}`);
+    }
+    
     Store.save();
-    ['regEmpName', 'regEmpInitials', 'regEmpBadge'].forEach(i => document.getElementById(i).value = '');
+    cancelEditEmp();
     populateAllDropdowns();
     populateEmpSelects();
+    renderRegistryAll();
     Charts.update();
 }
 
