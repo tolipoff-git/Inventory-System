@@ -1,7 +1,7 @@
 {
   "id": "./index.html",
-  "name": "FSE Inventory System 5S",
-  "short_name": "FSE Inventory",
+  "name": "5S Inventory System",
+  "short_name": "5S Inventory",
   "description": "5S Tool & Equipment Inventory System with QR / Barcode & Label Generator",
   "start_url": "./index.html",
   "scope": "./",
