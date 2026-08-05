@@ -7506,26 +7506,20 @@ function init() {
 }
 
 const Sync = {
-    autoSyncEnabled: localStorage.getItem('fse_autosync') !== 'false',
-    syncPasscode: localStorage.getItem('fse_sync_key') || '5S-' + Math.floor(1000 + Math.random() * 9000),
-    lastSyncTs: parseInt(localStorage.getItem('fse_last_sync_ts') || '0'),
+    autoSyncEnabled: true,
+    blobUrl: 'https://jsonblob.com/api/jsonBlob/019fd213-8229-7683-bb0c-ff81e1efe54b',
+    lastSyncTs: parseInt(localStorage.getItem('sys_last_sync_ts') || '0'),
     isSyncing: false,
     debounceTimer: null,
 
     init() {
-        if (!localStorage.getItem('fse_sync_key')) {
-            localStorage.setItem('fse_sync_key', this.syncPasscode);
-        }
-        this.updateStatusUI();
-        if (this.autoSyncEnabled) {
-            this.startAutoSync();
-        }
+        this.startAutoSync();
     },
 
     startAutoSync() {
         this.pullCloud();
         if (this._pollTimer) clearInterval(this._pollTimer);
-        this._pollTimer = setInterval(() => this.pullCloud(), 6000);
+        this._pollTimer = setInterval(() => this.pullCloud(), 5000);
         window.addEventListener('online', () => this.pullCloud());
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') this.pullCloud();
@@ -7535,105 +7529,66 @@ const Sync = {
     onStoreMutation() {
         if (!this.autoSyncEnabled || this.isSyncing) return;
         clearTimeout(this.debounceTimer);
-        this.debounceTimer = setTimeout(() => this.pushCloud(), 1200);
+        this.debounceTimer = setTimeout(() => this.pushCloud(), 1000);
     },
 
     async pushCloud() {
-        if (!this.syncPasscode || this.isSyncing) return;
+        if (this.isSyncing) return;
         try {
             this.isSyncing = true;
-            this.updateStatusUI('syncing');
             const payload = Store.exportData();
-            const endpoint = `https://kv.valtown.v1.val.run/fse_sync_${encodeURIComponent(this.syncPasscode)}`;
-            const res = await fetch(endpoint, {
-                method: 'POST',
+            const res = await fetch(this.blobUrl, {
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ts: Date.now(), data: payload })
             });
             if (res.ok) {
                 this.lastSyncTs = Date.now();
-                localStorage.setItem('fse_last_sync_ts', this.lastSyncTs.toString());
-                this.updateStatusUI('live');
+                localStorage.setItem('sys_last_sync_ts', this.lastSyncTs.toString());
+                console.log('[Sync] Pushed changes to cloud successfully');
             }
         } catch (e) {
-            console.warn('[Sync] Auto-push offline/failed:', e.message);
-            this.updateStatusUI('offline');
+            console.warn('[Sync] Push offline/failed:', e.message);
         } finally {
             this.isSyncing = false;
         }
     },
 
     async pullCloud() {
-        if (!this.syncPasscode || this.isSyncing) return;
+        if (this.isSyncing) return;
         try {
-            const endpoint = `https://kv.valtown.v1.val.run/fse_sync_${encodeURIComponent(this.syncPasscode)}`;
-            const res = await fetch(endpoint);
+            const res = await fetch(this.blobUrl, { cache: 'no-store' });
             if (res.ok) {
                 const remote = await res.json();
                 if (remote && remote.ts && remote.ts > this.lastSyncTs && remote.data) {
-                    console.log('[Sync] Remote updates found. Merging...');
+                    console.log('[Sync] New cloud updates found! Merging...');
                     this.isSyncing = true;
-                    this.updateStatusUI('syncing');
                     const mergeRes = Store.mergeData(remote.data);
                     this.lastSyncTs = remote.ts;
-                    localStorage.setItem('fse_last_sync_ts', this.lastSyncTs.toString());
+                    localStorage.setItem('sys_last_sync_ts', this.lastSyncTs.toString());
                     if (mergeRes.success && (mergeRes.addedTools > 0 || mergeRes.updatedTools > 0)) {
                         renderAll();
-                        Utils.toast(`⚡ Auto-Synced from Cloud! +${mergeRes.addedTools} new, ${mergeRes.updatedTools} updated.`);
+                        Utils.toast('⚡ Synced with Cloud! +' + mergeRes.addedTools + ' new, ' + mergeRes.updatedTools + ' updated.');
                     }
                 }
-                this.updateStatusUI('live');
             }
         } catch (e) {
-            this.updateStatusUI('offline');
+            // Silently handle offline network errors
         } finally {
             this.isSyncing = false;
         }
     },
 
-    updateStatusUI(state = 'live') {
-        if (!badge) return;
-        if (!this.autoSyncEnabled) {
-            badge.className = 'badge badge-muted';
-            badge.innerText = '⏸ Sync: Off';
-        } else if (state === 'syncing') {
-            badge.className = 'badge badge-warning';
-            badge.innerText = '🔄 Syncing...';
-        } else if (state === 'offline') {
-            badge.className = 'badge badge-muted';
-            badge.innerText = '📡 Offline';
-        } else {
-            badge.className = 'badge badge-success';
-            badge.innerText = `🟢 Auto-Sync (${this.syncPasscode})`;
-        }
-    },
-
-    setPasscode(code) {
-        const clean = (code || '').trim().toUpperCase();
-        if (!clean) return;
-        this.syncPasscode = clean;
-        localStorage.setItem('fse_sync_key', clean);
-        this.lastSyncTs = 0;
-        this.updateStatusUI();
-        this.pullCloud();
-    },
-
-    toggleAutoSync(enabled) {
-        this.autoSyncEnabled = enabled;
-        localStorage.setItem('fse_autosync', enabled ? 'true' : 'false');
-        if (enabled) this.startAutoSync();
-        else if (this._pollTimer) clearInterval(this._pollTimer);
-        this.updateStatusUI();
-    },
-
     openModal() {
         openModal('syncModal');
     },
+
     exportBundle() {
         const json = Store.exportData();
         Utils.downloadText(Utils.datedName('5S_Inventory_Sync', 'fse'), json, 'application/json');
         Utils.toast('✅ Sync file exported successfully!');
     },
+
     copyToClipboard() {
         const json = Store.exportData();
         navigator.clipboard.writeText(json).then(() => {
@@ -7642,6 +7597,7 @@ const Sync = {
             Utils.toast('❌ Failed to copy payload');
         });
     },
+
     handleFileSelect(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -7651,7 +7607,8 @@ const Sync = {
             if (res.success) {
                 closeModal('syncModal');
                 renderAll();
-                Utils.toast(`✅ Sync Complete! +${res.addedTools} new, ${res.updatedTools} updated. Total: ${res.totalTools}`);
+                Sync.pushCloud();
+                Utils.toast('✅ Manual Sync Complete!');
             } else {
                 alert('Sync Error: ' + res.error);
             }
