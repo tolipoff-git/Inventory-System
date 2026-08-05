@@ -3014,7 +3014,7 @@ const Store = {
         }
         if (!data || typeof data !== 'object') return { success: false, error: 'Empty payload' };
 
-        let addedTools = 0, updatedTools = 0;
+        let addedTools = 0, updatedTools = 0, addedEmp = 0, updatedEmp = 0;
 
         if (Array.isArray(data.tools)) {
             const existingMap = new Map(this.tools.map(t => [t.id, t]));
@@ -3053,12 +3053,28 @@ const Store = {
         }
         if (Array.isArray(data.personnel)) {
             const pMap = new Map(this.personnel.map(p => [p.id, p]));
-            data.personnel.forEach(rp => { if (rp.id && !pMap.has(rp.id)) pMap.set(rp.id, rp); });
+            data.personnel.forEach(rp => {
+                if (!rp.id) return;
+                const existing = pMap.get(rp.id);
+                if (!existing) {
+                    pMap.set(rp.id, rp);
+                    addedEmp++;
+                } else {
+                    let changed = false;
+                    for (let k in rp) {
+                        if (JSON.stringify(existing[k]) !== JSON.stringify(rp[k])) { changed = true; break; }
+                    }
+                    if (changed) {
+                        pMap.set(rp.id, { ...existing, ...rp });
+                        updatedEmp++;
+                    }
+                }
+            });
             this.personnel = Array.from(pMap.values());
         }
 
         this.save();
-        return { success: true, addedTools, updatedTools, totalTools: this.tools.length };
+        return { success: true, addedTools, updatedTools, addedEmp, updatedEmp, totalTools: this.tools.length };
     },
 
     /** Загрузка из localStorage с fallback на seed-данные */
@@ -8147,9 +8163,9 @@ const Sync = {
                     const mergeRes = Store.mergeData(remote.data);
                     this.lastSyncTs = remote.ts;
                     localStorage.setItem('sys_last_sync_ts', this.lastSyncTs.toString());
-                    if (mergeRes.success && (mergeRes.addedTools > 0 || mergeRes.updatedTools > 0)) {
+                    if (mergeRes.success && (mergeRes.addedTools > 0 || mergeRes.updatedTools > 0 || mergeRes.addedEmp > 0 || mergeRes.updatedEmp > 0)) {
                         renderAll();
-                        Utils.toast('⚡ Synced with Cloud! +' + mergeRes.addedTools + ' new, ' + mergeRes.updatedTools + ' updated.');
+                        Utils.toast(`⚡ Synced! Tools: +${mergeRes.addedTools}/${mergeRes.updatedTools} | Emp: +${mergeRes.addedEmp}/${mergeRes.updatedEmp}`);
                     }
                 }
             }
