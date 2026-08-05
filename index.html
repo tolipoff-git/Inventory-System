@@ -8217,7 +8217,7 @@ function init() {
 
 const Sync = {
     autoSyncEnabled: true,
-    blobUrl: 'https://jsonblob.com/api/jsonBlob/019fd213-8229-7683-bb0c-ff81e1efe54b',
+    blobUrl: 'https://jsonblob.com/api/jsonBlob/019fd336-d2d2-785d-a721-9b624d0b2147',
     lastSyncTs: parseInt(localStorage.getItem('sys_last_sync_ts') || '0'),
     isPulling: false,
     isPushing: false,
@@ -8230,7 +8230,7 @@ const Sync = {
     startAutoSync() {
         this.pullCloud();
         if (this._pollTimer) clearInterval(this._pollTimer);
-        this._pollTimer = setInterval(() => this.pullCloud(), 5000);
+        this._pollTimer = setInterval(() => this.pullCloud(), 30000);
         window.addEventListener('online', () => this.pullCloud());
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') this.pullCloud();
