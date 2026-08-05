@@ -4258,7 +4258,7 @@ const Auth = {
         }
 
         // 1. Master Admin / Root Login
-        if ((login === 'admin' || login === 'root') && (pass === 'admin' || pass === 'root' || pass === '1234')) {
+        if ((login === 'admin' || login === 'root') && (pass === 'root' || pass === 'admin' || pass === '1234')) {
             const adminUser = (Store.users || []).find(u => u.role === 'Administrator') || { id: 1, name: 'Administrator', role: 'Administrator' };
             Auth.currentUser = adminUser;
             sessionStorage.setItem('fse_auth_active', 'true');
