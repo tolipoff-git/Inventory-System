@@ -2518,11 +2518,11 @@ const translations = {
         'Supplier Purchase Link:': 'Supplier Purchase Link:',
         'System Audit Log': 'System Audit Log',
         'System Registries': 'System Registries',
-        'TT_KPI_ACTIVE': 'Active: {n} — Ready for issue',
-        'TT_KPI_ISSUED': 'Issued: {n} — Checked out to personnel',
-        'TT_KPI_MAINT': 'Maintenance: {n} — Calibration / repair',
-        'TT_KPI_OVERDUE': 'Overdue: {n} — Immediate action required',
-        'TT_KPI_TOTAL': 'Total: {n} — Click card to filter inventory',
+        'TT_KPI_ACTIVE': 'TT_KPI_ACTIVE',
+        'TT_KPI_ISSUED': 'TT_KPI_ISSUED',
+        'TT_KPI_MAINT': 'TT_KPI_MAINT',
+        'TT_KPI_OVERDUE': 'TT_KPI_OVERDUE',
+        'TT_KPI_TOTAL': 'TT_KPI_TOTAL',
         'Target Program': 'Target Program',
         'Target Zone': 'Target Zone',
         'Timestamp': 'Timestamp',
@@ -4478,29 +4478,21 @@ document.addEventListener('keydown', e => {
 });
 
 /* --- Тултипы (единый элемент #svgTooltip) --- */
-let _ttTimer = null;
 function showTooltip(evt, html) {
     const tt = document.getElementById('svgTooltip');
-    if (!tt) return;
     tt.innerHTML = html;
     tt.style.display = 'block';
+    // Кламп в границы экрана: тултип никогда не уезжает за край (телефон тоже)
     const w = tt.offsetWidth, h = tt.offsetHeight;
     const maxX = window.pageXOffset + window.innerWidth;
     const maxY = window.pageYOffset + window.innerHeight;
     let x = evt.pageX + 15, y = evt.pageY + 15;
-    if (x + w > maxX - 8) x = evt.pageX - w - 10;
-    if (y + h > maxY - 8) y = evt.pageY - h - 10;
+    if (x + w > maxX - 8) x = evt.pageX - w - 10;   // не влез справа — показываем слева от точки
+    if (y + h > maxY - 8) y = evt.pageY - h - 10;   // не влез снизу — показываем выше
     tt.style.left = Math.max(window.pageXOffset + 8, x) + 'px';
     tt.style.top = Math.max(window.pageYOffset + 8, y) + 'px';
-
-    if (_ttTimer) clearTimeout(_ttTimer);
-    _ttTimer = setTimeout(hideTooltip, 2200);
 }
-function hideTooltip() {
-    if (_ttTimer) clearTimeout(_ttTimer);
-    const tt = document.getElementById('svgTooltip');
-    if (tt) tt.style.display = 'none';
-}
+function hideTooltip() { document.getElementById('svgTooltip').style.display = 'none'; }
 
 /** Тултипы KPI-карточек с разбивкой */
 function showKpiTooltip(evt, type) {
@@ -4535,7 +4527,6 @@ function showKpiTooltip(evt, type) {
 
 /* --- Фильтры (из графиков и KPI) --- */
 function setFilter(type, value) {
-    hideTooltip();
     UI.currentFilter = { type, value };
     document.getElementById('filterIndicator').classList.add('active');
     document.getElementById('filterText').innerText =
