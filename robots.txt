@@ -1,6 +1,59 @@
+# ==============================================================================
+# TOTAL PRIVACY DISALLOW DIRECTIVES FOR ALL SEARCH ENGINES AND AI CRAWLERS
+# ==============================================================================
+
+# --- GLOBAL DISALLOW FOR ALL WEB CRAWLERS & BOT SEARCH ENGINES ---
 User-agent: *
 Disallow: /
 
+# --- EXPLICIT SEARCH ENGINE BOTS ---
+User-agent: Googlebot
+Disallow: /
+
+User-agent: Googlebot-Image
+Disallow: /
+
+User-agent: Bingbot
+Disallow: /
+
+User-agent: Yandex
+Disallow: /
+
+User-agent: YandexBot
+Disallow: /
+
+User-agent: DuckDuckBot
+Disallow: /
+
+User-agent: Baiduspider
+Disallow: /
+
+User-agent: Slurp
+Disallow: /
+
+User-agent: Sogou
+Disallow: /
+
+User-agent: Exabot
+Disallow: /
+
+# --- EXPLICIT SOCIAL & MESSENGER PREVIEW CRAWLERS ---
+User-agent: facebookexternalhit
+Disallow: /
+
+User-agent: Twitterbot
+Disallow: /
+
+User-agent: LinkedInBot
+Disallow: /
+
+User-agent: TelegramBot
+Disallow: /
+
+User-agent: WhatsApp
+Disallow: /
+
+# --- EXPLICIT LLM & AI TRAINING CRAWLERS ---
 User-agent: GPTBot
 Disallow: /
 
@@ -26,4 +79,7 @@ User-agent: CCBot
 Disallow: /
 
 User-agent: Cohere-ai
+Disallow: /
+
+User-agent: Applebot-Extended
 Disallow: /
