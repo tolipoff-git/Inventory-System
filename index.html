@@ -978,7 +978,6 @@ select.work-only.form-control { max-width: 190px; }
         <button class="btn" id="modeBtn" onclick="Mode.toggle()">🛠 <span id="modeBtnText">Work Mode</span></button>
         <button class="btn btn-warning" id="themeToggleBtn" onclick="Theme.toggle()" style="font-weight:bold;">☀️ Light</button>
         <button class="btn btn-warning" onclick="toggleLanguage()">🌐 <span id="langBtnText">RU | ENG</span></button>
-        <button class="btn btn-muted" onclick="Sync.openModal()">🔄 Sync</button>
 
         <div class="header-title-block">
             <h1 class="header-title" data-i18n="Dashboard for FSE">Dashboard for FSE</h1>
@@ -1146,6 +1145,14 @@ select.work-only.form-control { max-width: 190px; }
             <p style="font-size:0.9rem; color:var(--text-muted);">
                 Merge inventory data between your phone, laptop, and tablet without data loss.
             </p>
+            <div class="form-group" style="text-align:left; background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; margin-bottom:15px;">
+                <label style="font-weight:bold;">Real-Time Cloud Sync Room Passcode:</label>
+                <div style="display:flex; gap:8px; margin-top:4px;">
+                    <input type="text" id="syncPasscodeInput" class="form-control" style="text-transform:uppercase; font-family:monospace; font-weight:bold;" placeholder="FSE-8842">
+                    <button class="btn btn-warning" onclick="Sync.setPasscode(document.getElementById('syncPasscodeInput').value)">Set Key</button>
+                </div>
+                <div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">Use the same Passcode on your Phone and Laptop to link them together!</div>
+            </div>
             <div class="form-group" style="text-align:left;">
                 <label>1. Export &amp; Backup Sync Package</label>
                 <div style="display:flex; gap:8px;">
@@ -3043,6 +3050,7 @@ const Store = {
         } catch (e) {
             alert('⚠ LocalStorage quota exceeded! Export a JSON backup now, then clear old data.');
         }
+        if (typeof Sync !== 'undefined' && Sync.onStoreMutation) Sync.onStoreMutation();
     },
 
     addToLabelQueue(id) {
@@ -7377,9 +7385,130 @@ function init() {
     // Тихая самодиагностика: висячие ссылки — в консоль, ремонт через System Management
     const _issues = Store.integrityScan();
     if (_issues.length) console.warn(`[Integrity] ${_issues.length} dangling reference(s) — System Management → Integrity Check.`);
+    if (typeof Sync !== 'undefined' && Sync.init) Sync.init();
 }
 
 const Sync = {
+    autoSyncEnabled: localStorage.getItem('fse_autosync') !== 'false',
+    syncPasscode: localStorage.getItem('fse_sync_key') || 'FSE-' + Math.floor(1000 + Math.random() * 9000),
+    lastSyncTs: parseInt(localStorage.getItem('fse_last_sync_ts') || '0'),
+    isSyncing: false,
+    debounceTimer: null,
+
+    init() {
+        if (!localStorage.getItem('fse_sync_key')) {
+            localStorage.setItem('fse_sync_key', this.syncPasscode);
+        }
+        this.updateStatusUI();
+        if (this.autoSyncEnabled) {
+            this.startAutoSync();
+        }
+    },
+
+    startAutoSync() {
+        this.pullCloud();
+        if (this._pollTimer) clearInterval(this._pollTimer);
+        this._pollTimer = setInterval(() => this.pullCloud(), 6000);
+        window.addEventListener('online', () => this.pullCloud());
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') this.pullCloud();
+        });
+    },
+
+    onStoreMutation() {
+        if (!this.autoSyncEnabled || this.isSyncing) return;
+        clearTimeout(this.debounceTimer);
+        this.debounceTimer = setTimeout(() => this.pushCloud(), 1200);
+    },
+
+    async pushCloud() {
+        if (!this.syncPasscode || this.isSyncing) return;
+        try {
+            this.isSyncing = true;
+            this.updateStatusUI('syncing');
+            const payload = Store.exportData();
+            const endpoint = `https://kv.valtown.v1.val.run/fse_sync_${encodeURIComponent(this.syncPasscode)}`;
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ts: Date.now(), data: payload })
+            });
+            if (res.ok) {
+                this.lastSyncTs = Date.now();
+                localStorage.setItem('fse_last_sync_ts', this.lastSyncTs.toString());
+                this.updateStatusUI('live');
+            }
+        } catch (e) {
+            console.warn('[Sync] Auto-push offline/failed:', e.message);
+            this.updateStatusUI('offline');
+        } finally {
+            this.isSyncing = false;
+        }
+    },
+
+    async pullCloud() {
+        if (!this.syncPasscode || this.isSyncing) return;
+        try {
+            const endpoint = `https://kv.valtown.v1.val.run/fse_sync_${encodeURIComponent(this.syncPasscode)}`;
+            const res = await fetch(endpoint);
+            if (res.ok) {
+                const remote = await res.json();
+                if (remote && remote.ts && remote.ts > this.lastSyncTs && remote.data) {
+                    console.log('[Sync] Remote updates found. Merging...');
+                    this.isSyncing = true;
+                    this.updateStatusUI('syncing');
+                    const mergeRes = Store.mergeData(remote.data);
+                    this.lastSyncTs = remote.ts;
+                    localStorage.setItem('fse_last_sync_ts', this.lastSyncTs.toString());
+                    if (mergeRes.success && (mergeRes.addedTools > 0 || mergeRes.updatedTools > 0)) {
+                        renderAll();
+                        Utils.toast(`⚡ Auto-Synced from Cloud! +${mergeRes.addedTools} new, ${mergeRes.updatedTools} updated.`);
+                    }
+                }
+                this.updateStatusUI('live');
+            }
+        } catch (e) {
+            this.updateStatusUI('offline');
+        } finally {
+            this.isSyncing = false;
+        }
+    },
+
+    updateStatusUI(state = 'live') {
+        if (!badge) return;
+        if (!this.autoSyncEnabled) {
+            badge.className = 'badge badge-muted';
+            badge.innerText = '⏸ Sync: Off';
+        } else if (state === 'syncing') {
+            badge.className = 'badge badge-warning';
+            badge.innerText = '🔄 Syncing...';
+        } else if (state === 'offline') {
+            badge.className = 'badge badge-muted';
+            badge.innerText = '📡 Offline';
+        } else {
+            badge.className = 'badge badge-success';
+            badge.innerText = `🟢 Auto-Sync (${this.syncPasscode})`;
+        }
+    },
+
+    setPasscode(code) {
+        const clean = (code || '').trim().toUpperCase();
+        if (!clean) return;
+        this.syncPasscode = clean;
+        localStorage.setItem('fse_sync_key', clean);
+        this.lastSyncTs = 0;
+        this.updateStatusUI();
+        this.pullCloud();
+    },
+
+    toggleAutoSync(enabled) {
+        this.autoSyncEnabled = enabled;
+        localStorage.setItem('fse_autosync', enabled ? 'true' : 'false');
+        if (enabled) this.startAutoSync();
+        else if (this._pollTimer) clearInterval(this._pollTimer);
+        this.updateStatusUI();
+    },
+
     openModal() {
         openModal('syncModal');
     },
