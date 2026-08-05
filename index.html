@@ -3014,7 +3014,7 @@ const Store = {
         }
         if (!data || typeof data !== 'object') return { success: false, error: 'Empty payload' };
 
-        let addedTools = 0, updatedTools = 0, addedEmp = 0, updatedEmp = 0;
+        let addedTools = 0, updatedTools = 0, addedEmp = 0, updatedEmp = 0, addedUsers = 0, updatedUsers = 0, listsUpdated = false;
 
         if (Array.isArray(data.tools)) {
             const existingMap = new Map(this.tools.map(t => [t.id, t]));
@@ -3045,11 +3045,37 @@ const Store = {
             this.auditLog = Array.from(logMap.values()).sort((a, b) => b.ts - a.ts);
         }
 
-        if (Array.isArray(data.workstations)) {
-            data.workstations.forEach(w => { if (!this.workstations.includes(w)) this.workstations.push(w); });
-        }
-        if (Array.isArray(data.programs)) {
-            data.programs.forEach(p => { if (!this.programs.includes(p)) this.programs.push(p); });
+        ['workstations', 'programs', 'workposts', 'labelQueue'].forEach(key => {
+            if (Array.isArray(data[key])) {
+                data[key].forEach(val => {
+                    if (!this[key].includes(val)) {
+                        this[key].push(val);
+                        listsUpdated = true;
+                    }
+                });
+            }
+        });
+
+        if (Array.isArray(data.users)) {
+            const uMap = new Map(this.users.map(u => [u.username, u]));
+            data.users.forEach(ru => {
+                if (!ru.username) return;
+                const existing = uMap.get(ru.username);
+                if (!existing) {
+                    uMap.set(ru.username, ru);
+                    addedUsers++;
+                } else {
+                    let changed = false;
+                    for (let k in ru) {
+                        if (JSON.stringify(existing[k]) !== JSON.stringify(ru[k])) { changed = true; break; }
+                    }
+                    if (changed) {
+                        uMap.set(ru.username, { ...existing, ...ru });
+                        updatedUsers++;
+                    }
+                }
+            });
+            this.users = Array.from(uMap.values());
         }
         if (Array.isArray(data.personnel)) {
             const pMap = new Map(this.personnel.map(p => [p.id, p]));
@@ -3074,7 +3100,7 @@ const Store = {
         }
 
         this.save();
-        return { success: true, addedTools, updatedTools, addedEmp, updatedEmp, totalTools: this.tools.length };
+        return { success: true, addedTools, updatedTools, addedEmp, updatedEmp, addedUsers, updatedUsers, listsUpdated, totalTools: this.tools.length };
     },
 
     /** Загрузка из localStorage с fallback на seed-данные */
@@ -8163,9 +8189,9 @@ const Sync = {
                     const mergeRes = Store.mergeData(remote.data);
                     this.lastSyncTs = remote.ts;
                     localStorage.setItem('sys_last_sync_ts', this.lastSyncTs.toString());
-                    if (mergeRes.success && (mergeRes.addedTools > 0 || mergeRes.updatedTools > 0 || mergeRes.addedEmp > 0 || mergeRes.updatedEmp > 0)) {
+                    if (mergeRes.success && (mergeRes.addedTools > 0 || mergeRes.updatedTools > 0 || mergeRes.addedEmp > 0 || mergeRes.updatedEmp > 0 || mergeRes.addedUsers > 0 || mergeRes.updatedUsers > 0 || mergeRes.listsUpdated)) {
                         renderAll();
-                        Utils.toast(`⚡ Synced! Tools: +${mergeRes.addedTools}/${mergeRes.updatedTools} | Emp: +${mergeRes.addedEmp}/${mergeRes.updatedEmp}`);
+                        Utils.toast(`⚡ Synced! Tools: +${mergeRes.addedTools}/${mergeRes.updatedTools} | Emp: +${mergeRes.addedEmp}/${mergeRes.updatedEmp} | Meta/Lists updated.`);
                     }
                 }
             }
