@@ -8178,7 +8178,8 @@ const Sync = {
     autoSyncEnabled: true,
     blobUrl: 'https://jsonblob.com/api/jsonBlob/019fd213-8229-7683-bb0c-ff81e1efe54b',
     lastSyncTs: parseInt(localStorage.getItem('sys_last_sync_ts') || '0'),
-    isSyncing: false,
+    isPulling: false,
+    isPushing: false,
     debounceTimer: null,
 
     init() {
@@ -8196,15 +8197,19 @@ const Sync = {
     },
 
     onStoreMutation() {
-        if (!this.autoSyncEnabled || this.isSyncing) return;
+        if (!this.autoSyncEnabled) return;
         clearTimeout(this.debounceTimer);
         this.debounceTimer = setTimeout(() => this.pushCloud(), 1000);
     },
 
     async pushCloud() {
-        if (this.isSyncing) return;
+        if (this.isPushing) {
+            clearTimeout(this.debounceTimer);
+            this.debounceTimer = setTimeout(() => this.pushCloud(), 1000);
+            return;
+        }
         try {
-            this.isSyncing = true;
+            this.isPushing = true;
             const payload = Store.exportData();
             const res = await fetch(this.blobUrl, {
                 method: 'PUT',
@@ -8219,19 +8224,19 @@ const Sync = {
         } catch (e) {
             console.warn('[Sync] Push offline/failed:', e.message);
         } finally {
-            this.isSyncing = false;
+            this.isPushing = false;
         }
     },
 
     async pullCloud() {
-        if (this.isSyncing) return;
+        if (this.isPulling || this.isPushing) return;
         try {
+            this.isPulling = true;
             const res = await fetch(this.blobUrl, { cache: 'no-store' });
             if (res.ok) {
                 const remote = await res.json();
                 if (remote && remote.ts && remote.ts > this.lastSyncTs && remote.data) {
                     // console.log('[Sync] New cloud updates found! Merging...');
-                    this.isSyncing = true;
                     const mergeRes = Store.mergeData(remote.data);
                     this.lastSyncTs = remote.ts;
                     localStorage.setItem('sys_last_sync_ts', this.lastSyncTs.toString());
@@ -8244,7 +8249,7 @@ const Sync = {
         } catch (e) {
             // Silently handle offline network errors
         } finally {
-            this.isSyncing = false;
+            this.isPulling = false;
         }
     },
 
