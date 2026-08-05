@@ -1,9 +1,17 @@
-const CACHE_NAME = 'fse-inventory-v7-cache-v1';
+const CACHE_NAME = 'fse-inventory-v7-cache-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
+  './favicon.ico',
+  './icon-32.png',
+  './icon-48.png',
+  './icon-72.png',
+  './icon-96.png',
+  './icon-128.png',
+  './icon-144.png',
   './icon-192.png',
+  './icon-256.png',
   './icon-512.png'
 ];
 
