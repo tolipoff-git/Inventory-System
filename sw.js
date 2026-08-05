@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fse-inventory-v7-cache-v6';
+const CACHE_NAME = 'fse-inventory-v7-cache-v7';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
