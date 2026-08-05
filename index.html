@@ -4498,29 +4498,35 @@ function hideTooltip() { document.getElementById('svgTooltip').style.display = '
 function showKpiTooltip(evt, type) {
     const active = Store.activeTools();
     let text = '';
+    const isRu = (CONFIG.currentLang || 'ru') === 'ru';
     if (type === 'Issued') {
         const counts = {};
         active.filter(t => t.status === 'Issued').forEach(t => {
             if (t.assigneeId) counts[Store.empName(t.assigneeId)] = (counts[Store.empName(t.assigneeId)] || 0) + 1;
         });
         const details = Object.entries(counts).map(([n, c]) => `${n}: ${c}`).join(', ');
-        text = T('TT_KPI_ISSUED').replace('{n}', active.filter(t => t.status === 'Issued').length) + (details ? ` (${details})` : '');
+        const count = active.filter(t => t.status === 'Issued').length;
+        const mainText = isRu ? `Выданные: ${count} — на руках у персонала` : `Issued: ${count} — Checked out to personnel`;
+        text = mainText + (details ? ` (${details})` : '');
     } else if (type === 'Maintenance') {
         const maint = active.filter(t => t.status === 'Maintenance');
         const cats = {};
         maint.forEach(t => {
             const last = (t.history[t.history.length - 1] || '').toLowerCase();
-            const cat = last.includes('calibr') ? T('Calibration') : last.includes('sharpen') ? T('Sharpening') : last.includes('repair') ? T('Repair') : T('Maintenance');
+            const cat = last.includes('calibr') ? (isRu ? 'Калибровка' : 'Calibration') : last.includes('sharpen') ? (isRu ? 'Заточка' : 'Sharpening') : last.includes('repair') ? (isRu ? 'Ремонт' : 'Repair') : (isRu ? 'Обслуживание' : 'Maintenance');
             cats[cat] = (cats[cat] || 0) + 1;
         });
         const details = Object.entries(cats).map(([c, n]) => `${n} ${c}`).join(', ');
-        text = T('TT_KPI_MAINT').replace('{n}', maint.length) + (details ? ` (${details})` : '');
+        const mainText = isRu ? `Обслуживание: ${maint.length} — ремонт/калибровка` : `Maintenance: ${maint.length} — Calibration / repair`;
+        text = mainText + (details ? ` (${details})` : '');
     } else if (type === 'Overdue') {
-        text = T('TT_KPI_OVERDUE').replace('{n}', active.filter(t => t.status === 'Overdue').length);
+        const count = active.filter(t => t.status === 'Overdue').length;
+        text = isRu ? `Просроченные: ${count} — требуют реакции` : `Overdue: ${count} — Immediate action required`;
     } else if (type === 'Active') {
-        text = T('TT_KPI_ACTIVE').replace('{n}', active.filter(t => t.status === 'Active').length);
+        const count = active.filter(t => t.status === 'Active').length;
+        text = isRu ? `Активные: ${count} — готовы к выдаче` : `Active: ${count} — Ready for issue`;
     } else if (type === 'Total') {
-        text = T('TT_KPI_TOTAL').replace('{n}', active.length);
+        text = isRu ? `Всего: ${active.length} — клик по карточке фильтрует список` : `Total: ${active.length} — Click card to filter inventory`;
     }
     if (text) showTooltip(evt, Utils.esc(text));
 }
