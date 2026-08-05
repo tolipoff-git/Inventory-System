@@ -3119,7 +3119,12 @@ const Store = {
                 tools: this.tools, auditLog: this.auditLog, procurementLog: this.procurementLog,
                 meta: this.meta, labelQueue: this.labelQueue
             };
-            localStorage.setItem('inv_inventory_db', JSON.stringify(state));
+            const raw = JSON.stringify(state);
+            if (raw.length > 4000000 && !sessionStorage.getItem('inv_quota_warn')) {
+                alert('⚠ Warning: Database size is approaching the 5MB limit. Please consider exporting a JSON backup soon.');
+                sessionStorage.setItem('inv_quota_warn', 'true');
+            }
+            localStorage.setItem('inv_inventory_db', raw);
         } catch (e) {
             alert('⚠ LocalStorage quota exceeded! Export a JSON backup now, then clear old data.');
         }
