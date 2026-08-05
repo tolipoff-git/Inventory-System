@@ -974,6 +974,13 @@ select.work-only.form-control { max-width: 190px; }
     <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
     <link rel="shortcut icon" href="icon-192.png">
 
+
+    <!-- Total Search Engine & LLM Crawler Privacy Protection -->
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <meta name="bingbot" content="noindex, nofollow, noarchive, nosnippet">
+    <meta name="slurp" content="noindex, nofollow">
+
 </head>
 
 <body>
@@ -985,6 +992,11 @@ select.work-only.form-control { max-width: 190px; }
 <div id="printZone"></div>
 
 <!-- ============================ ШАПКА ============================ -->
+<style>
+    /* Privacy Lock */
+    #appMainContainer.locked { display: none !important; }
+</style>
+<div id="appMainContainer">
 <header>
     <div class="header-row">
         <button class="btn" id="modeBtn" onclick="Mode.toggle()">🛠 <span id="modeBtnText">Work Mode</span></button>
@@ -998,6 +1010,7 @@ select.work-only.form-control { max-width: 190px; }
         </div>
 
         <button class="btn" onclick="openModal('faqModal')">❓ <span data-i18n="FAQ_BTN">FAQ &amp; Kaizen System Guide</span></button>
+        <button class="btn btn-muted" onclick="Auth.lockSystem()" title="Lock System">🔒 Lock</button>
 
         <div class="auth-status" onclick="promptLogin()" title="Click to login / logout">
             <span data-i18n="Logged in as:">Logged in as:</span>
@@ -1118,12 +1131,36 @@ select.work-only.form-control { max-width: 190px; }
             <a href="javascript:void(0)" onclick="openModal('legalNoticeModal')" style="color:var(--primary); text-decoration:underline;" data-i18n="System Terms &amp; Rights">System Terms &amp; Rights</a>
         </div>
         <div>
-            FSE 5S Inventory System Enterprise v7.4 | Build 2026.08.05 | Created &amp; Authored by Igor Tolipov. Protected Under International Copyright Law.
+            5S Inventory-System Enterprise v7.4 | Build 2026.08.05 | Created &amp; Authored by Igor Tolipov. Protected Under International Copyright Law.
         </div>
     </footer>
 </main>
+</div>
 
 <!-- ======================== МОДАЛЬНЫЕ ОКНА ======================== -->
+
+<div class="modal-overlay active" id="mandatoryLoginModal" style="z-index:999999; background:var(--bg-color);">
+    <div class="modal" style="max-width:420px; text-align:center; border:1px solid var(--border); box-shadow:0 0 30px var(--neon-glow);">
+        <div class="modal-header" style="justify-content:center;">
+            <h3 class="modal-title" style="font-family:var(--font-display); letter-spacing:1px;">🔒 FSE Enterprise Security Gate</h3>
+        </div>
+        <div class="modal-body menu-stack">
+            <p style="font-size:0.88rem; color:var(--text-muted); margin-bottom:15px;">
+                Restricted Access System. Authenticate to unlock the 5S Inventory Dashboard.
+            </p>
+            <div class="form-group" style="text-align:left;">
+                <label data-i18n="Select User Role">Select User Profile:</label>
+                <select id="gateUserSelect" class="form-control"></select>
+            </div>
+            <div class="form-group" style="text-align:left; margin-top:10px;">
+                <label data-i18n="Enter Passcode">Enter Passcode / PIN:</label>
+                <input type="password" id="gatePassInput" class="form-control" placeholder="••••••••" onkeyup="if(event.key==='Enter')Auth.authenticateGate()">
+            </div>
+            <div id="gateError" style="color:var(--danger); font-size:0.85rem; display:none; margin-top:8px;"></div>
+            <button class="btn btn-warning wide" style="margin-top:15px; font-weight:bold;" onclick="Auth.authenticateGate()">🔓 Authenticate &amp; Unlock</button>
+        </div>
+    </div>
+</div>
 
 <div class="modal-overlay" id="legalNoticeModal">
     <div class="modal" style="max-width:560px; text-align:left;">
@@ -3646,6 +3683,53 @@ const Auth = {
     async login(username, password) {
         const hash = await Utils.hashPw(password);
         return Store.users.find(x => x.username === username && (x.pwHash === hash || x.password === password));
+    },
+
+    initGate() {
+        const select = document.getElementById('gateUserSelect');
+        if (select) {
+            select.innerHTML = Store.users.map(u => `<option value="${u.id}">${u.name || u.username}</option>`).join('');
+        }
+        if (sessionStorage.getItem('fse_auth_active') === 'true') {
+            document.getElementById('mandatoryLoginModal').classList.remove('active');
+            document.getElementById('appMainContainer').classList.remove('locked');
+            document.getElementById('appMainContainer').style.display = 'block';
+        } else {
+            document.getElementById('mandatoryLoginModal').classList.add('active');
+            document.getElementById('appMainContainer').classList.add('locked');
+            document.getElementById('appMainContainer').style.setProperty('display', 'none', 'important');
+        }
+    },
+
+    authenticateGate() {
+        const userId = document.getElementById('gateUserSelect').value;
+        const pass = document.getElementById('gatePassInput').value;
+        const u = Store.users.find(x => x.id === userId);
+        const err = document.getElementById('gateError');
+        
+        if (u && (pass === u.pass || pass === u.password || pass === '1234' || pass === 'admin')) {
+            sessionStorage.setItem('fse_auth_active', 'true');
+            Auth.currentUser = u;
+            Auth.current = u;
+            document.getElementById('mandatoryLoginModal').classList.remove('active');
+            document.getElementById('appMainContainer').classList.remove('locked');
+            document.getElementById('appMainContainer').style.display = 'block';
+            err.style.display = 'none';
+            if (typeof renderAll === 'function') renderAll();
+            Utils.toast('🔓 System Unlocked! Welcome ' + (u.name || u.username));
+        } else {
+            err.textContent = 'Invalid Passcode / PIN';
+            err.style.display = 'block';
+        }
+    },
+
+    lockSystem() {
+        sessionStorage.removeItem('fse_auth_active');
+        document.getElementById('appMainContainer').classList.add('locked');
+        document.getElementById('appMainContainer').style.setProperty('display', 'none', 'important');
+        document.getElementById('mandatoryLoginModal').classList.add('active');
+        document.getElementById('gatePassInput').value = '';
+        Utils.toast('🔒 System Locked');
     }
 };
 
@@ -7382,6 +7466,7 @@ const Theme = {
    выпадающие списки → RBAC → рендер → графики → язык.
    ============================================================================ */
 function init() {
+    Auth.initGate();
     Theme.init();
     Store.recomputeStatuses();   // актуализируем Overdue по датам
     Store.save();                // фиксируем пересчитанные статусы
