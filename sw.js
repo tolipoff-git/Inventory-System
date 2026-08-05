@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fse-inventory-v7-cache-v10';
+const CACHE_NAME = 'inv-inventory-v7-cache-v30';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -16,12 +16,7 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Pre-caching static assets');
-      return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => self.skipWaiting())
-  );
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', (event) => {
@@ -30,7 +25,6 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
-            console.log('[SW] Clearing old cache:', key);
             return caches.delete(key);
           }
         })
@@ -40,25 +34,19 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Network-First strategy to ensure updates are always downloaded immediately
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then((response) => {
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response;
-        }
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
+    fetch(event.request).then((response) => {
+      if (!response || response.status !== 200 || response.type !== 'basic') {
         return response;
-      }).catch(() => {
-        if (event.request.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
+      }
+      const clone = response.clone();
+      caches.open(CACHE_NAME).then((cache) => {
+        cache.put(event.request, clone);
       });
+      return response;
+    }).catch(() => {
+      return caches.match(event.request);
     })
   );
 });

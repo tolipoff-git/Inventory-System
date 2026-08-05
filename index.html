@@ -1205,13 +1205,13 @@ select.work-only.form-control { max-width: 190px; }
             <div class="form-group" style="text-align:left;">
                 <label>1. Export &amp; Backup Sync Package</label>
                 <div style="display:flex; gap:8px;">
-                    <button class="btn btn-warning" onclick="Sync.exportBundle()">⬇ Export Sync File (.fse)</button>
+                    <button class="btn btn-warning" onclick="Sync.exportBundle()">⬇ Export Sync File (.inv)</button>
                     <button class="btn btn-muted" onclick="Sync.copyToClipboard()">📋 Copy Code</button>
                 </div>
             </div>
             <div class="form-group" style="text-align:left; margin-top:15px;">
                 <label>2. Import &amp; Merge Sync Package</label>
-                <input type="file" id="syncFileInput" accept=".json,.fse" style="display:none;" onchange="Sync.handleFileSelect(event)">
+                <input type="file" id="syncFileInput" accept=".json,.inv" style="display:none;" onchange="Sync.handleFileSelect(event)">
                 <button class="btn wide" onclick="document.getElementById('syncFileInput').click()">📤 Upload &amp; Merge Sync File</button>
             </div>
         </div>
@@ -2079,7 +2079,7 @@ const CONFIG = {
         CONS: { en: 'Consumables',                  ru: 'Расходные материалы' }
     },
     // Ссылка на корпоративную форму заявки (меняется здесь, а не по коду)
-    SHAREPOINT_EXPENSE_URL: 'https://getfse-my.sharepoint.com/',
+    SHAREPOINT_EXPENSE_URL: 'https://company-my.sharepoint.com/',
     // Базовый URL, зашитый в QR-коды этикеток
     QR_BASE_URL: 'https://internal.uss.factory'
 };
@@ -2245,7 +2245,7 @@ const Utils = {
    Словари ENG/RU. Статика переводится через data-i18n атрибуты,
    динамика — через вызов T('ключ') в коде. Неизвестный ключ возвращается как есть.
    ============================================================================ */
-let currentLang = localStorage.getItem('fse_lang') || 'ENG';
+let currentLang = localStorage.getItem('inv_lang') || 'ENG';
 
 const translations = {
     'ENG': {
@@ -2518,11 +2518,11 @@ const translations = {
         'Supplier Purchase Link:': 'Supplier Purchase Link:',
         'System Audit Log': 'System Audit Log',
         'System Registries': 'System Registries',
-        'TT_KPI_ACTIVE': 'TT_KPI_ACTIVE',
-        'TT_KPI_ISSUED': 'TT_KPI_ISSUED',
-        'TT_KPI_MAINT': 'TT_KPI_MAINT',
-        'TT_KPI_OVERDUE': 'TT_KPI_OVERDUE',
-        'TT_KPI_TOTAL': 'TT_KPI_TOTAL',
+        'TT_KPI_ACTIVE': 'Active: {n} — ready for issue',
+        'TT_KPI_ISSUED': 'Issued: {n} — in use by personnel',
+        'TT_KPI_MAINT': 'Maintenance: {n} — repair/calibration',
+        'TT_KPI_OVERDUE': 'Overdue: {n} — requires attention',
+        'TT_KPI_TOTAL': 'Total: {n} — click card to filter list',
         'Target Program': 'Target Program',
         'Target Zone': 'Target Zone',
         'Timestamp': 'Timestamp',
@@ -2923,7 +2923,7 @@ function initFaqAccordion() {
 
 function toggleLanguage() {
     currentLang = currentLang === 'RU' ? 'ENG' : 'RU';
-    localStorage.setItem('fse_lang', currentLang);
+    localStorage.setItem('inv_lang', currentLang);
     applyLanguage();
 }
 
@@ -2933,7 +2933,7 @@ function toggleLanguage() {
    (удобно для ярлыка на цеховом планшете). Кнопка показывает ЦЕЛЕВОЙ режим.
    ============================================================================ */
 const Mode = {
-    KEY: 'fse_mode',
+    KEY: 'inv_mode',
 
     isWork() { return document.body.classList.contains('mode-work'); },
 
@@ -2975,13 +2975,14 @@ function onWorkFilterChange(val) {
    в Date объекты превращаются на лету через Utils.d().
    ============================================================================ */
 const Store = {
+    _activeTools: null,
 
     /* --- Ключи localStorage --- */
     KEYS: {
         users: 'rbacUsers', ws: 'masterWorkstations', wp: 'masterWorkposts',
-        programs: 'masterPrograms', wsProg: 'fse_wsProgram',
+        programs: 'masterPrograms', wsProg: 'inv_wsProgram',
         personnel: 'masterPersonnel', tools: 'masterTools',
-        audit: 'fse_auditLog', procurement: 'fse_procurementLog', meta: 'fse_meta'
+        audit: 'inv_auditLog', procurement: 'inv_procurementLog', meta: 'inv_meta'
     },
 
     /* --- Живое состояние --- */
@@ -3062,6 +3063,28 @@ const Store = {
 
     /** Загрузка из localStorage с fallback на seed-данные */
     load() {
+        try {
+            const raw = localStorage.getItem('inv_inventory_db');
+            if (raw) {
+                const db = JSON.parse(raw);
+                this.users = db.users || Seed.users();
+                this.workstations = db.workstations || Seed.workstations();
+                this.workposts = db.workposts || Seed.workposts();
+                this.programs = db.programs || [];
+                this.wsProgram = db.wsProgram || {};
+                this.personnel = db.personnel || Seed.personnel();
+                this.tools = db.tools || Seed.tools();
+                this.auditLog = db.auditLog || [];
+                this.procurementLog = db.procurementLog || [];
+                this.labelQueue = db.labelQueue || [];
+                this.meta = db.meta || { schemaVersion: 1 };
+                this.migrate();
+                return;
+            }
+        } catch (e) {
+            console.error('Error loading inv_inventory_db:', e);
+        }
+
         const read = (key, fallback) => {
             try {
                 const raw = localStorage.getItem(key);
@@ -3081,25 +3104,22 @@ const Store = {
         }
         this.auditLog     = read(this.KEYS.audit, []);
         this.procurementLog = read(this.KEYS.procurement, []);
-        this.labelQueue   = JSON.parse(localStorage.getItem('fse_labelQueue') || '[]');
+        this.labelQueue   = JSON.parse(localStorage.getItem('inv_labelQueue') || '[]');
         this.meta         = read(this.KEYS.meta, { schemaVersion: 1 });
         this.migrate();
     },
 
     /** Сохранение всего состояния; защита от переполнения localStorage */
     save() {
+        this._activeTools = null;
         try {
-            localStorage.setItem(this.KEYS.users, JSON.stringify(this.users));
-            localStorage.setItem(this.KEYS.ws, JSON.stringify(this.workstations));
-            localStorage.setItem(this.KEYS.wp, JSON.stringify(this.workposts));
-            localStorage.setItem(this.KEYS.programs, JSON.stringify(this.programs));
-            localStorage.setItem(this.KEYS.wsProg, JSON.stringify(this.wsProgram));
-            localStorage.setItem(this.KEYS.personnel, JSON.stringify(this.personnel));
-            localStorage.setItem(this.KEYS.tools, JSON.stringify(this.tools));
-            localStorage.setItem(this.KEYS.audit, JSON.stringify(this.auditLog));
-            localStorage.setItem(this.KEYS.procurement, JSON.stringify(this.procurementLog));
-            localStorage.setItem(this.KEYS.meta, JSON.stringify(this.meta));
-            localStorage.setItem('fse_labelQueue', JSON.stringify(this.labelQueue));
+            const state = {
+                users: this.users, workstations: this.workstations, workposts: this.workposts,
+                programs: this.programs, wsProgram: this.wsProgram, personnel: this.personnel,
+                tools: this.tools, auditLog: this.auditLog, procurementLog: this.procurementLog,
+                meta: this.meta, labelQueue: this.labelQueue
+            };
+            localStorage.setItem('inv_inventory_db', JSON.stringify(state));
         } catch (e) {
             alert('⚠ LocalStorage quota exceeded! Export a JSON backup now, then clear old data.');
         }
@@ -3194,7 +3214,12 @@ const Store = {
     empName(id)      { const e = this.getEmp(id); return e ? e.name : 'Unknown'; },
 
     /** Активные (не списанные) инструменты */
-    activeTools() { return this.tools.filter(t => t.status !== 'Retired' && t.status !== 'retired'); },
+    activeTools() { 
+        if (!this._activeTools) {
+            this._activeTools = this.tools.filter(t => t.status !== 'Retired' && t.status !== 'retired');
+        }
+        return this._activeTools;
+    },
 
     /** Последний известный износ инструмента (по audit_history), 0 если аудитов не было */
     wearOf(tool) {
@@ -3222,7 +3247,7 @@ const Store = {
        История и журналы не переписываются; статистика считается из живых
        данных, поэтому отражает изменения автоматически. */
 
-    ROLLBACK_KEY: 'fse_rollback',
+    ROLLBACK_KEY: 'inv_rollback',
 
     /** Посты зоны; посты «без зоны» (ws=null) доступны в любой зоне */
     postsForZone(ws) {
@@ -4236,7 +4261,7 @@ const Auth = {
     },
 
     initGate() {
-        if (sessionStorage.getItem('fse_auth_active') === 'true') {
+        if (sessionStorage.getItem('inv_auth_active') === 'true') {
             document.getElementById('mandatoryLoginModal').classList.remove('active');
             document.getElementById('appMainContainer').classList.remove('locked');
             document.getElementById('appMainContainer').style.display = 'block';
@@ -4261,8 +4286,8 @@ const Auth = {
         if ((login === 'admin' || login === 'root') && (pass === 'root' || pass === 'admin' || pass === '1234')) {
             const adminUser = (Store.users || []).find(u => u.role === 'Administrator') || { id: 1, name: 'Administrator', role: 'Administrator' };
             Auth.currentUser = adminUser;
-            sessionStorage.setItem('fse_auth_active', 'true');
-            sessionStorage.setItem('fse_auth_user', JSON.stringify(adminUser));
+            sessionStorage.setItem('inv_auth_active', 'true');
+            sessionStorage.setItem('inv_auth_user', JSON.stringify(adminUser));
             document.getElementById('mandatoryLoginModal').classList.remove('active');
             document.getElementById('appMainContainer').classList.remove('locked');
             document.getElementById('appMainContainer').style.display = 'block';
@@ -4280,8 +4305,8 @@ const Auth = {
 
         if (foundUser) {
             Auth.currentUser = foundUser;
-            sessionStorage.setItem('fse_auth_active', 'true');
-            sessionStorage.setItem('fse_auth_user', JSON.stringify(foundUser));
+            sessionStorage.setItem('inv_auth_active', 'true');
+            sessionStorage.setItem('inv_auth_user', JSON.stringify(foundUser));
             document.getElementById('mandatoryLoginModal').classList.remove('active');
             document.getElementById('appMainContainer').classList.remove('locked');
             document.getElementById('appMainContainer').style.display = 'block';
@@ -4294,7 +4319,7 @@ const Auth = {
     },
 
     lockSystem() {
-        sessionStorage.removeItem('fse_auth_active');
+        sessionStorage.removeItem('inv_auth_active');
         document.getElementById('appMainContainer').classList.add('locked');
         document.getElementById('appMainContainer').style.setProperty('display', 'none', 'important');
         document.getElementById('mandatoryLoginModal').classList.add('active');
@@ -4433,7 +4458,7 @@ const UI = {
     /* --- Сворачивание карточек (хабы и графики) ---
        Состояние сохраняется в localStorage; до первого касания действуют
        умные дефолты: на телефоне открыты только ключевые карточки. */
-    cardState: JSON.parse(localStorage.getItem('fse_cards') || '{}'),
+    cardState: JSON.parse(localStorage.getItem('inv_cards') || '{}'),
 
     cardCollapsed(key) {
         const saved = this.cardState[key];
@@ -4449,7 +4474,7 @@ const UI = {
         const collapsed = !card.classList.contains('collapsed');
         card.classList.toggle('collapsed', collapsed);
         this.cardState[card.dataset.cardKey] = collapsed ? 1 : 0;
-        localStorage.setItem('fse_cards', JSON.stringify(this.cardState));
+        localStorage.setItem('inv_cards', JSON.stringify(this.cardState));
     },
 
     // Применение сохранённого состояния к статичным карточкам (графики в main)
@@ -8015,12 +8040,12 @@ function exportInventoryXLSX() { Reports.exportInventoryXLSX(); }
 <script>
 const Theme = {
     init() {
-        const saved = localStorage.getItem('fse_theme') || 'dark';
+        const saved = localStorage.getItem('inv_theme') || 'dark';
         this.set(saved);
     },
     set(theme) {
         document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('fse_theme', theme);
+        localStorage.setItem('inv_theme', theme);
         const btn = document.getElementById('themeToggleBtn');
         if (btn) btn.innerText = theme === 'light' ? '🌙 Dark' : '☀️ Light';
     },
@@ -8135,7 +8160,7 @@ const Sync = {
 
     exportBundle() {
         const json = Store.exportData();
-        Utils.downloadText(Utils.datedName('5S_Inventory_Sync', 'fse'), json, 'application/json');
+        Utils.downloadText(Utils.datedName('5S_Inventory_Sync', 'inv'), json, 'application/json');
         Utils.toast('✅ Sync file exported successfully!');
     },
 
