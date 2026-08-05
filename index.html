@@ -3079,6 +3079,19 @@ const Store = {
             });
             this.users = Array.from(uMap.values());
         }
+
+        if (data.meta && Array.isArray(data.meta.deletedUsers)) {
+            data.meta.deletedUsers.forEach(delUser => {
+                const idx = this.users.findIndex(u => u.username === delUser);
+                if (idx !== -1) {
+                    this.users.splice(idx, 1);
+                    updatedUsers++;
+                }
+            });
+            this.meta = this.meta || {};
+            this.meta.deletedUsers = Array.from(new Set([...(this.meta.deletedUsers || []), ...data.meta.deletedUsers]));
+        }
+
         if (Array.isArray(data.personnel)) {
             const pMap = new Map(this.personnel.map(p => [p.id, p]));
             data.personnel.forEach(rp => {
@@ -3099,6 +3112,22 @@ const Store = {
                 }
             });
             this.personnel = Array.from(pMap.values());
+        }
+        
+        if (data.meta && Array.isArray(data.meta.deletedEmp)) {
+            data.meta.deletedEmp.forEach(delId => {
+                const idx = this.personnel.findIndex(p => p.id === delId);
+                if (idx !== -1) {
+                    this.personnel.splice(idx, 1);
+                    updatedEmp++;
+                }
+            });
+            this.meta = this.meta || {};
+            this.meta.deletedEmp = Array.from(new Set([...(this.meta.deletedEmp || []), ...data.meta.deletedEmp]));
+        }
+
+        if (data.meta) {
+            this.meta = { ...this.meta, ...data.meta };
         }
 
         this.save();
@@ -4474,6 +4503,9 @@ function removeRbacUser(index) {
     const user = Store.users[index];
     if (user.username === 'admin') { alert('Cannot delete default admin account.'); return; }
     if (!confirm(`Delete user "${user.username}"?`)) return;
+    Store.meta = Store.meta || {};
+    Store.meta.deletedUsers = Store.meta.deletedUsers || [];
+    if (!Store.meta.deletedUsers.includes(user.username)) Store.meta.deletedUsers.push(user.username);
     Store.users.splice(index, 1);
     Store.log('RBAC_REMOVE_USER', user.username);
     Store.save();
@@ -6305,11 +6337,15 @@ const Ops = {
             return;
         }
         if (!confirm(`Remove employee ${emp.name}?`)) return;
+        Store.meta = Store.meta || {};
+        Store.meta.deletedEmp = Store.meta.deletedEmp || [];
+        if (!Store.meta.deletedEmp.includes(emp.id)) Store.meta.deletedEmp.push(emp.id);
         Store.personnel.splice(index, 1);
         Store.log('EMP_REMOVE', `${emp.id} ${emp.name}`);
         Store.save();
         populateAllDropdowns();
         populateEmpSelects();
+        renderRegistryAll();
         Charts.update();
     },
 
