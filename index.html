@@ -1878,9 +1878,8 @@ select.work-only.form-control { max-width: 190px; }
                 <ul class="history-list" id="regWsList"></ul>
             </div>
 
-            <!-- Посты: обзор «пост → зона»; управление — внутри зон на вкладке Workstations -->
+            <!-- Посты: общий плоский список с возможностью управления -->
             <div id="wpTab" class="reg-tab" style="display:none;">
-                <div style="color:var(--text-muted); font-size:0.85rem; margin-bottom:10px;" data-i18n="WP_OVERVIEW">Overview: posts are managed inside their zones on the Workstations tab.</div>
                 <ul class="history-list" id="regWpList"></ul>
             </div>
         </div>
@@ -5276,10 +5275,11 @@ function renderRegistryLists() {
         wsList.innerHTML = html;
     }
 
-    // Обзорная вкладка: пост → его зона (без редактирования)
+    // Вкладка постов: плоский список всех постов с полным управлением
     const wpList = document.getElementById('regWpList');
     if (wpList) wpList.innerHTML = Store.workposts.map(p =>
-        `<li class="history-item"><span>${Utils.esc(p.name)} <span style="color:var(--text-muted);">— ${Utils.esc(p.ws || T('No zone'))}</span></span><div>${locBtn(p.name)}</div></li>`).join('');
+        `<li class="history-item"><span>${Utils.esc(p.name)} <span style="color:var(--text-muted);">— ${Utils.esc(p.ws || T('No zone'))}</span></span>
+        <div>${renBtn('workposts', p.name, p.ws)}${moveBtn(p.name, p.ws)}${locBtn(p.name)}${delBtn('workposts', p.name, p.ws)}</div></li>`).join('');
     const empList = document.getElementById('regEmpList');
     if (empList) empList.innerHTML = Store.personnel.map(emp => `<tr>
         <td>${Utils.esc(emp.id)}</td>
