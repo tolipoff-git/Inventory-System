@@ -8196,12 +8196,24 @@ const Sync = {
 // Первый запуск: читаем localStorage (или seed), затем init
 Store.load();
 
-// Кросс-вкладочная синхронизация (решает проблему гонки из отчета)
+// Кросс-вкладочная синхронизация с debounce (предотвращает блокировку UI при множественных обновлениях)
+let _syncTimer;
 window.addEventListener('storage', (e) => {
     if (e.key === Store.KEYS.db) {
-        Store.load();
-        renderAll();
+        clearTimeout(_syncTimer);
+        _syncTimer = setTimeout(() => {
+            Store.load();
+            renderAll();
+        }, 150);
     }
+});
+
+// Глобальный перехват неперехваченных ошибок (Promises & Runtime)
+window.addEventListener('unhandledrejection', e => {
+    console.error('[System] Unhandled Promise Rejection:', e.reason);
+});
+window.addEventListener('error', e => {
+    console.error('[System] Runtime Error:', e.message, 'at', e.filename, ':', e.lineno);
 });
 
 window.addEventListener('load', init);
