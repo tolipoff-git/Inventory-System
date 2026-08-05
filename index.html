@@ -5597,6 +5597,10 @@ function editRegistryEmp(id) {
     setTimeout(() => { document.getElementById('regEmpPost').value = emp.defaultPost || emp.post || ''; }, 50);
     document.getElementById('regEmpSaveBtn').innerText = T('Save');
     document.getElementById('regEmpCancelBtn').style.display = 'inline-block';
+    
+    // Scroll to the top of the modal so the user sees the form
+    document.getElementById('personnelTab').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('regEmpName').focus();
 }
 
 function cancelEditEmp() {
