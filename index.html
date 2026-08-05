@@ -1270,6 +1270,7 @@ select.work-only.form-control { max-width: 190px; }
                 <span id="restoreBtnLabel" data-i18n="Restore Backup (.json)">Restore Backup (.json)</span>
                 <input type="file" style="display:none;" accept=".json" id="restoreFileInput" onchange="closeModal('systemMenuModal'); restoreBackup(event)">
             </label>
+            <button class="btn auth-admin" style="border:1px solid var(--accent); color:var(--accent);" onclick="closeModal('systemMenuModal'); Sync.pushCloud(); setTimeout(() => Sync.pullCloud(), 500); Utils.toast('Forcing full sync...');">🔄 <span data-i18n="Force Full Sync">Force Full Sync</span></button>
         </div>
     </div>
 </div>
