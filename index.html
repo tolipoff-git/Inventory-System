@@ -1551,8 +1551,15 @@ select.work-only.form-control { max-width: 190px; }
         </div>
         <div class="modal-body">
             <input type="hidden" id="assignToolId">
+            <div id="assignCurrentOwnerInfo" style="display:none; padding:10px; background:rgba(255,193,7,0.1); border-left:4px solid var(--warning); margin-bottom:12px; font-size:0.9rem; border-radius:3px;">
+                Tool is currently assigned to: <strong id="assignCurrentOwnerName"></strong>.<br>
+                Reassigning will automatically transfer ownership.
+            </div>
             <div class="form-group">
-                <label data-i18n="Employee (Full Name)">Employee (Full Name)</label>
+                <label style="display:flex; justify-content:space-between; align-items:center;">
+                    <span data-i18n="Employee (Full Name)">Employee (Full Name)</span>
+                    <a href="#" onclick="closeModal('assignModal'); openModal('registryModal'); switchRegTab('personnelTab'); return false;" style="color:var(--primary-hover); text-decoration:none; font-size:0.85rem; font-weight:normal;">+ New Person</a>
+                </label>
                 <select id="assignEmp" class="form-control"></select>
             </div>
             <div class="form-row">
