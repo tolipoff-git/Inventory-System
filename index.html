@@ -5364,7 +5364,7 @@ function renderGrid() {
                 <div class="status-badge ${Utils.esc(tool.status)}">${Utils.esc(tool.status)}</div>
             </div>
             <div class="tool-body" data-action="tool-detail" data-id="${Utils.esc(tool.id)}">
-                <div class="tool-row"><span class="tool-label">${T('Location:')}</span><span class="tool-val">${Utils.esc(tool.location)}</span></div>
+                <div class="tool-row"><span class="tool-label">${T('Location:')}</span><span class="tool-val" style="font-family:monospace;">${Utils.esc(tool.location)}${tool.address ? ' | ' + Utils.esc(tool.address.zone) + ' | ' + Utils.esc(tool.address.rack) + ' ' + Utils.esc(tool.address.shelf) + '-' + Utils.esc(tool.address.bin) : ''}</span></div>
                 <div class="tool-row"><span class="tool-label">${T('Spec:')}</span><span class="tool-val">${Utils.esc(tool.spec)}</span></div>
                 <div class="tool-row"><span class="tool-label">${T('Assigned To:')}</span><span class="tool-val">${holder}</span></div>
             </div>
@@ -6962,7 +6962,7 @@ const Labels = {
                             <div>Return Due: <span>${Utils.fmtDate(tool.dueReturn)}</span></div>
                             <div>Calib Due: <span>${Utils.fmtDate(tool.calDue)}</span></div>
                             <div>Holder: <span>${esc(holderA)}</span></div>
-                            <div>Location: <span>${esc(tool.location || 'N/A')}</span></div>
+                            <div>Location: <span>${esc(tool.location || 'N/A')}${tool.address ? ' | ' + esc(tool.address.zone) + ' | ' + esc(tool.address.rack) + ' ' + esc(tool.address.shelf) + '-' + esc(tool.address.bin) : ''}</span></div>
                         </div>
                         <div class="label-qr"><canvas class="lbl-qr" data-qr-text="${CONFIG.QR_BASE_URL}/tools/lookup?id=${encodeURIComponent(tool.id)}"></canvas></div>`;
                 case 'genB':
@@ -6978,7 +6978,7 @@ const Labels = {
                                     <strong style="font-size:12px;">SHADOW BOARD A-FRAME</strong>
                                     <div style="margin-top:4px;">Allowed Prefix: <strong>${esc(tool.id.split('-')[0] || '*')}</strong></div>
                                     <div>Torque Spec: <strong>${esc(tool.spec || 'N/A')}</strong></div>
-                                    <div>Location: <strong>${esc(tool.location || entityId)}</strong></div>
+                                    <div>Location: <strong>${esc(tool.location || entityId)}${tool.address ? ' | ' + esc(tool.address.zone) + ' | ' + esc(tool.address.rack) + ' ' + esc(tool.address.shelf) + '-' + esc(tool.address.bin) : ''}</strong></div>
                                 </div>
                                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                                     <div style="font-size:8px;">Check-in / Checkout QR →</div>
