@@ -5119,7 +5119,8 @@ function renderCategoryHub() {
         ${row(`<span style="color:var(--primary-hover);">● Issued</span>`, perm.filter(t => t.status === 'Issued').length)}
         ${row(`<span style="color:var(--warning);">● Maintenance</span>`, perm.filter(t => t.status === 'Maintenance').length)}
         ${row(`<span style="color:var(--danger);">● Overdue</span>`, perm.filter(t => t.status === 'Overdue').length)}
-        ${row(`⚗ ${T('Calibration due ≤14d')}`, permCal, permCal ? 'var(--warning)' : 'var(--success)')}`;
+        ${row(`⚗ ${T('Calibration due ≤14d')}`, permCal, permCal ? 'var(--warning)' : 'var(--success)')}
+        ${row(`<a href="#" onclick="doAction('Administrator', openArchiveModal); return false;" style="color:var(--text-main); text-decoration:underline;">🗑 Decommissioned Assets</a>`, Store.tools.length - Store.activeTools().length, 'var(--text-muted)')}`;
 
     /* --- Хаб персонала: кто, сколько держит, калибровки, просрочки, бережливость --- */
     const staffRows = Store.personnel.slice(0, 4).map(emp => {
@@ -5152,7 +5153,6 @@ function renderCategoryHub() {
     const wsBody = `
         ${row(T('Active Workstations:'), Store.workstations.length, 'var(--primary-hover)')}
         ${row(T('Workposts:'), Store.workposts.length, 'var(--primary-hover)')}
-        ${row(`<a href="#" onclick="doAction('Administrator', openArchiveModal); return false;" style="color:var(--text-main); text-decoration:underline;">🗑 Decommissioned Assets</a>`, Store.tools.length - Store.activeTools().length, 'var(--text-muted)')}
         <div style="margin-top:8px;">${wsRows}</div>
         <div style="color:var(--text-muted); font-size:0.8rem; margin-top:6px; text-align:center;">${T('CULTURE_LEGEND')}</div>`;
 
