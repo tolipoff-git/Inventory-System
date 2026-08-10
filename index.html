@@ -658,7 +658,7 @@ details[open] .faq-summary::before { transform: rotate(90deg); }
 /* Листовая раскладка (Avery): на экране ячейки размечены пунктиром для контроля
    стартовой позиции; при печати пунктир снимается динамическим стилем */
 .label-preview-box.sheet-mode { display: block; padding: 0; border: none; overflow: visible; }
-.sheet-cell { outline: 1px dashed #c0c0c0; }
+.sheet-cell { outline: 1px solid rgba(0,0,0,0.1); }\n@media print { .sheet-cell { outline: none !important; border: none !important; } }
 
 .label-details { font-size: 8px; line-height: 1.25; flex: 1; }
 .label-details .title { font-size: 12.5px; font-weight: bold; margin-bottom: 2px; }
@@ -1554,6 +1554,10 @@ select.work-only.form-control { max-width: 190px; }
                     <label data-i18n="Tool Class">Tool Class</label>
                     <select id="editToolClass" class="form-control" onchange="Ops.onEditToolClassChange()"></select>
                 </div>
+                <div class="form-group" style="max-width: 100px;">
+                    <label data-i18n="Qty">Qty</label>
+                    <input type="number" id="editToolQty" class="form-control" min="1" value="1">
+                </div>
             </div>
             <div class="form-group">
                 <label data-i18n="Inventory Number (ID)">Inventory Number (ID)</label>
@@ -1652,7 +1656,7 @@ select.work-only.form-control { max-width: 190px; }
                     <span data-i18n="Employee (Full Name)">Employee (Full Name)</span>
                     <a href="#" onclick="closeModal('assignModal'); openModal('registryModal'); switchRegTab('personnelTab'); return false;" style="color:var(--primary-hover); text-decoration:none; font-size:0.85rem; font-weight:normal;">+ New Person</a>
                 </label>
-                <select id="assignEmp" class="form-control"></select>
+                <input type="text" id="assignEmp" class="form-control" list="assignEmpList" onchange="Ops.onAssignEmpChange()"><datalist id="assignEmpList"></datalist>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -2044,7 +2048,7 @@ select.work-only.form-control { max-width: 190px; }
             <button class="close-btn" onclick="closeModal('printLabelModal')">&times;</button>
         </div>
         <div class="modal-body" style="text-align:center; background:#e0e0e0;">
-            <p style="color:#000; font-size:12px; margin-top:0;">Preview</p>
+            
             <div id="printLabelContainer" class="label-preview-box"></div>
         </div>
         <div class="modal-footer">
@@ -2117,7 +2121,7 @@ select.work-only.form-control { max-width: 190px; }
                     <input type="text" id="regProgName" class="form-control" data-i18n-ph="Program name (e.g. USS)" placeholder="Program name (e.g. USS)">
                     <button class="btn" onclick="addRegistryProgram()" data-i18n="Add Program">Add Program</button>
                 </div>
-                <div style="color:var(--text-muted); font-size:0.85rem; margin-bottom:10px;" data-i18n="STRUCTURE_HINT">Stations and posts are added inline under their program / area. Areas without a program (Tool Gage, Machine Shop, Warehouse) live in the bottom group.</div>
+                <div style="color:var(--text-muted); font-size:0.85rem; margin-bottom:10px;" data-i18n="STRUCTURE_HINT">Stations and posts are added inline under their program / area. Areas without a program (Tool Gage, Machine Shop) live in the bottom group.</div>
                 <ul class="history-list" id="regWsList"></ul>
             </div>
 
@@ -2273,7 +2277,7 @@ select.work-only.form-control { max-width: 190px; }
 </div>
 
 <!-- Photo Viewer Modal -->
-<div id="photoViewerModal" class="modal-overlay" onclick="if(event.target===this) closeModal('photoViewerModal')">
+<div id="photoViewerModal" class="modal-overlay" style="z-index: 10000;" onclick="if(event.target===this) closeModal('photoViewerModal')">
     <div class="modal" style="max-width:90vw; background:transparent; box-shadow:none; padding:0; text-align:center;">
         <img id="photoViewerImg" src="" style="max-width:100%; max-height:85vh; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
         <div style="margin-top:15px;">
@@ -3998,7 +4002,7 @@ const Seed = {
         { username: 'operator', pwHash: 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', role: 'Operator' },
         { username: 'crib_tech', pwHash: '0ff9e07cc1b519286a5575a350808f735f35cd7219448f1be98f78ea11ca5e8a', role: 'Tool Crib Manager' }
     ]),
-    workstations: () => ['Tool Gage', 'Machine Shop', 'Warehouse'],
+    workstations: () => ['Tool Gage', 'Machine Shop'],
     workposts: () => [],
     personnel: () => [],
     tools: () => ([
@@ -6351,9 +6355,24 @@ const Ops = {
         openModal('assignModal');
     },
 
+    onAssignEmpChange() {
+        const val = document.getElementById('assignEmp').value.trim();
+        const emp = Store.getEmp(val) || Store.personnel.find(p => p.name.toLowerCase() === val.toLowerCase());
+        if (emp) {
+            const wsEl = document.getElementById('assignWs');
+            wsEl.value = emp.defaultWs || emp.workstation || wsEl.value;
+            Ops.onAssignWsChange();
+        }
+    },
+
     submitAssign() {
         let tool = Store.getTool(document.getElementById('assignToolId').value);
-        const emp = Store.getEmp(document.getElementById('assignEmp').value);
+        let empVal = document.getElementById('assignEmp').value.trim();
+        let emp = Store.getEmp(empVal) || Store.personnel.find(p => p.name.toLowerCase() === empVal.toLowerCase());
+        if (!emp && empVal) {
+            emp = { id: 'EMP-' + Math.random().toString(36).substr(2, 6).toUpperCase(), name: empVal, history: [] };
+            Store.personnel.push(emp);
+        }
         const initials = document.getElementById('assignInitials').value.trim();
         const days = Math.max(1, parseInt(document.getElementById('assignDays').value) || 1);
         const issueQty = Math.max(1, parseInt(document.getElementById('assignQty').value) || 1);
