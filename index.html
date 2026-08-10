@@ -5388,20 +5388,8 @@ function renderCategoryHub() {
                 <span class="collapse-chevron">▾</span>
             </div>
             <div class="collapsible"><div class="collapsible-inner">
-                <div class="tool-body" style="text-align:left; cursor:default; padding-top:10px;">${body}</div>
-                <div class="tool-actions">
-                ${tool.status === 'Pending Delivery' ? `
-                    <button class="btn btn-success wide" data-action="receive-order" data-id="${Utils.esc(tool.id)}">${T('Mark as Received')}</button>
-                    <button class="btn btn-muted wide" data-action="cancel-order" data-id="${Utils.esc(tool.id)}">${T('Cancel Order')}</button>
-                ` : `
-                    <button class="btn" data-action="assign" data-id="${Utils.esc(tool.id)}">${T('[Assign Person]')}</button>
-                    <button class="btn" data-action="transfer" data-id="${Utils.esc(tool.id)}">${getBtnHtml('Administrator', T('[Transfer / Move]'))}</button>
-                    ${maintBtn}
-                    <button class="btn btn-warning wide" data-action="procure" data-id="${Utils.esc(tool.id)}">${T('[Procure / Order]')}</button>
-                    <button class="btn wide" data-action="print-label" data-id="${Utils.esc(tool.id)}">${getBtnHtml('Tool Crib Manager', T('Print Sticker / Label'))}</button>
-                    <button class="btn btn-danger wide" data-action="retire" data-id="${Utils.esc(tool.id)}">${getBtnHtml('Administrator', T('[Decommission / Retire]'))}</button>
-                `}
-            </div>
+                <div class="tool-body" style="text-align:left; cursor:default; padding-top:10px;">\${body}</div>
+                \${actions ? \`<div class="tool-actions">\${actions}</div>\` : ''}
             </div></div>
         </div>`;
 
@@ -5545,12 +5533,17 @@ function renderGrid() {
                 <div class="tool-row"><span class="tool-label">${T('Assigned To:')}</span><span class="tool-val">${holder}</span></div>
             </div>
             <div class="tool-actions">
-                <button class="btn" data-action="assign" data-id="${Utils.esc(tool.id)}">${T('[Assign Person]')}</button>
-                <button class="btn" data-action="transfer" data-id="${Utils.esc(tool.id)}">${getBtnHtml('Administrator', T('[Transfer / Move]'))}</button>
-                ${maintBtn}
-                <button class="btn btn-warning wide" data-action="procure" data-id="${Utils.esc(tool.id)}">${T('[Procure / Order]')}</button>
-                <button class="btn wide" data-action="print-label" data-id="${Utils.esc(tool.id)}">${getBtnHtml('Tool Crib Manager', T('Print Sticker / Label'))}</button>
-                <button class="btn btn-danger wide" data-action="retire" data-id="${Utils.esc(tool.id)}">${getBtnHtml('Administrator', T('[Decommission / Retire]'))}</button>
+                \${tool.status === 'Pending Delivery' ? \`
+                    <button class="btn btn-success wide" data-action="receive-order" data-id="\${Utils.esc(tool.id)}">\${T('Mark as Received')}</button>
+                    <button class="btn btn-muted wide" data-action="cancel-order" data-id="\${Utils.esc(tool.id)}">\${T('Cancel Order')}</button>
+                \` : \`
+                    <button class="btn" data-action="assign" data-id="\${Utils.esc(tool.id)}">\${T('[Assign Person]')}</button>
+                    <button class="btn" data-action="transfer" data-id="\${Utils.esc(tool.id)}">\${getBtnHtml('Administrator', T('[Transfer / Move]'))}</button>
+                    \${maintBtn}
+                    <button class="btn btn-warning wide" data-action="procure" data-id="\${Utils.esc(tool.id)}">\${T('[Procure / Order]')}</button>
+                    <button class="btn wide" data-action="print-label" data-id="\${Utils.esc(tool.id)}">\${getBtnHtml('Tool Crib Manager', T('Print Sticker / Label'))}</button>
+                    <button class="btn btn-danger wide" data-action="retire" data-id="\${Utils.esc(tool.id)}">\${getBtnHtml('Administrator', T('[Decommission / Retire]'))}</button>
+                \`}
             </div>
         </div>`;
     }).join('');
