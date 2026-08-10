@@ -7756,14 +7756,20 @@ const Procure = {
             xml = ZipStore.patchCell(xml, 'F3', requestor);
 
             // Fill each item into rows 7, 8, 9, ...
+            let grandTotal = 0;
             this.items.forEach((item, i) => {
                 const row = 7 + i;
                 xml = ZipStore.patchCell(xml, `B${row}`, item.link || item.toolId || 'N/A');
                 xml = ZipStore.patchCell(xml, `C${row}`, item.name || 'N/A');
                 xml = ZipStore.patchCell(xml, `D${row}`, item.qty, true);
                 xml = ZipStore.patchCell(xml, `E${row}`, item.cost, true);
+                xml = ZipStore.patchCell(xml, `F${row}`, item.total, true);
                 xml = ZipStore.patchCell(xml, `H${row}`, item.reason || '');
+                grandTotal += item.total;
             });
+            
+            // Explicitly patch Grand Total to avoid formula calculation issues in Excel
+            xml = ZipStore.patchCell(xml, 'F23', grandTotal, true);
 
             sheet.data = ZipStore.encode(xml);
             const out = ZipStore.write(entries);
