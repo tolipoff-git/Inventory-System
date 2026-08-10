@@ -2159,25 +2159,12 @@ select.work-only.form-control { max-width: 190px; }
             <button class="close-btn" onclick="closeModal('procureModal')">&times;</button>
         </div>
         <div class="modal-body">
-            <div class="form-group">
-                <label data-i18n="Tool/Part Name &amp; Model:">Tool/Part Name &amp; Model:</label>
-                <input type="text" id="procureName" class="form-control" placeholder="e.g. 18V Impact Driver">
-            </div>
+            <!-- Request-level fields -->
             <div class="form-row">
                 <div class="form-group">
-                    <label data-i18n="Quantity to Order:">Quantity to Order:</label>
-                    <input type="number" id="procureQty" class="form-control" value="1" min="1" oninput="calcProcureTotal()">
+                    <label data-i18n="Requester Initials:">Requester Initials:</label>
+                    <input type="text" id="procureInitials" class="form-control" placeholder="Initials">
                 </div>
-                <div class="form-group">
-                    <label data-i18n="Estimated Unit Cost ($):">Estimated Unit Cost ($):</label>
-                    <input type="number" id="procureCost" class="form-control" value="0.00" step="0.01" min="0" oninput="calcProcureTotal()">
-                </div>
-                <div class="form-group">
-                    <label data-i18n="Total Cost ($):">Total Cost ($):</label>
-                    <input type="text" id="procureTotal" class="form-control" readonly value="0.00">
-                </div>
-            </div>
-            <div class="form-row">
                 <div class="form-group">
                     <label data-i18n="Workstation:">Workstation:</label>
                     <select id="procureWs" class="form-control"></select>
@@ -2187,24 +2174,62 @@ select.work-only.form-control { max-width: 190px; }
                     <select id="procureWp" class="form-control"></select>
                 </div>
             </div>
-            <div class="form-group">
-                <label data-i18n="Reason for Purchase:">Reason for Purchase:</label>
-                <select id="procureReason" class="form-control">
-                    <option>Tool Scrapped/Retired</option>
-                    <option>Capacity Expansion</option>
-                    <option>Damaged/Broken</option>
-                    <option>Low Stock</option>
-                    <option>New Project</option>
-                </select>
+
+            <!-- Add item form -->
+            <fieldset style="border:1px solid var(--border); border-radius:6px; padding:12px; margin-bottom:12px;">
+                <legend style="font-size:0.9rem; font-weight:bold; color:var(--primary-hover); padding:0 8px;" data-i18n="Add Line Item">Add Line Item</legend>
+                <div class="form-group">
+                    <label data-i18n="Tool/Part Name &amp; Model:">Tool/Part Name &amp; Model:</label>
+                    <input type="text" id="procureName" class="form-control" placeholder="e.g. 18V Impact Driver">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label data-i18n="Quantity:">Quantity:</label>
+                        <input type="number" id="procureQty" class="form-control" value="1" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="Unit Cost ($):">Unit Cost ($):</label>
+                        <input type="number" id="procureCost" class="form-control" value="0.00" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="Reason:">Reason:</label>
+                        <select id="procureReason" class="form-control">
+                            <option>Tool Scrapped/Retired</option>
+                            <option>Capacity Expansion</option>
+                            <option>Damaged/Broken</option>
+                            <option>Low Stock</option>
+                            <option>New Project</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="Supplier Purchase Link:">Supplier Purchase Link:</label>
+                    <input type="text" id="procureLink" class="form-control" placeholder="https://…">
+                </div>
+                <button class="btn" type="button" onclick="Procure.addItem()" style="margin-top:4px;">+ <span data-i18n="Add to Request">Add to Request</span></button>
+            </fieldset>
+
+            <!-- Items table -->
+            <div id="procureItemsContainer" style="display:none;">
+                <div class="table-scroll" style="max-height:200px;">
+                    <table style="width:100%;">
+                        <thead><tr>
+                            <th>#</th>
+                            <th data-i18n="Item">Item</th>
+                            <th>Qty</th>
+                            <th data-i18n="Unit $">Unit $</th>
+                            <th data-i18n="Total $">Total $</th>
+                            <th data-i18n="Reason">Reason</th>
+                            <th></th>
+                        </tr></thead>
+                        <tbody id="procureItemsList"></tbody>
+                    </table>
+                </div>
+                <div style="text-align:right; font-weight:bold; font-size:1.1rem; margin-top:8px; padding:6px 12px; background:rgba(255,255,255,0.05); border-radius:4px;">
+                    Grand Total: $<span id="procureGrandTotal">0.00</span>
+                </div>
             </div>
-            <div class="form-group">
-                <label data-i18n="Supplier Purchase Link:">Supplier Purchase Link:</label>
-                <input type="text" id="procureLink" class="form-control" placeholder="https://…">
-            </div>
-            <div class="form-group">
-                <label data-i18n="Requester Initials:">Requester Initials:</label>
-                <input type="text" id="procureInitials" class="form-control" placeholder="Initials">
-            </div>
+
             <div id="procureError" class="form-error"></div>
 
             <div id="procurePreview" style="display:none; margin-top:20px; padding:10px; border:1px solid var(--border); background:rgba(0,0,0,0.2); border-radius:4px;">
@@ -7559,128 +7584,197 @@ const ZipStore = {
 
 const Procure = {
     currentToolId: null,
+    items: [],  // Array of { name, qty, cost, total, reason, link, toolId }
 
     open(toolId = null) {
         this.currentToolId = typeof toolId === 'string' ? toolId : null;
-        populateAllDropdowns(); // сгруппированные по программам списки + зависимые посты
-        ['procureQty'].forEach(i => document.getElementById(i).value = '1');
-        document.getElementById('procureCost').value = '0.00';
-        document.getElementById('procureTotal').value = '0.00';
+        this.items = [];
+        populateAllDropdowns();
+        this.resetItemForm();
         document.getElementById('procureInitials').value = '';
         document.getElementById('procureError').style.display = 'none';
         document.getElementById('procurePreview').style.display = 'none';
+        document.getElementById('procureItemsContainer').style.display = 'none';
+        document.getElementById('procureItemsList').innerHTML = '';
+        document.getElementById('procureGrandTotal').innerText = '0.00';
 
+        // Pre-fill from tool if opened from a tool card
         const tool = this.currentToolId ? Store.getTool(this.currentToolId) : null;
-        document.getElementById('procureName').value = tool ? tool.name : '';
-        document.getElementById('procureLink').value = tool ? (tool.purchase_url || '') : '';
-        if (tool && tool.location) {
-            const wsEl = document.getElementById('procureWs');
-            const L = Store._locParts(tool.location); // сегментный разбор ' / ' или ' - '
-            const first = L ? L.parts[0] : null;
-            if (first && Store.workstations.includes(first)) {
-                wsEl.value = first;
-                wsEl.dispatchEvent(new Event('change')); // перестроить список постов под зону
-                if (L.sep === ' / ' && L.parts[1]) document.getElementById('procureWp').value = L.parts[1];
-            } else if (Store.workstations.includes(tool.location)) {
-                wsEl.value = tool.location;
-                wsEl.dispatchEvent(new Event('change'));
+        if (tool) {
+            document.getElementById('procureName').value = tool.name;
+            document.getElementById('procureLink').value = tool.purchase_url || '';
+            if (tool.location) {
+                const wsEl = document.getElementById('procureWs');
+                const L = Store._locParts(tool.location);
+                const first = L ? L.parts[0] : null;
+                if (first && Store.workstations.includes(first)) {
+                    wsEl.value = first;
+                    wsEl.dispatchEvent(new Event('change'));
+                    if (L.sep === ' / ' && L.parts[1]) document.getElementById('procureWp').value = L.parts[1];
+                } else if (Store.workstations.includes(tool.location)) {
+                    wsEl.value = tool.location;
+                    wsEl.dispatchEvent(new Event('change'));
+                }
             }
+            if (tool.status === 'Retired') document.getElementById('procureReason').value = 'Tool Scrapped/Retired';
         }
-        // Автопричина для списанного/низкого остатка
-        if (tool && (tool.status === 'Retired')) document.getElementById('procureReason').value = 'Tool Scrapped/Retired';
         openModal('procureModal');
     },
 
-    calcTotal() {
-        const qty = parseInt(document.getElementById('procureQty').value) || 0;
-        const cost = parseFloat(document.getElementById('procureCost').value) || 0;
-        document.getElementById('procureTotal').value = (qty * cost).toFixed(2);
+    resetItemForm() {
+        document.getElementById('procureName').value = '';
+        document.getElementById('procureQty').value = '1';
+        document.getElementById('procureCost').value = '0.00';
+        document.getElementById('procureLink').value = '';
+        document.getElementById('procureReason').selectedIndex = 0;
     },
 
-    /** Чтение формы в объект заявки */
-    readForm() {
-        return {
-            date: Utils.nowISO().split('T')[0],
-            toolId: this.currentToolId,
-            name: document.getElementById('procureName').value.trim(),
-            qty: parseInt(document.getElementById('procureQty').value) || 0,
-            cost: parseFloat(document.getElementById('procureCost').value) || 0,
-            total: parseFloat(document.getElementById('procureTotal').value) || 0,
-            ws: document.getElementById('procureWs').value,
-            wp: document.getElementById('procureWp').value,
-            reason: document.getElementById('procureReason').value,
-            link: document.getElementById('procureLink').value.trim(),
-            initials: document.getElementById('procureInitials').value.trim()
-        };
+    addItem() {
+        const name = document.getElementById('procureName').value.trim();
+        const qty = parseInt(document.getElementById('procureQty').value) || 0;
+        const cost = parseFloat(document.getElementById('procureCost').value) || 0;
+        const reason = document.getElementById('procureReason').value;
+        const link = document.getElementById('procureLink').value.trim();
+
+        if (!name || !qty) {
+            const err = document.getElementById('procureError');
+            err.innerText = 'Please enter Item Name and Quantity.';
+            err.style.display = 'block';
+            setTimeout(() => err.style.display = 'none', 3000);
+            return;
+        }
+
+        this.items.push({ name, qty, cost, total: qty * cost, reason, link, toolId: this.currentToolId });
+        this.currentToolId = null; // Reset for next item
+        this.resetItemForm();
+        this.renderItemsTable();
+        document.getElementById('procureName').focus();
+    },
+
+    removeItem(index) {
+        this.items.splice(index, 1);
+        this.renderItemsTable();
+    },
+
+    renderItemsTable() {
+        const tbody = document.getElementById('procureItemsList');
+        const container = document.getElementById('procureItemsContainer');
+
+        if (this.items.length === 0) {
+            container.style.display = 'none';
+            tbody.innerHTML = '';
+            document.getElementById('procureGrandTotal').innerText = '0.00';
+            return;
+        }
+
+        container.style.display = 'block';
+        let grandTotal = 0;
+        tbody.innerHTML = this.items.map((item, i) => {
+            grandTotal += item.total;
+            return `<tr>
+                <td>${i + 1}</td>
+                <td>${Utils.esc(item.name)}</td>
+                <td>${item.qty}</td>
+                <td>$${item.cost.toFixed(2)}</td>
+                <td><b>$${item.total.toFixed(2)}</b></td>
+                <td style="font-size:0.8rem;">${Utils.esc(item.reason)}</td>
+                <td><button class="btn btn-danger" style="padding:2px 8px; font-size:0.8rem;" onclick="Procure.removeItem(${i})">✕</button></td>
+            </tr>`;
+        }).join('');
+        document.getElementById('procureGrandTotal').innerText = grandTotal.toFixed(2);
     },
 
     submit() {
-        const req = this.readForm();
-        if (!req.name || !req.qty || !req.initials) {
+        const initials = document.getElementById('procureInitials').value.trim();
+        if (!initials) {
             const err = document.getElementById('procureError');
-            err.innerText = 'Please fill out Name, Qty, and Initials.';
+            err.innerText = 'Please fill in Requester Initials.';
             err.style.display = 'block';
             return;
         }
-        // Привязка заявки к инструменту
-        if (req.toolId) {
-            const tool = Store.getTool(req.toolId);
-            if (tool) {
-                tool.purchase_url = req.link;
-                Store.toolEvent(tool, `Procurement requested (Qty: ${req.qty}, Reason: ${req.reason}, By: ${req.initials})`);
-            }
+        if (this.items.length === 0) {
+            const err = document.getElementById('procureError');
+            err.innerText = 'Please add at least one item to the request.';
+            err.style.display = 'block';
+            return;
         }
-        Store.procurementLog.push(req);
-        Store.log('PROCUREMENT', `${req.name} ×${req.qty} ($${req.total})`);
+
+        const ws = document.getElementById('procureWs').value;
+        const wp = document.getElementById('procureWp').value;
+        const grandTotal = this.items.reduce((s, i) => s + i.total, 0);
+
+        // Log each item to procurement log and tool history
+        this.items.forEach(item => {
+            const req = { ...item, date: Utils.nowISO().split('T')[0], ws, wp, initials };
+            if (item.toolId) {
+                const tool = Store.getTool(item.toolId);
+                if (tool) {
+                    tool.purchase_url = item.link;
+                    Store.toolEvent(tool, `Procurement requested (Qty: ${item.qty}, Reason: ${item.reason}, By: ${initials})`);
+                }
+            }
+            Store.procurementLog.push(req);
+        });
+        Store.log('PROCUREMENT', `${this.items.length} items, total $${grandTotal.toFixed(2)}`);
         Store.save();
 
+        // Preview
+        const lines = this.items.map((item, i) =>
+            `${i + 1}. ${item.name} ×${item.qty} | $${item.cost.toFixed(2)} ea = $${item.total.toFixed(2)} | ${item.reason}`
+        ).join('\n');
         document.getElementById('procureOutputText').innerText =
-            `REQUEST: ${req.name}\nQTY: ${req.qty} | UNIT COST: $${req.cost} | TOTAL: $${req.total}\nLOCATION: ${req.ws} / ${req.wp}\nREASON: ${req.reason}\nLINK: ${req.link || 'N/A'}\nREQUESTER: ${req.initials}`;
+            `EXPENSE REQUEST — ${this.items.length} item(s)\n` +
+            `REQUESTER: ${initials} | LOCATION: ${ws} / ${wp}\n` +
+            `${'—'.repeat(50)}\n${lines}\n${'—'.repeat(50)}\nGRAND TOTAL: $${grandTotal.toFixed(2)}`;
         document.getElementById('procurePreview').style.display = 'block';
     },
 
-    /**
-     * Заявка на закупку по ОФИЦИАЛЬНОМУ шаблону REQ003 (Expense Request).
-     * Шаблон вшит в файл; патчатся только 6 ячеек — заявитель (F3),
-     * ссылка/парт-номер (B7), наименование (C7), количество (D7), цена (E7),
-     * причина (H7). Всё форматирование, формулы (=D7*E7, =SUM) и выпадающий
-     * список 5S Code остаются как в оригинале.
-     */
     async exportXLSX() {
-        const req = this.readForm();
+        const initials = document.getElementById('procureInitials').value.trim();
+        if (this.items.length === 0) { alert('No items to export.'); return; }
+
         try {
             const entries = ZipStore.read(ZipStore.fromBase64(REQ_TEMPLATE_B64));
             const sheet = entries.find(e => e.name === 'xl/worksheets/sheet1.xml');
             if (!sheet) throw new Error('Template sheet1.xml not found');
 
-            // Заявитель: полное имя по инициалам, если такой сотрудник есть в справочнике
-            const emp = Store.personnel.find(p => p.initials && req.initials &&
-                p.initials.toLowerCase() === req.initials.toLowerCase());
-            const requestor = emp ? emp.name : (req.initials || 'N/A');
+            const emp = Store.personnel.find(p => p.initials &&
+                initials && p.initials.toLowerCase() === initials.toLowerCase());
+            const requestor = emp ? emp.name : (initials || 'N/A');
 
             let xml = ZipStore.text(sheet.data);
             xml = ZipStore.patchCell(xml, 'F3', requestor);
-            xml = ZipStore.patchCell(xml, 'B7', req.link || req.toolId || 'N/A');
-            xml = ZipStore.patchCell(xml, 'C7', req.name || 'N/A');
-            xml = ZipStore.patchCell(xml, 'D7', req.qty, true);
-            xml = ZipStore.patchCell(xml, 'E7', req.cost, true);
-            xml = ZipStore.patchCell(xml, 'H7', req.reason || '');
-            sheet.data = ZipStore.encode(xml);
 
+            // Fill each item into rows 7, 8, 9, ...
+            this.items.forEach((item, i) => {
+                const row = 7 + i;
+                xml = ZipStore.patchCell(xml, `B${row}`, item.link || item.toolId || 'N/A');
+                xml = ZipStore.patchCell(xml, `C${row}`, item.name || 'N/A');
+                xml = ZipStore.patchCell(xml, `D${row}`, item.qty, true);
+                xml = ZipStore.patchCell(xml, `E${row}`, item.cost, true);
+                xml = ZipStore.patchCell(xml, `H${row}`, item.reason || '');
+            });
+
+            sheet.data = ZipStore.encode(xml);
             const out = ZipStore.write(entries);
             Utils.downloadBuffer(Utils.datedName('REQ_Expense_Request', 'xlsx'), out,
                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         } catch (e) {
             console.error('Expense Request generation failed', e);
-            alert('Error generating Expense Request from template. CSV export is still available.');
+            alert('Error generating Expense Request. CSV export is still available.');
         }
     },
 
     exportCSV() {
-        const req = this.readForm();
-        const csv = 'Item,Quantity,Unit Cost,Total Cost,Workstation,Workpost,Reason,Supplier Link,Requester\n' +
-            `"${req.name}","${req.qty}","${req.cost}","${req.total}","${req.ws}","${req.wp}","${req.reason}","${req.link}","${req.initials}"`;
-        Utils.downloadText(`Purchase_Request_${req.name.replace(/\s+/g, '_')}.csv`, csv, 'text/csv');
+        if (this.items.length === 0) { alert('No items to export.'); return; }
+        const initials = document.getElementById('procureInitials').value.trim();
+        const ws = document.getElementById('procureWs').value;
+        const wp = document.getElementById('procureWp').value;
+        const header = 'Item,Quantity,Unit Cost,Total Cost,Workstation,Workpost,Reason,Supplier Link,Requester';
+        const rows = this.items.map(item =>
+            `"${item.name}","${item.qty}","${item.cost}","${item.total}","${ws}","${wp}","${item.reason}","${item.link}","${initials}"`
+        ).join('\n');
+        Utils.downloadText(Utils.datedName('Purchase_Request', 'csv'), header + '\n' + rows, 'text/csv');
     }
 };
 
