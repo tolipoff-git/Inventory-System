@@ -1111,6 +1111,7 @@ select.work-only.form-control { max-width: 190px; }
             <option value="Maintenance" data-i18n="Maintenance">Maintenance</option>
             <option value="Overdue" data-i18n="Overdue">Overdue</option>
         </select>
+        <button class="btn btn-muted auth-admin" onclick="doAction('Administrator', openArchiveModal)">Archive</button>
         <button class="btn" id="qrScanBtn" onclick="Scan.open()" title="Scan QR with camera" style="flex-shrink:0; font-size:1.1rem; padding:10px 16px;">📷 QR</button>
     </div>
 
@@ -5147,6 +5148,7 @@ function renderCategoryHub() {
     const wsBody = `
         ${row(T('Active Workstations:'), Store.workstations.length, 'var(--primary-hover)')}
         ${row(T('Workposts:'), Store.workposts.length, 'var(--primary-hover)')}
+        ${row(`<a href="#" onclick="doAction('Administrator', openArchiveModal); return false;" style="color:var(--text-main); text-decoration:underline;">🗑 Decommissioned Assets</a>`, Store.tools.length - Store.activeTools().length, 'var(--text-muted)')}
         <div style="margin-top:8px;">${wsRows}</div>
         <div style="color:var(--text-muted); font-size:0.8rem; margin-top:6px; text-align:center;">${T('CULTURE_LEGEND')}</div>`;
 
@@ -6226,9 +6228,58 @@ const Ops = {
         document.getElementById('detPrintBtn').setAttribute('data-action', 'print-label');
         document.getElementById('detPrintBtn').setAttribute('data-id', tool.id);
 
-        document.getElementById('detHistory').innerHTML = tool.history.length
-            ? tool.history.map(h => `<li class="history-item"><span>${Utils.esc(h)}</span></li>`).join('')
-            : '<li class="history-item"><span style="color:var(--text-muted)">No transactions yet.</span></li>';
+        let events = [];
+        (tool.history || []).forEach(h => {
+            let ts = 0;
+            let dStr = h.split(' | ')[0];
+            if (dStr && dStr.length >= 10) {
+                let parsed = new Date(dStr.replace(' ', 'T')).getTime();
+                if (!isNaN(parsed)) ts = parsed;
+            }
+            events.push({ type: 'history', ts: ts, str: h, photos: [] });
+        });
+
+        (tool.photos || []).forEach((p, pIndex) => {
+            let ts = p.ts ? new Date(p.ts).getTime() : 0;
+            let matched = false;
+            for (let e of events) {
+                if (e.type === 'history' && Math.abs(e.ts - ts) <= 60000) {
+                    e.photos.push({ ...p, origIndex: pIndex });
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) {
+                events.push({ type: 'photo', ts: ts, photos: [{ ...p, origIndex: pIndex }] });
+            }
+        });
+
+        events.sort((a, b) => b.ts - a.ts);
+
+        const renderPhoto = (p) => `
+            <div style="position:relative; width:92px; display:inline-block; margin:4px;">
+                <img src="${p.data}" alt="photo" onclick="Photos.view(${p.origIndex})"
+                     style="width:92px; height:92px; object-fit:cover; border-radius:4px; border:1px solid var(--border); cursor:zoom-in;">
+                <button data-action="photo-del" data-id="${Utils.esc(tool.id)}:${p.origIndex}" title="Delete"
+                    style="position:absolute; top:-6px; right:-6px; width:22px; height:22px; border-radius:50%; border:none; background:var(--danger); color:#fff; cursor:pointer; font-size:12px; line-height:1;">✖</button>
+                <div style="font-size:0.78rem; color:var(--text-muted); text-align:center; margin-top:2px;">${Utils.fmtDate(p.ts)}</div>
+            </div>`;
+
+        let historyHtml = '';
+        if (!events.length) {
+            historyHtml = '<li class="history-item"><span style="color:var(--text-muted)">No transactions yet.</span></li>';
+        } else {
+            historyHtml = events.map(e => {
+                if (e.type === 'history') {
+                    let phtml = e.photos.length ? `<div style="margin-top:5px; display:flex; flex-wrap:wrap;">${e.photos.map(renderPhoto).join('')}</div>` : '';
+                    return `<li class="history-item"><div style="width:100%;"><span>${Utils.esc(e.str)}</span>${phtml}</div></li>`;
+                } else {
+                    let ds = e.photos[0].ts ? Utils.fmtDate(e.photos[0].ts) : 'Unknown Time';
+                    return `<li class="history-item"><div style="width:100%;"><span>${ds} | 📷 Photo Attached</span><div style="margin-top:5px; display:flex; flex-wrap:wrap;">${e.photos.map(renderPhoto).join('')}</div></div></li>`;
+                }
+            }).join('');
+        }
+        document.getElementById('detHistory').innerHTML = historyHtml;
 
         const lc = document.getElementById('detLifecycle');
         lc.innerHTML = `<div style="margin-bottom:10px; font-weight:bold; color:var(--success);">Accepted into Service: ${Utils.esc(tool.commissioned_date || 'N/A')}</div>`;
@@ -6246,8 +6297,8 @@ const Ops = {
             lc.innerHTML += '<div style="color:var(--text-muted);">No audit history available.</div>';
         }
 
-        // Фотофиксация: лента снимков + привязка input (однократно)
-        document.getElementById('detPhotos').innerHTML = Photos.render(tool);
+        // Фотофиксация: лента снимков перемещена в историю, скрываем контейнер
+        document.getElementById('detPhotos').style.display = 'none';
         const photoInput = document.getElementById('detPhotoInput');
         if (!photoInput.dataset.bound) {
             photoInput.dataset.bound = '1';
