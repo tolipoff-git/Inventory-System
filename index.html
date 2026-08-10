@@ -7890,6 +7890,48 @@ const Reports = {
         const rate = active.length ? ((compliant / active.length) * 100).toFixed(1) : '100.0';
         const count = s => active.filter(t => t.status === s).length;
 
+        const retired = Store.tools.filter(t => t.status === 'Retired' || t.status === 'retired');
+        const getRetireInfo = (t) => {
+            let reason = t.retireReason || null;
+            let ts = t.updatedAt || ''; 
+            let evt = t.history ? t.history.find(h => h.includes('Retired on') || h.includes('Retired:') || h.includes('Decommissioned:')) : null;
+            if (evt) {
+                ts = evt.split('|')[0].trim();
+                if (!reason) {
+                    let rMatch = evt.match(/Reason:\s*([^,)]+)/);
+                    if (rMatch) reason = rMatch[1].trim();
+                    else if (evt.includes('Retired:')) reason = evt.split('Retired:')[1].trim();
+                    else if (evt.includes('Decommissioned:')) reason = evt.split('Decommissioned:')[1].trim();
+                }
+            }
+            return { tool: t, reason: reason || 'Wear > 75% / Damaged', ts };
+        };
+        const retiredData = retired.map(getRetireInfo);
+        retiredData.sort((a, b) => b.ts.localeCompare(a.ts));
+
+        let reasonsMap = {};
+        let retiredCategories = {};
+        retiredData.forEach(d => { 
+            reasonsMap[d.reason] = (reasonsMap[d.reason] || 0) + 1; 
+            let cat = d.tool.category || 'General Tools';
+            retiredCategories[cat] = (retiredCategories[cat] || 0) + 1;
+        });
+        let freqReason = 'N/A';
+        let maxC = 0;
+        for (let r in reasonsMap) { if (reasonsMap[r] > maxC) { maxC = reasonsMap[r]; freqReason = r; } }
+
+        const recentRetiredHtml = retiredData.slice(0, 5).map(d => `<li><strong>${Utils.esc(d.tool.id)}</strong> (${Utils.esc(d.tool.name)}) — ${Utils.esc(d.reason)}</li>`).join('');
+        
+        let recommendBuy = [];
+        for (let c in retiredCategories) {
+            if (retiredCategories[c] >= 2) recommendBuy.push(`Order replacement for ${Utils.esc(c)} due to high retirement rate.`);
+        }
+        if (recommendBuy.length === 0 && retiredData.length > 0) {
+            let topCat = Object.keys(retiredCategories).sort((a,b) => retiredCategories[b] - retiredCategories[a])[0];
+            recommendBuy.push(`Consider ordering replacements for ${Utils.esc(topCat)} tools.`);
+        }
+        const procurementHtml = recommendBuy.length > 0 ? recommendBuy.map(r => `<li>${r}</li>`).join('') : '<li>Inventory levels stable. No immediate procurement needed.</li>';
+
         let wsRows = '';
         Store.workstations.forEach(ws => {
             const load = active.filter(t => Ops.workstationOf(t) === ws).length;
@@ -7922,7 +7964,28 @@ const Reports = {
                 <tr><td>Backup</td><td>${count('Backup')}</td></tr>
                 <tr><td>Maintenance</td><td>${count('Maintenance')}</td></tr>
                 <tr><td>Overdue</td><td>${count('Overdue')}</td></tr>
+                <tr><td>Decommissioned (Retired)</td><td>${retired.length}</td></tr>
             </table>
+            
+            <h4 style="color:var(--primary); margin-top:20px; margin-bottom:10px; border-bottom:1px dashed var(--border); padding-bottom:5px;">Decommissioning Statistics & Dynamics</h4>
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                <div style="flex:1; text-align:center;">
+                    <div style="font-size:1.5rem; font-weight:bold;">${retired.length}</div>
+                    <div style="color:var(--text-muted); font-size:0.8rem;">Total Retired</div>
+                </div>
+                <div style="flex:1; text-align:center; border-left:1px solid var(--border);">
+                    <div style="font-size:1.2rem; font-weight:bold;">${Utils.esc(freqReason)}</div>
+                    <div style="color:var(--text-muted); font-size:0.8rem;">Most Frequent Reason</div>
+                </div>
+            </div>
+            <h5>Recently Decommissioned</h5>
+            <ul style="font-size:0.9rem;">
+                ${recentRetiredHtml || '<li>None</li>'}
+            </ul>
+
+            <h4 style="color:var(--primary); margin-top:20px; margin-bottom:10px; border-bottom:1px dashed var(--border); padding-bottom:5px;">Procurement Recommendations</h4>
+            <ul style="font-size:0.9rem;">${procurementHtml}</ul>
+
             <h4 style="color:var(--primary); margin-top:20px; margin-bottom:10px; border-bottom:1px dashed var(--border); padding-bottom:5px;">Workstation Tool Load &amp; Loss Risk</h4>
             <table>
                 <tr><th>Workstation</th><th>Tool Load</th><th>Overdue</th><th>Risk Index</th></tr>
