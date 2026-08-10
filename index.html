@@ -6078,11 +6078,6 @@ const Ops = {
         
         if (tool.address) {
             document.getElementById('editToolZone').value = tool.address.zone || '';
-            const fill = (ids, items) => ids.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.innerHTML = items.map(v => `<option value="${Utils.esc(v)}">${Utils.esc(v)}</option>`).join('');
-            });
-            fill(['editToolRack'], Store.postsForZone(tool.address.zone || ''));
             document.getElementById('editToolRack').value = tool.address.rack || '';
             document.getElementById('editToolShelf').value = tool.address.shelf || '';
             document.getElementById('editToolBin').value = tool.address.bin || '';
