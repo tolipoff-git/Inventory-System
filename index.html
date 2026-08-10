@@ -1442,6 +1442,106 @@ select.work-only.form-control { max-width: 190px; }
     </div>
 </div>
 
+<!-- Редактирование инструмента -->
+<div class="modal-overlay" id="editToolModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title" data-i18n="Edit Tool">✏️ Edit Tool</h3>
+            <button class="close-btn" onclick="closeModal('editToolModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label data-i18n="Tool Name">Tool Name</label>
+                <input type="text" id="editToolName" class="form-control" placeholder="e.g. Torque Wrench">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label data-i18n="Type">Type</label>
+                    <select id="editToolType" class="form-control" onchange="Ops.onEditToolTypeChange()">
+                        <option value="Permanent">Permanent</option>
+                        <option value="Consumable">Consumable</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="Tool Class">Tool Class</label>
+                    <select id="editToolClass" class="form-control" onchange="Ops.onEditToolClassChange()"></select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label data-i18n="Inventory Number (ID)">Inventory Number (ID)</label>
+                <input type="text" id="editToolID" class="form-control" disabled="disabled">
+            </div>
+            <div class="form-group">
+                <label data-i18n="Label Barcode (if different)">Label Barcode (if different)</label>
+                <input type="text" id="editToolBarcode" class="form-control" placeholder="5S00242">
+                <div class="form-hint" data-i18n="BARCODE_HINT">Code from an existing physical label (5S00xxx). Scanning it opens this tool. Leave empty if the label shows the ID.</div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label data-i18n="Category">Category</label>
+                    <input type="text" id="editToolCat" class="form-control" placeholder="e.g. Hand Tools" list="categoryList">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="Initial Location">Initial Location</label>
+                    <select id="editToolLoc" class="form-control"></select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label data-i18n="Zone">Zone</label>
+                    <select id="editToolZone" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="Rack">Rack</label>
+                    <select id="editToolRack" class="form-control"></select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label data-i18n="Shelf">Shelf</label>
+                    <select id="editToolShelf" class="form-control">
+                        <option>Shelf 1</option><option>Shelf 2</option><option>Shelf 3</option>
+                        <option>Shelf 4</option><option>Shelf 5</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Bin</label>
+                    <select id="editToolBin" class="form-control">
+                        <option>Bin 1</option><option>Bin 2</option><option>Bin 3</option><option>Bin 4</option>
+                        <option>Bin 5</option><option>Bin 6</option><option>Bin 7</option><option>Bin 8</option>
+                        <option>Bin 9</option><option>Bin 10</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label data-i18n="Calibration Interval (Days)">Calibration Interval (Days)</label>
+                    <input type="number" id="editToolInterval" class="form-control" placeholder="180" min="0">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="Torque Spec / Capacity">Torque Spec / Capacity</label>
+                    <input type="text" id="editToolSpec" class="form-control" placeholder="10-50Nm">
+                </div>
+            </div>
+            <div class="form-row" id="editToolStockRow" style="display:none;">
+                <div class="form-group">
+                    <label data-i18n="Min QTY (stock alert)">Min QTY (stock alert)</label>
+                    <input type="number" id="editToolMinQty" class="form-control" value="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="Max QTY">Max QTY</label>
+                    <input type="number" id="editToolMaxQty" class="form-control" value="0" min="0">
+                </div>
+            </div>
+            <div id="editToolError" class="form-error"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-muted" onclick="closeModal('editToolModal')" data-i18n="Cancel">Cancel</button>
+            <button class="btn" onclick="submitEditTool()" data-i18n="Save Changes">Save Changes</button>
+        </div>
+    </div>
+</div>
+
 <!-- Выдача инструмента сотруднику -->
 <div class="modal-overlay" id="assignModal">
     <div class="modal">
@@ -1570,6 +1670,7 @@ select.work-only.form-control { max-width: 190px; }
             </div>
         </div>
         <div class="modal-footer">
+            <button class="btn btn-warning" id="detEditBtn" onclick="Ops.openEditToolModal(this.dataset.id)">✏️ <span data-i18n="Edit Tool">Edit Tool</span></button>
             <button class="btn" id="detPrintBtn">🖨 <span data-i18n="Print Label">Print Label</span></button>
         </div>
     </div>
@@ -5303,7 +5404,7 @@ function populateAllDropdowns() {
         el.innerHTML = html;
         if (val && Store.workstations.includes(val)) el.value = val;
     });
-    fillWs(['regEmpWs', 'assignWs', 'addToolLoc', 'transZone', 'addToolZone', 'procureWs']);
+    fillWs(['regEmpWs', 'assignWs', 'addToolLoc', 'editToolLoc', 'transZone', 'addToolZone', 'editToolZone', 'procureWs']);
 
     // Посты зависят от зоны (иерархия зона → посты): выбрал зону — в списке только её посты
     const pair = (wsId, postId) => {
@@ -5319,6 +5420,7 @@ function populateAllDropdowns() {
     pair('assignWs', 'assignPost');
     pair('transZone', 'transRack');
     pair('addToolZone', 'addToolRack');
+    pair('editToolZone', 'editToolRack');
     pair('procureWs', 'procureWp');
 
     // Подсказки категорий при добавлении инструмента
@@ -5943,6 +6045,100 @@ const Ops = {
         init();
     },
 
+    openEditToolModal(id) {
+        const tool = Store.getTool(id);
+        if (!tool) return;
+        document.getElementById('editToolClass').innerHTML = this.toolClassOptions(tool.id.split('-')[0]);
+        document.getElementById('editToolID').value = tool.id;
+        document.getElementById('editToolName').value = tool.name || '';
+        document.getElementById('editToolType').value = tool.type || 'Permanent';
+        document.getElementById('editToolClass').value = tool.id.split('-')[0];
+        document.getElementById('editToolBarcode').value = tool.barcode || '';
+        document.getElementById('editToolCat').value = tool.category || '';
+        document.getElementById('editToolLoc').value = tool.location || '';
+        
+        if (tool.address) {
+            document.getElementById('editToolZone').value = tool.address.zone || '';
+            const fill = (ids, items) => ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = items.map(v => `<option value="${Utils.esc(v)}">${Utils.esc(v)}</option>`).join('');
+            });
+            fill(['editToolRack'], Store.postsForZone(tool.address.zone || ''));
+            document.getElementById('editToolRack').value = tool.address.rack || '';
+            document.getElementById('editToolShelf').value = tool.address.shelf || '';
+            document.getElementById('editToolBin').value = tool.address.bin || '';
+        } else {
+            document.getElementById('editToolZone').value = '';
+            document.getElementById('editToolRack').value = '';
+            document.getElementById('editToolShelf').value = '';
+            document.getElementById('editToolBin').value = '';
+        }
+        
+        document.getElementById('editToolSpec').value = tool.spec || '';
+        document.getElementById('editToolMinQty').value = tool.minQty || 0;
+        document.getElementById('editToolMaxQty').value = tool.maxQty || 0;
+        
+        document.getElementById('editToolInterval').value = '';
+        
+        this.onEditToolTypeChange();
+        this.onEditToolClassChange();
+        document.getElementById('editToolError').style.display = 'none';
+        
+        closeModal('detailModal');
+        openModal('editToolModal');
+    },
+
+    onEditToolTypeChange() {
+        const type = document.getElementById('editToolType').value;
+        document.getElementById('editToolStockRow').style.display = type === 'Consumable' ? 'flex' : 'none';
+    },
+
+    onEditToolClassChange() {
+        const cls = CONFIG.TOOL_CLASSES.find(c => c.p === document.getElementById('editToolClass').value);
+        if (cls) {
+            document.getElementById('editToolCat').value = cls.cat;
+        }
+    },
+
+    submitEditTool() {
+        const id = document.getElementById('editToolID').value;
+        const tool = Store.getTool(id);
+        if (!tool) return;
+        
+        const type = document.getElementById('editToolType').value;
+        const z = document.getElementById('editToolZone').value;
+        const r = document.getElementById('editToolRack').value;
+        const s = document.getElementById('editToolShelf').value;
+        const b = document.getElementById('editToolBin').value;
+        
+        tool.name = document.getElementById('editToolName').value.trim() || 'Tool';
+        tool.type = type;
+        tool.barcode = document.getElementById('editToolBarcode').value.trim().toUpperCase();
+        tool.category = document.getElementById('editToolCat').value.trim() || 'Uncategorized';
+        tool.location = document.getElementById('editToolLoc').value || '';
+        tool.spec = document.getElementById('editToolSpec').value.trim();
+        
+        if (z && r && s && b) tool.address = { zone: z, rack: r, shelf: s, bin: b };
+        else delete tool.address;
+        
+        const days = parseInt(document.getElementById('editToolInterval').value) || 0;
+        if (days) tool.calDue = new Date(Date.now() + days * CONFIG.DAY_MS).toISOString();
+        
+        if (type === 'Consumable') {
+            tool.minQty = parseInt(document.getElementById('editToolMinQty').value) || 0;
+            tool.maxQty = parseInt(document.getElementById('editToolMaxQty').value) || 0;
+        } else {
+            tool.minQty = 0;
+            tool.maxQty = 0;
+        }
+        
+        Store.log('TOOL_EDIT', tool.id);
+        Store.save();
+        if (typeof renderAll === 'function') renderAll(); else init();
+        closeModal('editToolModal');
+        Utils.toast('Tool updated', 'success');
+    },
+
     /* ---------- Выдача ---------- */
     openAssignModal(toolId) {
         const tool = Store.getTool(toolId);
@@ -6266,6 +6462,11 @@ const Ops = {
         document.getElementById('detDue').innerText = Utils.fmtDate(tool.calDue);
         document.getElementById('detPrintBtn').setAttribute('data-action', 'print-label');
         document.getElementById('detPrintBtn').setAttribute('data-id', tool.id);
+        const editBtn = document.getElementById('detEditBtn');
+        if (editBtn) {
+            editBtn.dataset.id = tool.id;
+            editBtn.style.display = Auth.has('Administrator') ? 'inline-block' : 'none';
+        }
 
         let events = [];
         (tool.history || []).forEach(h => {
@@ -6513,6 +6714,7 @@ function quickScan() {
 }
 function openAddToolModal() { Ops.openAddToolModal(); }
 function submitAddTool() { Ops.submitAddTool(); }
+function submitEditTool() { Ops.submitEditTool(); }
 function submitAssign() { Ops.submitAssign(); }
 function submitTransfer() { Ops.submitTransfer(); }
 function submitSendToService() { Ops.submitSendToService(); }
