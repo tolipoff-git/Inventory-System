@@ -2208,7 +2208,8 @@ select.work-only.form-control { max-width: 190px; }
                 <legend style="font-size:0.9rem; font-weight:bold; color:var(--primary-hover); padding:0 8px;" data-i18n="Add Line Item">Add Line Item</legend>
                 <div class="form-group">
                     <label data-i18n="Tool/Part Name &amp; Model:">Tool/Part Name &amp; Model:</label>
-                    <input type="text" id="procureName" class="form-control" placeholder="e.g. 18V Impact Driver">
+                    <input type="text" id="procureName" class="form-control" list="procureNameList" oninput="Procure.onNameChange()" placeholder="e.g. 18V Impact Driver">
+                    <datalist id="procureNameList"></datalist>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -2617,6 +2618,9 @@ const translations = {
         'Occasional wear beyond norms — remind about SOP.': 'Occasional wear beyond norms — remind about SOP.',
         'Exemplary tool handling.': 'Exemplary tool handling.',
         'Storage / Crib': 'Storage / Crib',
+        'Pending Delivery': 'Pending Delivery',
+        'Mark as Received': 'Mark as Received',
+        'Cancel Order': 'Cancel Order',
         'Other Locations': 'Other Locations',
         'Maintenance & Repair Queue': 'Maintenance & Repair Queue',
         'Consumable Wear Trends': 'Consumable Wear Trends',
@@ -2920,6 +2924,9 @@ const translations = {
         'Occasional wear beyond norms — remind about SOP.': 'Износ выше нормы — напомнить про СОП.',
         'Exemplary tool handling.': 'Образцовое обращение с инструментом.',
         'Storage / Crib': 'Склад / Кладовая',
+        'Pending Delivery': 'Ожидание поставки',
+        'Mark as Received': 'Отметить как полученное',
+        'Cancel Order': 'Отменить заказ',
         'Other Locations': 'Прочие места',
         'Maintenance & Repair Queue': 'Очередь обслуживания и ремонта',
         'Consumable Wear Trends': 'Износ расходников',
@@ -5000,6 +5007,8 @@ const Actions = {
     'procure':       id => openProcureModal(id),
     'print-label':   id => doAction('Tool Crib Manager', () => Labels.openPrintLabelModal(id)),
     'retire':        id => doAction('Administrator', () => Ops.openRetireModal(id)),
+    'receive-order': id => doAction('Tool Crib Manager', () => Ops.receiveOrder(id)),
+    'cancel-order':  id => doAction('Tool Crib Manager', () => Ops.cancelOrder(id)),
     'return':        id => Ops.returnTool(id),
     'remove-emp':    id => Ops.removeEmp(id),
     'edit-emp':      id => editRegistryEmp(id),
@@ -5380,7 +5389,19 @@ function renderCategoryHub() {
             </div>
             <div class="collapsible"><div class="collapsible-inner">
                 <div class="tool-body" style="text-align:left; cursor:default; padding-top:10px;">${body}</div>
-                <div class="tool-actions">${actions}</div>
+                <div class="tool-actions">
+                ${tool.status === 'Pending Delivery' ? `
+                    <button class="btn btn-success wide" data-action="receive-order" data-id="${Utils.esc(tool.id)}">${T('Mark as Received')}</button>
+                    <button class="btn btn-muted wide" data-action="cancel-order" data-id="${Utils.esc(tool.id)}">${T('Cancel Order')}</button>
+                ` : `
+                    <button class="btn" data-action="assign" data-id="${Utils.esc(tool.id)}">${T('[Assign Person]')}</button>
+                    <button class="btn" data-action="transfer" data-id="${Utils.esc(tool.id)}">${getBtnHtml('Administrator', T('[Transfer / Move]'))}</button>
+                    ${maintBtn}
+                    <button class="btn btn-warning wide" data-action="procure" data-id="${Utils.esc(tool.id)}">${T('[Procure / Order]')}</button>
+                    <button class="btn wide" data-action="print-label" data-id="${Utils.esc(tool.id)}">${getBtnHtml('Tool Crib Manager', T('Print Sticker / Label'))}</button>
+                    <button class="btn btn-danger wide" data-action="retire" data-id="${Utils.esc(tool.id)}">${getBtnHtml('Administrator', T('[Decommission / Retire]'))}</button>
+                `}
+            </div>
             </div></div>
         </div>`;
 
@@ -6940,6 +6961,39 @@ const Ops = {
         openModal('auditLogModal');
     },
 
+    receiveOrder(orderId) {
+        const order = Store.getTool(orderId);
+        if (!order || order.status !== 'Pending Delivery') return;
+        
+        const target = order.targetToolId ? Store.getTool(order.targetToolId) : Store.tools.find(t => t.name === order.name && t.status !== 'Pending Delivery' && t.status !== 'Retired');
+        
+        if (target) {
+            target.qty = (target.qty || 1) + order.qty;
+            if (order.cost) target.cost = order.cost;
+            if (order.purchase_url) target.purchase_url = order.purchase_url;
+            Store.toolEvent(target, `Received order ${order.id} (Qty: +${order.qty})`);
+            const idx = Store.tools.findIndex(t => t.id === orderId);
+            if (idx >= 0) Store.tools.splice(idx, 1);
+        } else {
+            order.status = 'Active';
+            order.id = Ops.suggestId(order.class ? order.class.split(' -')[0] : 'TOOL');
+            Store.toolEvent(order, `Received order ${orderId}, assigned ID ${order.id}`);
+        }
+        
+        Store.save();
+        init();
+    },
+
+    cancelOrder(orderId) {
+        if (!confirm('Cancel this order?')) return;
+        const idx = Store.tools.findIndex(t => t.id === orderId);
+        if (idx >= 0) {
+            Store.tools.splice(idx, 1);
+            Store.save();
+            init();
+        }
+    },
+
     exportAuditLogCSV() {
         const header = 'Timestamp,User,Role,Action,Details\n';
         const body = Store.auditLog.map(e =>
@@ -7716,9 +7770,29 @@ const Procure = {
             }
             if (tool.status === 'Retired') document.getElementById('procureReason').value = 'Tool Scrapped/Retired';
         }
+        const dl = document.getElementById('procureNameList');
+        const names = new Set();
+        Store.tools.forEach(t => names.add(t.name));
+        Store.procurementLog.forEach(l => names.add(l.name));
+        dl.innerHTML = Array.from(names).map(n => `<option value="${Utils.esc(n)}"></option>`).join('');
         openModal('procureModal');
     },
 
+    onNameChange() {
+        const val = document.getElementById('procureName').value.trim().toLowerCase();
+        if (!val) return;
+        // Search in procurementLog first for exact order match, then tools
+        const logMatch = Store.procurementLog.find(l => l.name.toLowerCase() === val);
+        const toolMatch = Store.tools.find(t => t.name.toLowerCase() === val);
+        
+        if (logMatch) {
+            document.getElementById('procureCost').value = logMatch.cost.toFixed(2);
+            document.getElementById('procureLink').value = logMatch.link || '';
+        } else if (toolMatch) {
+            if (toolMatch.cost) document.getElementById('procureCost').value = toolMatch.cost.toFixed(2);
+            document.getElementById('procureLink').value = toolMatch.purchase_url || '';
+        }
+    },
     resetItemForm() {
         document.getElementById('procureName').value = '';
         document.getElementById('procureQty').value = '1';
@@ -7804,13 +7878,40 @@ const Procure = {
         // Log each item to procurement log and tool history
         this.items.forEach(item => {
             const req = { ...item, date: Utils.nowISO().split('T')[0], ws, wp, initials };
+            const orderId = 'ORD-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+            const orderTool = {
+                id: orderId,
+                name: item.name,
+                category: 'Consumables',
+                status: 'Pending Delivery',
+                qty: item.qty,
+                cost: item.cost,
+                purchase_url: item.link,
+                location: `${ws} / ${wp}`,
+                history: [`Ordered by ${initials}. Reason: ${item.reason}`],
+                targetToolId: item.toolId || null
+            };
+            
             if (item.toolId) {
                 const tool = Store.getTool(item.toolId);
                 if (tool) {
+                    orderTool.category = tool.category;
+                    orderTool.class = tool.class;
+                    orderTool.type = tool.type;
                     tool.purchase_url = item.link;
                     Store.toolEvent(tool, `Procurement requested (Qty: ${item.qty}, Reason: ${item.reason}, By: ${initials})`);
                 }
+            } else {
+                // If it matches an existing tool by name, use its category
+                const existing = Store.tools.find(t => t.name.toLowerCase() === item.name.toLowerCase());
+                if (existing) {
+                    orderTool.category = existing.category;
+                    orderTool.class = existing.class;
+                    orderTool.type = existing.type;
+                    orderTool.targetToolId = existing.id;
+                }
             }
+            Store.tools.push(orderTool);
             Store.procurementLog.push(req);
         });
         Store.log('PROCUREMENT', `${this.items.length} items, total $${grandTotal.toFixed(2)}`);
