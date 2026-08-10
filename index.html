@@ -2617,6 +2617,7 @@ const translations = {
         'Occasional wear beyond norms — remind about SOP.': 'Occasional wear beyond norms — remind about SOP.',
         'Exemplary tool handling.': 'Exemplary tool handling.',
         'Storage / Crib': 'Storage / Crib',
+        'Other Locations': 'Other Locations',
         'Maintenance & Repair Queue': 'Maintenance & Repair Queue',
         'Consumable Wear Trends': 'Consumable Wear Trends',
         'No tools currently in maintenance.': 'No tools currently in maintenance.',
@@ -2919,6 +2920,7 @@ const translations = {
         'Occasional wear beyond norms — remind about SOP.': 'Износ выше нормы — напомнить про СОП.',
         'Exemplary tool handling.': 'Образцовое обращение с инструментом.',
         'Storage / Crib': 'Склад / Кладовая',
+        'Other Locations': 'Прочие места',
         'Maintenance & Repair Queue': 'Очередь обслуживания и ремонта',
         'Consumable Wear Trends': 'Износ расходников',
         'No tools currently in maintenance.': 'Сейчас нет инструментов в обслуживании.',
@@ -5265,8 +5267,10 @@ const Charts = {
             .map(ws => ({ name: ws, tools: groups[ws], isGroup: false }))
             .sort((a, b) => b.tools.length - a.tools.length);
         const top = ranked.slice(0, 4);
-        top.push({ name: T('Storage / Crib'), isGroup: true,
-                   tools: ranked.slice(4).flatMap(g => g.tools).concat(unassigned) });
+        const otherTools = ranked.slice(4).flatMap(g => g.tools).concat(unassigned);
+        if (otherTools.length > 0) {
+            top.push({ name: T('Other Locations'), isGroup: true, tools: otherTools });
+        }
 
         const data = top.map(g => ({ pillar: g.name, isGroup: g.isGroup, ...scoreOf(g.tools) }));
         const rated = data.filter(d => d.rated);
