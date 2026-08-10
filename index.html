@@ -942,24 +942,103 @@ select.work-only.form-control { max-width: 190px; }
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script>
+      // PWA Update Banner System
+      let swRegistration = null;
+      let swNewWorker = null;
+
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js?v=5').then(reg => {
-            // console.log('[PWA] Service Worker registered:', reg.scope);
-            reg.update();
+          navigator.serviceWorker.register('./sw.js').then(reg => {
+            swRegistration = reg;
+            // Check for updates every 60 seconds
+            setInterval(() => reg.update(), 60000);
+
             reg.onupdatefound = () => {
-              const installingWorker = reg.installing;
-              if (installingWorker) {
-                installingWorker.onstatechange = () => {
-                  if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    // console.log('[PWA] New update available! Auto reloading...');
-                    window.location.reload();
+              swNewWorker = reg.installing;
+              if (swNewWorker) {
+                swNewWorker.onstatechange = () => {
+                  if (swNewWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // New version ready — show update banner
+                    showUpdateBanner();
                   }
                 };
               }
             };
-          }).catch(err => { /* console.log('[PWA] SW registration failed:', err); */ });
+          }).catch(() => {});
+
+          // When the new SW activates, reload the page
+          let refreshing = false;
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!refreshing) {
+              refreshing = true;
+              window.location.reload();
+            }
+          });
         });
+      }
+
+      function showUpdateBanner() {
+        // Remove existing banner if any
+        const old = document.getElementById('pwaUpdateBanner');
+        if (old) old.remove();
+
+        const banner = document.createElement('div');
+        banner.id = 'pwaUpdateBanner';
+        banner.innerHTML = `
+          <div style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:100000;
+                      background:linear-gradient(135deg, #0ea5e9, #6366f1); color:#fff;
+                      padding:14px 24px; border-radius:12px; display:flex; align-items:center; gap:14px;
+                      box-shadow:0 8px 32px rgba(0,0,0,0.4); font-family:inherit; font-size:14px;
+                      animation:slideUp 0.4s ease-out;">
+            <span style="font-size:20px;">🚀</span>
+            <span><b>New version available!</b> Tap to update.</span>
+            <button onclick="applyPWAUpdate()" style="background:#fff; color:#1e293b; border:none;
+                    padding:8px 18px; border-radius:8px; font-weight:bold; cursor:pointer;
+                    font-size:13px; white-space:nowrap;">Update Now</button>
+            <button onclick="this.parentElement.parentElement.remove()" style="background:transparent;
+                    color:rgba(255,255,255,0.7); border:none; font-size:18px; cursor:pointer;
+                    padding:4px 8px;">✕</button>
+          </div>`;
+        document.body.appendChild(banner);
+
+        // Add slideUp animation if not already present
+        if (!document.getElementById('pwaUpdateStyle')) {
+          const style = document.createElement('style');
+          style.id = 'pwaUpdateStyle';
+          style.textContent = '@keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(30px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}';
+          document.head.appendChild(style);
+        }
+      }
+
+      function applyPWAUpdate() {
+        const banner = document.getElementById('pwaUpdateBanner');
+        if (banner) banner.remove();
+        if (swNewWorker) {
+          swNewWorker.postMessage({ type: 'SKIP_WAITING' });
+        } else if (swRegistration && swRegistration.waiting) {
+          swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        } else {
+          // Fallback: hard reload
+          window.location.reload();
+        }
+      }
+
+      function forceUpdatePWA() {
+        // Nuclear option: unregister all SWs, clear all caches, reload
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(regs => {
+            regs.forEach(r => r.unregister());
+          });
+        }
+        if ('caches' in window) {
+          caches.keys().then(keys => {
+            Promise.all(keys.map(k => caches.delete(k))).then(() => {
+              window.location.reload();
+            });
+          });
+        } else {
+          window.location.reload();
+        }
       }
     </script>
 
@@ -1272,6 +1351,7 @@ select.work-only.form-control { max-width: 190px; }
                 <input type="file" style="display:none;" accept=".json" id="restoreFileInput" onchange="closeModal('systemMenuModal'); restoreBackup(event)">
             </label>
             <button class="btn auth-admin" style="border:1px solid var(--accent); color:var(--accent);" onclick="closeModal('systemMenuModal'); Sync.pushCloud(); setTimeout(() => Sync.pullCloud(), 500); Utils.toast('Forcing full sync...');">🔄 <span data-i18n="Force Full Sync">Force Full Sync</span></button>
+            <button class="btn btn-danger" onclick="closeModal('systemMenuModal'); forceUpdatePWA();">🔄 <span data-i18n="Force Update App">Force Update App</span></button>
         </div>
     </div>
 </div>
@@ -3148,9 +3228,19 @@ const Store = {
                 } else {
                     const localTs = new Date(ext.updatedAt || ext.assignedAt || 0).getTime();
                     const remoteTs = new Date(rt.updatedAt || rt.assignedAt || 0).getTime();
-                    if (remoteTs >= localTs) {
+                    if (remoteTs > localTs) {
                         existingMap.set(rt.id, { ...ext, ...rt });
                         updatedTools++;
+                    } else if (remoteTs === localTs && remoteTs > 0) {
+                        // Same timestamp: merge fields without overwriting
+                        let changed = false;
+                        for (let k in rt) {
+                            if (JSON.stringify(ext[k]) !== JSON.stringify(rt[k])) { changed = true; break; }
+                        }
+                        if (changed) {
+                            existingMap.set(rt.id, { ...ext, ...rt });
+                            updatedTools++;
+                        }
                     }
                 }
             });
@@ -3311,6 +3401,11 @@ const Store = {
                 tools: this.tools, auditLog: this.auditLog, procurementLog: this.procurementLog,
                 meta: this.meta, labelQueue: this.labelQueue
             };
+            // Trim audit log to prevent localStorage quota overflow
+            if (this.auditLog.length > 2000) {
+                this.auditLog = this.auditLog.slice(0, 2000);
+                state.auditLog = this.auditLog;
+            }
             const raw = JSON.stringify(state);
             if (raw.length > 4000000 && !sessionStorage.getItem('inv_quota_warn')) {
                 alert('⚠ Warning: Database size is approaching the 5MB limit. Please consider exporting a JSON backup soon.');
@@ -3661,7 +3756,11 @@ const Store = {
                 programs: this.programs, wsProgram: this.wsProgram,
                 personnel: this.personnel, tools: this.tools
             }));
-        } catch (e) { /* квота переполнена — работаем без страховки */ }
+        } catch (e) {
+            if (typeof Utils !== 'undefined' && Utils.toast) {
+                Utils.toast('⚠️ Undo snapshot failed — storage full. Next action cannot be rolled back.', 'warning');
+            }
+        }
     },
 
     rollbackInfo() {
