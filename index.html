@@ -1434,6 +1434,10 @@ select.work-only.form-control { max-width: 190px; }
                     </select>
                 </div>
                 <div class="form-group">
+                    <label data-i18n="Quantity / Units">Quantity / Units</label>
+                    <input type="number" id="addToolQty" class="form-control" value="1" min="1">
+                </div>
+                <div class="form-group">
                     <label data-i18n="Tool Class">Tool Class</label>
                     <select id="addToolClass" class="form-control" onchange="Ops.onToolClassChange()"></select>
                 </div>
@@ -1662,13 +1666,17 @@ select.work-only.form-control { max-width: 190px; }
             </div>
             <div class="form-row">
                 <div class="form-group">
+                    <label data-i18n="Qty to Issue">Qty to Issue</label>
+                    <input type="number" id="assignQty" class="form-control" value="1" min="1">
+                </div>
+                <div class="form-group">
                     <label data-i18n="Return Due (days)">Return Due (days)</label>
                     <input type="number" id="assignDays" class="form-control" value="1" min="1" max="90">
                 </div>
-                <div class="form-group">
-                    <label data-i18n="Required Initials">Required Initials</label>
-                    <input type="text" id="assignInitials" class="form-control" placeholder="P.V.">
-                </div>
+            </div>
+            <div class="form-group">
+                <label data-i18n="Required Initials">Required Initials</label>
+                <input type="text" id="assignInitials" class="form-control" placeholder="P.V.">
             </div>
             <div id="assignError" class="form-error"></div>
         </div>
@@ -1751,6 +1759,10 @@ select.work-only.form-control { max-width: 190px; }
             <div class="form-group">
                 <div style="font-size:0.8rem; color:var(--text-muted);" data-i18n="Serial Number">Serial Number</div>
                 <div id="detSN" style="font-size:1rem; font-family:monospace; letter-spacing:0.5px;">N/A</div>
+            </div>
+            <div class="form-group">
+                <div style="font-size:0.8rem; color:var(--text-muted);" data-i18n="Total Quantity">Total Quantity</div>
+                <div id="detQty" style="font-size:1.05rem; font-weight:bold;">1</div>
             </div>
             <div class="form-group">
                 <label data-i18n="Initials &amp; Transaction History">Initials &amp; Transaction History</label>
@@ -3506,6 +3518,7 @@ const Store = {
             }
             if (t.minQty === undefined) t.minQty = 0;
             if (t.maxQty === undefined) t.maxQty = 0;
+            if (t.qty === undefined) t.qty = 1;
             if (t.barcode === undefined) t.barcode = ''; // внешний штрихкод с физической наклейки (5S00xxx), если ≠ ID
         });
         // Схема v3: посты — объекты {name, ws} с родительской зоной.
@@ -5493,7 +5506,7 @@ function renderGrid() {
             <div class="tool-header" data-action="tool-detail" data-id="${Utils.esc(tool.id)}">
                 <div>
                     <div class="tool-title">${Utils.esc(tool.name)}</div>
-                    <div class="tool-id">${Utils.esc(tool.id)} · ${Utils.esc(tool.sn || '')}</div>
+                    <div class="tool-id">${Utils.esc(tool.id)} · ${Utils.esc(tool.sn || '')} · Qty: ${tool.qty || 1}</div>
                 </div>
                 <div class="status-badge ${Utils.esc(tool.status)}">${Utils.esc(tool.status)}</div>
             </div>
@@ -6142,7 +6155,7 @@ const Ops = {
 
     openAddToolModal() {
         // Полный сброс формы: значения прошлого добавления не должны просачиваться
-        ['addToolName', 'addToolSpec', 'addToolInterval', 'addToolBarcode', 'addToolSN'].forEach(id => document.getElementById(id).value = '');
+        ['addToolName', 'addToolSpec', 'addToolInterval', 'addToolBarcode', 'addToolSN'].forEach(id => document.getElementById(id).value = ''); document.getElementById('addToolQty').value = '1';
         const typeSel = document.getElementById('addToolType');
         typeSel.value = 'Permanent';
         document.getElementById('addToolStockRow').style.display = 'none';
@@ -6193,6 +6206,7 @@ const Ops = {
             category: document.getElementById('addToolCat').value.trim() || 'Uncategorized',
             location: document.getElementById('addToolLoc').value || 'Pending',
             status: 'Active',
+            qty: parseInt(document.getElementById('addToolQty').value) || 1,
             spec: document.getElementById('addToolSpec').value.trim() || 'N/A',
             assigneeId: null, assignedAt: null, dueReturn: null,
             calDue: days ? new Date(Date.now() + days * CONFIG.DAY_MS).toISOString() : null,
@@ -6229,6 +6243,7 @@ const Ops = {
         document.getElementById('editToolID').value = tool.id;
         document.getElementById('editToolName').value = tool.name || '';
         document.getElementById('editToolType').value = tool.type || 'Permanent';
+        document.getElementById('editToolQty').value = tool.qty || 1;
         document.getElementById('editToolClass').value = tool.id.split('-')[0];
         document.getElementById('editToolBarcode').value = tool.barcode || '';
         document.getElementById('editToolSN').value = tool.sn || '';
@@ -6286,6 +6301,7 @@ const Ops = {
         
         tool.name = document.getElementById('editToolName').value.trim() || 'Tool';
         tool.type = type;
+        tool.qty = Math.max(1, parseInt(document.getElementById('editToolQty').value) || 1);
         tool.barcode = document.getElementById('editToolBarcode').value.trim().toUpperCase();
         
         const newSn = document.getElementById('editToolSN').value.trim().toUpperCase();
@@ -6327,6 +6343,8 @@ const Ops = {
         }
         document.getElementById('assignToolId').value = toolId;
         document.getElementById('assignInitials').value = '';
+        document.getElementById('assignQty').max = tool.qty || 1;
+        document.getElementById('assignQty').value = 1;
         document.getElementById('assignError').style.display = 'none';
         populateEmpSelects();
         populateAllDropdowns();
@@ -6334,10 +6352,12 @@ const Ops = {
     },
 
     submitAssign() {
-        const tool = Store.getTool(document.getElementById('assignToolId').value);
+        let tool = Store.getTool(document.getElementById('assignToolId').value);
         const emp = Store.getEmp(document.getElementById('assignEmp').value);
         const initials = document.getElementById('assignInitials').value.trim();
         const days = Math.max(1, parseInt(document.getElementById('assignDays').value) || 1);
+        const issueQty = Math.max(1, parseInt(document.getElementById('assignQty').value) || 1);
+        
         if (!tool || !emp) return;
         if (!initials) {
             const err = document.getElementById('assignError');
@@ -6345,14 +6365,30 @@ const Ops = {
             err.style.display = 'block';
             return;
         }
+        if (issueQty > (tool.qty || 1)) {
+            alert(`Cannot issue more than available quantity (${tool.qty || 1})`);
+            return;
+        }
+
+        if (issueQty < (tool.qty || 1)) {
+            tool.qty -= issueQty;
+            const clone = JSON.parse(JSON.stringify(tool));
+            clone.id = Ops.suggestId(tool.id.split('-')[0]);
+            clone.qty = issueQty;
+            clone.sn = 'SN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+            Store.tools.push(clone);
+            tool = clone; 
+        }
+
         tool.assigneeId = emp.id;
         tool.status = 'Issued';
         tool.assignedAt = Utils.nowISO();
         tool.dueReturn = new Date(Date.now() + days * CONFIG.DAY_MS).toISOString();
         tool.location = `${document.getElementById('assignWs').value} / ${document.getElementById('assignPost').value}`;
-        Store.toolEvent(tool, `Assigned to ${emp.name} for ${days}d (Signed: ${initials})`);
-        Store.empEvent(emp, `Received ${tool.id} (Signed: ${initials})`);
-        Store.log('TOOL_ASSIGN', `${tool.id} → ${emp.id} (${days}d)`);
+        
+        Store.toolEvent(tool, `Assigned to ${emp.name} for ${days}d (Qty: ${issueQty}, Signed: ${initials})`);
+        Store.empEvent(emp, `Received ${tool.id} (Qty: ${issueQty}, Signed: ${initials})`);
+        Store.log('TOOL_ASSIGN', `${tool.id} → ${emp.id} (Qty: ${issueQty})`);
         Store.save();
         closeModal('assignModal');
         init();
@@ -6642,6 +6678,7 @@ const Ops = {
         document.getElementById('detDue').innerHTML = isOverdue ? `<span style="color:var(--danger); font-weight:bold;">${due} (OVERDUE)</span>` : due;
         
         document.getElementById('detSN').innerText = tool.sn || 'N/A';
+        document.getElementById('detQty').innerText = tool.qty || 1;
         
         document.getElementById('detPrintBtn').setAttribute('data-action', 'print-label');
         document.getElementById('detPrintBtn').setAttribute('data-id', tool.id);
