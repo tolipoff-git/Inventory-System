@@ -1448,6 +1448,10 @@ select.work-only.form-control { max-width: 190px; }
                 <input type="text" id="addToolBarcode" class="form-control" placeholder="5S00242">
                 <div class="form-hint" data-i18n="BARCODE_HINT">Code from an existing physical label (5S00xxx). Scanning it opens this tool. Leave empty if the label shows the ID.</div>
             </div>
+            <div class="form-group">
+                <label data-i18n="Serial Number">Serial Number</label>
+                <input type="text" id="addToolSN" class="form-control" placeholder="e.g. 1B8X9F2A">
+            </div>
             <div class="form-row">
                 <div class="form-group">
                     <label data-i18n="Category">Category</label>
@@ -1555,6 +1559,10 @@ select.work-only.form-control { max-width: 190px; }
                 <label data-i18n="Label Barcode (if different)">Label Barcode (if different)</label>
                 <input type="text" id="editToolBarcode" class="form-control" placeholder="5S00242">
                 <div class="form-hint" data-i18n="BARCODE_HINT">Code from an existing physical label (5S00xxx). Scanning it opens this tool. Leave empty if the label shows the ID.</div>
+            </div>
+            <div class="form-group">
+                <label data-i18n="Serial Number">Serial Number</label>
+                <input type="text" id="editToolSN" class="form-control" placeholder="e.g. 1B8X9F2A">
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -1739,6 +1747,10 @@ select.work-only.form-control { max-width: 190px; }
             <div class="form-group">
                 <div style="font-size:0.8rem; color:var(--text-muted);" data-i18n="Service / Calibration Due Date">Service / Calibration Due Date</div>
                 <div id="detDue" style="font-size:1rem;">N/A</div>
+            </div>
+            <div class="form-group">
+                <div style="font-size:0.8rem; color:var(--text-muted);" data-i18n="Serial Number">Serial Number</div>
+                <div id="detSN" style="font-size:1rem; font-family:monospace; letter-spacing:0.5px;">N/A</div>
             </div>
             <div class="form-group">
                 <label data-i18n="Initials &amp; Transaction History">Initials &amp; Transaction History</label>
@@ -3488,7 +3500,10 @@ const Store = {
             // Старый баг: объекты в истории → приводим к строкам
             t.history = t.history.map(h => typeof h === 'string' ? h : `${h.date || ''} ${h.event || JSON.stringify(h)}`.trim());
             // SN генерируется один раз и навсегда закрепляется за инструментом
-            if (!t.sn) t.sn = 'SN-' + (1000 + Math.abs([...t.id].reduce((a, c) => a * 31 + c.charCodeAt(0) | 0, 7)) % 9000);
+            if (!t.sn) {
+                const rnd = Math.random().toString(36).substring(2, 10).toUpperCase();
+                t.sn = 'SN-' + rnd;
+            }
             if (t.minQty === undefined) t.minQty = 0;
             if (t.maxQty === undefined) t.maxQty = 0;
             if (t.barcode === undefined) t.barcode = ''; // внешний штрихкод с физической наклейки (5S00xxx), если ≠ ID
@@ -6127,7 +6142,7 @@ const Ops = {
 
     openAddToolModal() {
         // Полный сброс формы: значения прошлого добавления не должны просачиваться
-        ['addToolName', 'addToolSpec', 'addToolInterval', 'addToolBarcode'].forEach(id => document.getElementById(id).value = '');
+        ['addToolName', 'addToolSpec', 'addToolInterval', 'addToolBarcode', 'addToolSN'].forEach(id => document.getElementById(id).value = '');
         const typeSel = document.getElementById('addToolType');
         typeSel.value = 'Permanent';
         document.getElementById('addToolStockRow').style.display = 'none';
@@ -6185,8 +6200,10 @@ const Ops = {
             commissioned_date: Utils.nowISO().split('T')[0],
             minQty: type === 'Consumable' ? (parseInt(document.getElementById('addToolMinQty').value) || 0) : 0,
             maxQty: type === 'Consumable' ? (parseInt(document.getElementById('addToolMaxQty').value) || 0) : 0,
-            barcode: document.getElementById('addToolBarcode').value.trim().toUpperCase() // внешняя наклейка 5S00xxx
+            barcode: document.getElementById('addToolBarcode').value.trim().toUpperCase(), // внешняя наклейка 5S00xxx
+            sn: document.getElementById('addToolSN').value.trim().toUpperCase() // серийный номер
         };
+        if (!tool.sn) tool.sn = 'SN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
         if (address) tool.address = address;
         // Стейдженые фото прикрепляются к новому инструменту сразу при создании
         if (!Array.isArray(tool.photos)) tool.photos = [];
@@ -6214,6 +6231,7 @@ const Ops = {
         document.getElementById('editToolType').value = tool.type || 'Permanent';
         document.getElementById('editToolClass').value = tool.id.split('-')[0];
         document.getElementById('editToolBarcode').value = tool.barcode || '';
+        document.getElementById('editToolSN').value = tool.sn || '';
         document.getElementById('editToolCat').value = tool.category || '';
         document.getElementById('editToolLoc').value = tool.location || '';
         
@@ -6269,6 +6287,10 @@ const Ops = {
         tool.name = document.getElementById('editToolName').value.trim() || 'Tool';
         tool.type = type;
         tool.barcode = document.getElementById('editToolBarcode').value.trim().toUpperCase();
+        
+        const newSn = document.getElementById('editToolSN').value.trim().toUpperCase();
+        if (newSn) tool.sn = newSn;
+
         tool.category = document.getElementById('editToolCat').value.trim() || 'Uncategorized';
         tool.location = document.getElementById('editToolLoc').value || '';
         tool.spec = document.getElementById('editToolSpec').value.trim();
@@ -6614,7 +6636,13 @@ const Ops = {
         document.getElementById('detHolder').innerHTML = emp
             ? `<span class="person-badge" data-action="emp-profile" data-id="${Utils.esc(emp.id)}">👤 ${Utils.esc(emp.name)}</span>` : 'N/A';
         document.getElementById('detDuration').innerText = Utils.durationStr(tool.assignedAt);
-        document.getElementById('detDue').innerText = Utils.fmtDate(tool.calDue);
+        
+        const due = tool.calDue ? Utils.fmtDate(tool.calDue) : 'N/A';
+        const isOverdue = tool.calDue && tool.calDue < Utils.nowISO().split('T')[0];
+        document.getElementById('detDue').innerHTML = isOverdue ? `<span style="color:var(--danger); font-weight:bold;">${due} (OVERDUE)</span>` : due;
+        
+        document.getElementById('detSN').innerText = tool.sn || 'N/A';
+        
         document.getElementById('detPrintBtn').setAttribute('data-action', 'print-label');
         document.getElementById('detPrintBtn').setAttribute('data-id', tool.id);
         const editBtn = document.getElementById('detEditBtn');
