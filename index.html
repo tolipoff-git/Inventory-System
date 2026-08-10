@@ -1381,6 +1381,33 @@ select.work-only.form-control { max-width: 190px; }
             </div>
             <div class="form-row">
                 <div class="form-group">
+                    <label data-i18n="Zone">Zone</label>
+                    <select id="addToolZone" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="Rack">Rack</label>
+                    <select id="addToolRack" class="form-control"></select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label data-i18n="Shelf">Shelf</label>
+                    <select id="addToolShelf" class="form-control">
+                        <option>Shelf 1</option><option>Shelf 2</option><option>Shelf 3</option>
+                        <option>Shelf 4</option><option>Shelf 5</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Bin</label>
+                    <select id="addToolBin" class="form-control">
+                        <option>Bin 1</option><option>Bin 2</option><option>Bin 3</option><option>Bin 4</option>
+                        <option>Bin 5</option><option>Bin 6</option><option>Bin 7</option><option>Bin 8</option>
+                        <option>Bin 9</option><option>Bin 10</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
                     <label data-i18n="Calibration Interval (Days)">Calibration Interval (Days)</label>
                     <input type="number" id="addToolInterval" class="form-control" placeholder="180" min="0">
                 </div>
@@ -5276,7 +5303,7 @@ function populateAllDropdowns() {
         el.innerHTML = html;
         if (val && Store.workstations.includes(val)) el.value = val;
     });
-    fillWs(['regEmpWs', 'assignWs', 'addToolLoc', 'transZone', 'procureWs']);
+    fillWs(['regEmpWs', 'assignWs', 'addToolLoc', 'transZone', 'addToolZone', 'procureWs']);
 
     // Посты зависят от зоны (иерархия зона → посты): выбрал зону — в списке только её посты
     const pair = (wsId, postId) => {
@@ -5291,6 +5318,7 @@ function populateAllDropdowns() {
     pair('regEmpWs', 'regEmpPost');
     pair('assignWs', 'assignPost');
     pair('transZone', 'transRack');
+    pair('addToolZone', 'addToolRack');
     pair('procureWs', 'procureWp');
 
     // Подсказки категорий при добавлении инструмента
@@ -5875,6 +5903,12 @@ const Ops = {
 
         const days = parseInt(document.getElementById('addToolInterval').value) || 0;
         const type = document.getElementById('addToolType').value;
+        const z = document.getElementById('addToolZone') ? document.getElementById('addToolZone').value : '';
+        const r = document.getElementById('addToolRack') ? document.getElementById('addToolRack').value : '';
+        const s = document.getElementById('addToolShelf') ? document.getElementById('addToolShelf').value : '';
+        const b = document.getElementById('addToolBin') ? document.getElementById('addToolBin').value : '';
+        const address = (z && r && s && b) ? { zone: z, rack: r, shelf: s, bin: b } : null;
+
         const tool = {
             id,
             name: document.getElementById('addToolName').value.trim() || 'New Tool',
@@ -5891,6 +5925,7 @@ const Ops = {
             maxQty: type === 'Consumable' ? (parseInt(document.getElementById('addToolMaxQty').value) || 0) : 0,
             barcode: document.getElementById('addToolBarcode').value.trim().toUpperCase() // внешняя наклейка 5S00xxx
         };
+        if (address) tool.address = address;
         // Стейдженые фото прикрепляются к новому инструменту сразу при создании
         if (!Array.isArray(tool.photos)) tool.photos = [];
         if (this._pendingPhotos.length) {
