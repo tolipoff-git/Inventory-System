@@ -4629,25 +4629,12 @@ const Auth = {
             return;
         }
 
-        // 1. Master Admin / Root Login
-        if ((login === 'admin' || login === 'root') && (pass === 'root' || pass === 'admin' || pass === '1234')) {
-            const adminUser = (Store.users || []).find(u => u.role === 'Administrator') || { id: 1, name: 'Administrator', role: 'Administrator' };
-            Auth.currentUser = adminUser;
-            sessionStorage.setItem('inv_auth_active', 'true');
-            sessionStorage.setItem('inv_auth_user', JSON.stringify(adminUser));
-            document.getElementById('mandatoryLoginModal').classList.remove('active');
-            document.getElementById('appMainContainer').classList.remove('locked');
-            document.getElementById('appMainContainer').style.display = 'block';
-            if (errEl) errEl.style.display = 'none';
-            if (typeof renderAll === 'function') renderAll();
-            Utils.toast('🔓 System Unlocked! Welcome ' + adminUser.name);
-            return;
-        }
 
-        // 2. Check registered Store users by name, role or id
+
+        // 1. Check registered Store users by name, role or id
         const foundUser = (Store.users || []).find(u => 
             (u.name.toLowerCase() === login || u.role.toLowerCase() === login || String(u.id) === login) &&
-            (u.pass === pass || pass === 'admin' || pass === '1234')
+            (u.pass === pass)
         );
 
         if (foundUser) {
@@ -8926,7 +8913,7 @@ function init() {
     if (toolId) {
         setTimeout(() => {
             if (Store.getTool(toolId)) {
-                UI.openDetailModal(toolId);
+                Ops.openDetailModal(toolId);
             } else {
                 Utils.toast(`Tool not found: ${Utils.esc(toolId)}`, 'var(--danger)');
             }
@@ -8945,8 +8932,8 @@ function init() {
 }
 
 const Sync = {
-    autoSyncEnabled: true,
-    blobUrl: 'https://jsonblob.com/api/jsonBlob/019fd336-d2d2-785d-a721-9b624d0b2147',
+    autoSyncEnabled: false,
+    blobUrl: '',
     lastSyncTs: parseInt(localStorage.getItem('sys_last_sync_ts') || '0'),
     isPulling: false,
     isPushing: false,
