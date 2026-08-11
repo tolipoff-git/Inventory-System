@@ -1089,7 +1089,7 @@ select.work-only.form-control { max-width: 190px; }
         <button class="btn btn-warning" onclick="toggleLanguage()">🌐 <span id="langBtnText">RU | ENG</span></button>
 
         <div class="header-title-block">
-            <h1 class="header-title"><span data-i18n="Dashboard">Dashboard</span> <sup style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none;">v48</sup></h1>
+            <h1 class="header-title"><span data-i18n="Dashboard">Dashboard</span> <sup id="appVersionTag" style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none;"></sup></h1>
             <div class="header-subtitle" data-i18n="Tools Inventory">Tools Inventory</div>
             <div class="brand-credit"><b>Igor Tolipov</b> <i>by Design</i></div>
         </div>
@@ -1216,7 +1216,7 @@ select.work-only.form-control { max-width: 190px; }
             <a href="javascript:void(0)" onclick="openModal('legalNoticeModal')" style="color:var(--primary); text-decoration:underline;" data-i18n="System Terms &amp; Rights">System Terms &amp; Rights</a>
         </div>
         <div>
-            5S Inventory-System Enterprise v7.4 | Build 2026.08.05 | Created &amp; Authored by Igor Tolipov. Protected Under International Copyright Law.
+            5S Inventory-System Enterprise <span id="appVersionFooter"></span> | Created &amp; Authored by Igor Tolipov. Protected Under International Copyright Law.
         </div>
     </footer>
 </main>
@@ -2315,6 +2315,8 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
+    APP_VERSION: 'v49',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    BUILD_DATE: '2026-08-11',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
     WEAR_RETIRE_PCT: 75,             // износ, после которого инструмент списывается
@@ -3322,7 +3324,7 @@ const Store = {
 
     exportData() {
         return JSON.stringify({
-            version: '7.4',
+            version: CONFIG.APP_VERSION,
             exportedAt: new Date().toISOString(),
             tools: this.tools,
             workstations: this.workstations,
@@ -8899,6 +8901,11 @@ const Theme = {
    выпадающие списки → RBAC → рендер → графики → язык.
    ============================================================================ */
 function init() {
+    // Единый источник версии: шапка и подвал подставляются из CONFIG
+    const _verTag = document.getElementById('appVersionTag');
+    if (_verTag) _verTag.textContent = CONFIG.APP_VERSION;
+    const _verFooter = document.getElementById('appVersionFooter');
+    if (_verFooter) _verFooter.textContent = `${CONFIG.APP_VERSION} | Build ${CONFIG.BUILD_DATE}`;
     Auth.initGate();
     Theme.init();
     Store.recomputeStatuses();   // актуализируем Overdue по датам
