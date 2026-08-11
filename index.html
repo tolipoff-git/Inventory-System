@@ -1084,7 +1084,7 @@ select.work-only.form-control { max-width: 190px; }
         <button class="btn btn-warning" onclick="toggleLanguage()">🌐 <span id="langBtnText">RU | ENG</span></button>
 
         <div class="header-title-block">
-            <h1 class="header-title"><span data-i18n="Dashboard">Dashboard</span> <sup style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none;">v41</sup></h1>
+            <h1 class="header-title"><span data-i18n="Dashboard">Dashboard</span> <sup style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none;">v42</sup></h1>
             <div class="header-subtitle" data-i18n="Tools Inventory">Tools Inventory</div>
             <div class="brand-credit"><b>Igor Tolipov</b> <i>by Design</i></div>
         </div>
@@ -7249,7 +7249,7 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
                             <div>Holder: <span>${esc(holderA)}</span></div>
                             <div>Location: <span>${esc(tool.location || 'N/A')}${tool.address ? ' | ' + esc(tool.address.zone) + ' | ' + esc(tool.address.rack) + ' ' + esc(tool.address.shelf) + '-' + esc(tool.address.bin) : ''}</span></div>
                         </div>
-                        <div class="label-qr"><canvas class="lbl-qr" data-qr-text="${CONFIG.QR_BASE_URL}/tools/lookup?id=${encodeURIComponent(tool.id)}"></canvas></div>`;
+                        <div class="label-qr"><canvas class="lbl-qr" data-qr-text="${CONFIG.QR_BASE_URL}/?tool=${encodeURIComponent(tool.id)}"></canvas></div>`;
                 case 'genB':
                     return `
                         <div style="display:flex; width:100%; height:100%; gap:10px;">
@@ -7267,7 +7267,7 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
                                 </div>
                                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                                     <div style="font-size:8px;">Check-in / Checkout QR →</div>
-                                    <div class="label-qr" style="width:20mm; height:20mm;"><canvas class="lbl-qr" data-qr-text="${CONFIG.QR_BASE_URL}/location/a-frame?id=${encodeURIComponent(tool.id)}"></canvas></div>
+                                    <div class="label-qr" style="width:20mm; height:20mm;"><canvas class="lbl-qr" data-qr-text="${CONFIG.QR_BASE_URL}/?loc=${encodeURIComponent(tool.id)}"></canvas></div>
                                 </div>
                             </div>
                         </div>`;
@@ -7288,7 +7288,7 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
                                     <div><strong>Min/Max QTY:</strong> ${minC} / ${maxC}</div>
                                     <div style="font-size:8px; margin-top:5px; color:#555;">(Only authorized categories allowed)</div>
                                 </div>
-                                <div class="label-qr" style="width:25mm; height:25mm;"><canvas class="lbl-qr" data-qr-text="${CONFIG.QR_BASE_URL}/toolgage/audit?loc=${encodeURIComponent(locC)}"></canvas></div>
+                                <div class="label-qr" style="width:25mm; height:25mm;"><canvas class="lbl-qr" data-qr-text="${CONFIG.QR_BASE_URL}/?loc=${encodeURIComponent(locC)}"></canvas></div>
                             </div>
                             <div style="text-align:right; font-size:8px;">Shelf Audit QR</div>
                         </div>`;
@@ -7348,7 +7348,7 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
                             <div><strong>Min/Max QTY:</strong> 5 / 20</div>
                             <div style="font-size:8px; margin-top:5px; color:#555;">(Only authorized categories allowed)</div>
                         </div>
-                        <div class="label-qr" style="width:25mm; height:25mm;"><canvas class="lbl-qr" data-qr-text="${CONFIG.QR_BASE_URL}/toolgage/audit?loc=${encodeURIComponent(loc)}"></canvas></div>
+                        <div class="label-qr" style="width:25mm; height:25mm;"><canvas class="lbl-qr" data-qr-text="${CONFIG.QR_BASE_URL}/?loc=${encodeURIComponent(loc)}"></canvas></div>
                     </div>
                     <div style="text-align:right; font-size:8px;">Shelf Audit QR</div>
                 </div>`;
@@ -7377,8 +7377,8 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
 
     drawCodes(container, entityId, entityType) {
         const qrText = entityType === 'tool'
-            ? `${CONFIG.QR_BASE_URL}/tools/lookup?id=${encodeURIComponent(entityId)}`
-            : `${CONFIG.QR_BASE_URL}/location?name=${encodeURIComponent(entityId)}`;
+            ? `${CONFIG.QR_BASE_URL}/?tool=${encodeURIComponent(entityId)}`
+            : `${CONFIG.QR_BASE_URL}/?loc=${encodeURIComponent(entityId)}`;
         container.querySelectorAll('canvas.lbl-qr').forEach(cv => {
             const text = cv.dataset.qrText || qrText;
             if (typeof QRious !== 'undefined') new QRious({ element: cv, value: text, size: 200, level: 'H' });
@@ -7391,8 +7391,8 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
         let idx = 0;
         queue.forEach((id) => {
             const qrText = entityType === 'tool'
-                ? `${CONFIG.QR_BASE_URL}/tools/lookup?id=${encodeURIComponent(id)}`
-                : `${CONFIG.QR_BASE_URL}/location?name=${encodeURIComponent(id)}`;
+                ? `${CONFIG.QR_BASE_URL}/?tool=${encodeURIComponent(id)}`
+                : `${CONFIG.QR_BASE_URL}/?loc=${encodeURIComponent(id)}`;
             // A queue item might produce 0 or 1 QR canvases depending on label type
             // But wait! If stockKey has NO qr canvas, qrCanvases won't match queue index.
             // We need a better way. Let's just rely on code39 dataset for everything or handle it nicely:
@@ -7411,8 +7411,8 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
             const id = queue[cellIdx++];
             if (!id) return;
             const qrText = entityType === 'tool'
-                ? `${CONFIG.QR_BASE_URL}/tools/lookup?id=${encodeURIComponent(id)}`
-                : `${CONFIG.QR_BASE_URL}/location?name=${encodeURIComponent(id)}`;
+                ? `${CONFIG.QR_BASE_URL}/?tool=${encodeURIComponent(id)}`
+                : `${CONFIG.QR_BASE_URL}/?loc=${encodeURIComponent(id)}`;
             
             cell.querySelectorAll('canvas.lbl-qr').forEach(cv => {
                 const text = cv.dataset.qrText || qrText;
@@ -7484,7 +7484,7 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
             </div>
             <div class="label-qr"><canvas class="lbl-qr"></canvas></div>`;
         const canvas = container.querySelector('.lbl-qr');
-        this.qr(canvas, `${CONFIG.QR_BASE_URL}/tools/lookup?id=${encodeURIComponent(tool.id)}`);
+        this.qr(canvas, `${CONFIG.QR_BASE_URL}/?tool=${encodeURIComponent(tool.id)}`);
     },
 
     /* Type B: наклейка на A-Frame / шкаф (100×50мм) */
@@ -7511,7 +7511,7 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
                 </div>
             </div>`;
         const canvas = container.querySelector('.lbl-qr');
-        this.qr(canvas, `${CONFIG.QR_BASE_URL}/location/a-frame?id=${encodeURIComponent(tool.id)}`);
+        this.qr(canvas, `${CONFIG.QR_BASE_URL}/?loc=${encodeURIComponent(tool.id)}`);
     },
 
     /* Type C: этикетка стеллажа/ячейки Toolgage (100×50мм) */
@@ -7543,7 +7543,7 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
                 <div style="text-align:right; font-size:8px;">Shelf Audit QR</div>
             </div>`;
         const canvas = container.querySelector('.lbl-qr');
-        this.qr(canvas, `${CONFIG.QR_BASE_URL}/toolgage/audit?loc=${encodeURIComponent(loc)}`);
+        this.qr(canvas, `${CONFIG.QR_BASE_URL}/?loc=${encodeURIComponent(loc)}`);
     },
 
     /** Генерация QR; fallback — рамка с пометкой offline */
@@ -8972,6 +8972,30 @@ function init() {
     const _issues = Store.integrityScan();
     if (_issues.length) console.warn(`[Integrity] ${_issues.length} dangling reference(s) — System Management → Integrity Check.`);
     if (typeof Sync !== 'undefined' && Sync.init) Sync.init();
+
+    // QR Deep Links Router
+    const p = new URLSearchParams(window.location.search);
+    const toolId = p.get('tool') || p.get('id');
+    const locId = p.get('loc') || p.get('name');
+    if (toolId) {
+        setTimeout(() => {
+            if (Store.getTool(toolId)) {
+                UI.openDetailModal(toolId);
+            } else {
+                Utils.toast(`Tool not found: ${Utils.esc(toolId)}`, 'var(--danger)');
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }, 300);
+    } else if (locId) {
+        setTimeout(() => {
+            const input = document.getElementById('globalSearch');
+            if (input) {
+                input.value = locId;
+                onSearchInput();
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }, 300);
+    }
 }
 
 const Sync = {
