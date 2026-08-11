@@ -694,8 +694,7 @@ details[open] .faq-summary::before { transform: rotate(90deg); }
         background: white !important;
         border: none !important;
         margin: 0;
-        padding: 2mm;
-        page-break-after: always;
+        padding: 0;
     }
     body.print-label-mode .modal-overlay { display: none !important; }
     body.print-label-mode #printLabelModal.active { display: block !important; background: none; }
@@ -7180,7 +7179,7 @@ const Labels = {
                     pages.push(currentPageCells.join(''));
                 }
 
-                html = pages.map(p => `<div class="sheet-page" style="position:relative; width:215.9mm; height:279.4mm; background:#fff; margin:0 auto 10mm; page-break-after:always;">${p}</div>`).join('');
+                html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; width:215.9mm; height:279.4mm; background:#fff; margin:0 auto${pi < pages.length - 1 ? '; page-break-after:always' : ''};">${p}</div>`).join('');
                 
                 container.className = 'label-preview-box sheet-mode';
                 container.innerHTML = html;
@@ -7723,8 +7722,14 @@ const ZipStore = {
     patchCell(xml, ref, value, numeric = false) {
         const re = new RegExp(`(<c r="${ref}"[^>]*>)([\\s\\S]*?)(</c>)`);
         if (!re.test(xml)) { console.warn('Template cell missing:', ref); return xml; }
-        return xml.replace(re, (m, open, inner, close) =>
-            numeric ? `${open}<v>${value}</v>${close}` : `${open}<is><t>${this.xmlEsc(value)}</t></is>${close}`);
+        return xml.replace(re, (m, open, inner, close) => {
+            // Strip formula attribute from opening tag + remove any <f>...</f> in inner
+            const cleanOpen = numeric ? open.replace(/ t="[^"]*"/, '') : open;
+            const cleanInner = numeric ? '' : inner;
+            return numeric
+                ? `${cleanOpen}<v>${value}</v>${close}`
+                : `${cleanOpen}<is><t>${this.xmlEsc(value)}</t></is>${close}`;
+        });
     }
 };
 
