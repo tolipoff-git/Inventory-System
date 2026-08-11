@@ -1084,7 +1084,7 @@ select.work-only.form-control { max-width: 190px; }
         <button class="btn btn-warning" onclick="toggleLanguage()">🌐 <span id="langBtnText">RU | ENG</span></button>
 
         <div class="header-title-block">
-            <h1 class="header-title"><span data-i18n="Dashboard">Dashboard</span> <sup style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none;">v44</sup></h1>
+            <h1 class="header-title"><span data-i18n="Dashboard">Dashboard</span> <sup style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none;">v45</sup></h1>
             <div class="header-subtitle" data-i18n="Tools Inventory">Tools Inventory</div>
             <div class="brand-credit"><b>Igor Tolipov</b> <i>by Design</i></div>
         </div>
@@ -1130,7 +1130,7 @@ select.work-only.form-control { max-width: 190px; }
     </div>
 
     <div class="toolbar">
-        <button class="btn auth-admin" onclick="doAction('Administrator', () => { paintDemoButtons(); openModal('systemMenuModal'); })">⚙ <span data-i18n="System Management">System Management</span></button>
+        <button class="btn auth-admin" onclick="doAction('Administrator', () => { openModal('systemMenuModal'); })">⚙ <span data-i18n="System Management">System Management</span></button>
         <button class="btn btn-warning" onclick="openModal('opsMenuModal')">🎛 <span data-i18n="Operations &amp; Reports">Operations &amp; Reports</span></button>
     </div>
 
@@ -1343,8 +1343,6 @@ select.work-only.form-control { max-width: 190px; }
             <button class="btn auth-admin" onclick="closeModal('systemMenuModal'); doAction('Administrator', openAuditLogModal)" data-i18n="System Audit Log">System Audit Log</button>
             <button class="btn auth-admin" onclick="closeModal('systemMenuModal'); doAction('Administrator', openIntegrityModal)">🩺 <span data-i18n="Integrity Check">Integrity Check</span></button>
             <button class="btn auth-admin" onclick="doAction('Administrator', rollbackLastCascade)">↩ <span data-i18n="Rollback Last Cascade">Rollback Last Cascade</span></button>
-            <button class="btn" onclick="doAction('Administrator', demoLoad)" id="demoLoadBtn">🎭 <span data-i18n="Load Demo Data">Load Demo Data</span></button>
-            <button class="btn btn-danger" onclick="doAction('Administrator', demoRemove)" id="demoRemoveBtn">🧹 <span data-i18n="Remove Demo Data">Remove Demo Data</span></button>
             <button class="btn auth-admin" onclick="closeModal('systemMenuModal'); doAction('Administrator', exportBackup)" data-i18n="Export Backup (.json)">Export Backup (.json)</button>
             <label class="btn auth-admin" style="cursor:pointer; text-align:center;">
                 <span id="restoreBtnLabel" data-i18n="Restore Backup (.json)">Restore Backup (.json)</span>
@@ -2752,8 +2750,6 @@ const translations = {
         'Copies': 'Copies',
         'Count:': 'Count:',
         'Current Holder': 'Current Holder',
-        'DEMO_ALREADY': 'DEMO_ALREADY',
-        'DEMO_REMOVE_CONFIRM': 'DEMO_REMOVE_CONFIRM',
         'Dashboard': 'Dashboard',
         'Decommission / Retire Tool': 'Decommission / Retire Tool',
         'Decommission Notes': 'Decommission Notes',
@@ -2783,7 +2779,6 @@ const translations = {
         'Issued': 'Issued',
         'Label Barcode (if different)': 'Label Barcode (if different)',
         'Label Stock': 'Label Stock',
-        'Load Demo Data': 'Load Demo Data',
         'Login': 'Login',
         'Maintenance': 'Maintenance',
         'Max QTY': 'Max QTY',
@@ -2827,7 +2822,6 @@ const translations = {
         'Read SOP & Maintenance Manual': 'Read SOP & Maintenance Manual',
         'Reason for Decommissioning': 'Reason for Decommissioning',
         'Reason for Purchase:': 'Reason for Purchase:',
-        'Remove Demo Data': 'Remove Demo Data',
         'Rename': 'Rename',
         'Repair': 'Repair',
         'Requester Initials:': 'Requester Initials:',
@@ -3058,8 +3052,6 @@ const translations = {
         'Copies': 'Копий',
         'Count:': 'Кол-во:',
         'Current Holder': 'Текущий держатель',
-        'DEMO_ALREADY': 'Демо-данные уже загружены.',
-        'DEMO_REMOVE_CONFIRM': 'Удалить все демо-данные (программы, зоны, посты, персонал, инструменты)? Ваши реальные записи не пострадают.',
         'Dashboard': 'Дашборд',
         'Decommission / Retire Tool': 'Списать инструмент',
         'Decommission Notes': 'Примечания к списанию',
@@ -3089,7 +3081,6 @@ const translations = {
         'Issued': 'Выдан',
         'Label Barcode (if different)': 'Штрихкод наклейки (если отличается)',
         'Label Stock': 'Этикеточный носитель',
-        'Load Demo Data': 'Загрузить демо-данные',
         'Login': 'Войти',
         'Maintenance': 'Обслуживание',
         'Max QTY': 'Макс. кол-во',
@@ -3133,7 +3124,6 @@ const translations = {
         'Read SOP & Maintenance Manual': 'Читать СОП и руководство по обслуживанию',
         'Reason for Decommissioning': 'Причина списания',
         'Reason for Purchase:': 'Причина закупки:',
-        'Remove Demo Data': 'Удалить демо-данные',
         'Rename': 'Переименовать',
         'Repair': 'Ремонт',
         'Requester Initials:': 'Инициалы заявителя:',
@@ -3967,44 +3957,6 @@ const Store = {
         this.save();
     },
 
-    /* --- Демо-режим: загрузка/очистка показательного набора --- */
-
-    demoLoaded() { return !!this.meta.demoLoaded; },
-
-    loadDemo() {
-        if (this.demoLoaded()) return { added: 0 };
-        this.snapshot('load demo data');
-        const d = Seed.demo();
-        let added = 0;
-        d.programs.forEach(p => { if (!this.programs.includes(p)) { this.programs.push(p); added++; } });
-        d.workstations.forEach(ws => { if (!this.workstations.includes(ws)) { this.workstations.push(ws); added++; } });
-        Object.assign(this.wsProgram, d.wsProgram);
-        d.workposts.forEach(p => { if (!this.postExists(p.name, p.ws)) { this.workposts.push({ name: p.name, ws: p.ws, _demo: true }); added++; } });
-        d.personnel.forEach(e => { if (!this.getEmp(e.id)) { this.personnel.push(e); added++; } });
-        d.tools.forEach(t => { if (!this.getTool(t.id)) { this.tools.push(t); added++; } });
-        this.meta.demoLoaded = true;
-        this.log('DEMO_LOAD', `${added} records`);
-        this.save();
-        return { added };
-    },
-
-    /** Чистка демо: справочники — по фиксированным именам Seed, записи — по флагу _demo */
-    removeDemo() {
-        this.snapshot('remove demo data');
-        const n = { tools: this.tools.length, emp: this.personnel.length };
-        this.tools = this.tools.filter(t => !t._demo);
-        this.personnel = this.personnel.filter(e => !e._demo);
-        this.workposts = this.workposts.filter(p => !p._demo);
-        this.workstations = this.workstations.filter(ws => !Seed.DEMO_WS.includes(ws));
-        this.programs = this.programs.filter(p => !Seed.DEMO_PROGRAMS.includes(p));
-        Object.keys(this.wsProgram).forEach(ws => {
-            if (!this.workstations.includes(ws) || !this.programs.includes(this.wsProgram[ws])) delete this.wsProgram[ws];
-        });
-        this.meta.demoLoaded = false;
-        this.log('DEMO_REMOVE', `tools: ${n.tools - this.tools.length}, emp: ${n.emp - this.personnel.length}`);
-        this.save();
-    },
-
     /* --- Резервное копирование --- */
 
     /** Полный экспорт: данные + пользователи + журналы + версия схемы */
@@ -4060,8 +4012,6 @@ const Store = {
 /* ============================================================================
    МОДУЛЬ: Seed
    Чистый старт: только реальные зоны завода без программ (гейдж-рум, цех, склад).
-   Демо-набор (программа USS с зонами/постами, персонал, инструменты) подгружается
-   отдельной кнопкой «Load Demo Data» и помечен _demo — удаляется одним махом.
    ============================================================================ */
 const Seed = {
     users: () => ([
@@ -4621,45 +4571,6 @@ const Seed = {
         }
 ]),
 
-    /* --- Демо-набор для показа функционала (имена фиксированы — по ним же чистим) --- */
-    DEMO_PROGRAMS: ['USS'],
-    DEMO_WS: ['USS East', 'USS West', 'Sub-Assembly', 'Quality Lab'],
-    DEMO_POSTS: ['Center Conveyor', 'Station 4B', 'Assembly Line 2', 'CNC Cell 1'],
-    demo() {
-        const ago = n => new Date(Date.now() - n * CONFIG.DAY_MS).toISOString();
-        const ahead = n => new Date(Date.now() + n * CONFIG.DAY_MS).toISOString();
-        const base = { assigneeId: null, assignedAt: null, dueReturn: null, calDue: null, history: [], audit_history: [{ date: '2025-08-10', inspector: 'A.K.', wear_pct: 12, notes: 'Routine check passed', result: 'PASS' }], commissioned_date: '2025-05-10', minQty: 0, maxQty: 0, _demo: true };
-        return {
-            programs: ['USS'],
-            workstations: ['USS East', 'USS West', 'Sub-Assembly', 'Quality Lab'],
-            wsProgram: { 'USS East': 'USS', 'USS West': 'USS' },
-            workposts: [
-                { name: 'Center Conveyor', ws: 'USS East', _demo: true },
-                { name: 'Station 4B', ws: 'Sub-Assembly', _demo: true },
-                { name: 'Assembly Line 2', ws: 'USS West', _demo: true },
-                { name: 'CNC Cell 1', ws: 'Quality Lab', _demo: true },
-                { name: 'Calibration', ws: 'Tool Gage', _demo: true },
-                { name: 'Final Inspect', ws: 'Quality Lab', _demo: true }
-            ],
-            personnel: [
-                { id: 'EMP-01', name: 'Pavel Volkov',   workstation: 'USS East',     post: 'Center Conveyor', initials: 'P.V.', badge: '5S00238', defaultWs: 'USS East',     defaultPost: 'Center Conveyor', history: [], _demo: true },
-                { id: 'EMP-02', name: 'Alexey Kovalev', workstation: 'Sub-Assembly', post: 'Station 4B',      initials: 'A.K.', badge: '5S00239', defaultWs: 'Sub-Assembly', defaultPost: 'Station 4B',      history: [], _demo: true },
-                { id: 'EMP-03', name: 'Dmitry Morozov', workstation: 'Tool Gage',    post: 'Calibration',     initials: 'D.M.', badge: '5S00240', defaultWs: 'Tool Gage',    defaultPost: 'Calibration',     history: [], _demo: true },
-                { id: 'EMP-04', name: 'Elena Smirnova', workstation: 'Quality Lab',  post: 'Final Inspect',   initials: 'E.S.', badge: '5S00241', defaultWs: 'Quality Lab',  defaultPost: 'Final Inspect',   history: [], _demo: true }
-            ],
-            tools: [
-                { ...base, id: 'BW-001', name: 'Combination Box Wrench Set 8-19mm (Metric)', type: 'Permanent', category: 'Hand Tools', location: 'Shadow Board', status: 'Active', spec: '8-19mm' },
-                { ...base, id: 'SK-002', name: '3/8" Drive Deep Socket Set 8-19mm', type: 'Permanent', category: 'Hand Tools', location: 'USS East / Center Conveyor', status: 'Issued', spec: '8-19mm', assigneeId: 'EMP-01', assignedAt: ago(2), dueReturn: ahead(5) },
-                { ...base, id: 'TM-001', name: 'Heavy-Duty Metric Tape Measure 5m (Class II)', type: 'Permanent', category: 'Measurement', location: 'Sub-Assembly / Station 4B', status: 'Issued', spec: '5m', assigneeId: 'EMP-02', assignedAt: ago(1), dueReturn: ahead(6) },
-                { ...base, id: 'TW-001', name: 'Torque Wrench 10-50Nm 1/2" Drive (M8/M10 Bolts)', type: 'Permanent', category: 'Hand Tools', location: 'Shadow Board', status: 'Active', spec: '10-50Nm', calDue: ahead(30) },
-                { ...base, id: 'TW-002', name: 'Precision Micro Torque Screwdriver 0.5-5Nm (Terminal Blocks)', type: 'Permanent', category: 'Hand Tools', location: 'Calibration Lab', status: 'Maintenance', spec: '0.5-5Nm', calDue: ago(2), history: ['Sent for calibration'] },
-                { ...base, id: 'VT-003', name: 'Ratchet Ferrule Bootlace Crimping Pliers 0.25-10mm² (24V Wiring)', type: 'Permanent', category: 'Electrical', location: 'USS East / Center Conveyor', status: 'Issued', spec: '0.25-10mm²', assigneeId: 'EMP-01', assignedAt: ago(3), dueReturn: ahead(4) },
-                { ...base, id: 'DC-001', name: 'True RMS Digital Multimeter CAT IV 600V / CAT III 1000V', type: 'Permanent', category: 'Electrical', location: 'Shadow Board', status: 'Active', spec: 'CAT IV 600V', calDue: ahead(90) },
-                { ...base, id: 'BT-001', name: '18V 5.0Ah Li-Ion Battery Pack A', type: 'Consumable', category: 'Power', location: 'Warehouse', status: 'Issued', spec: '18V 5.0Ah', assigneeId: 'EMP-01', assignedAt: ago(1), dueReturn: ahead(1), minQty: 2, maxQty: 8 },
-                { ...base, id: 'PB-001', name: 'Industrial Impact Power Bit Set (PH/PZ/Torx/Hex)', type: 'Consumable', category: 'Power Accessories', location: 'Shadow Board', status: 'Active', spec: 'Multi', minQty: 3, maxQty: 15 }
-            ]
-        };
-    },
 };
 
 /* Удобные глобальные алиасы для обратной совместимости обработчиков */
@@ -5987,30 +5898,6 @@ function fixIntegrity(index) {
     openIntegrityModal(); // пересканировать и перерисовать
 }
 
-/* --- Демо-режим: загрузка / очистка показательного набора --- */
-function demoLoad() {
-    if (Store.demoLoaded()) { alert(T('DEMO_ALREADY')); return; }
-    Store.loadDemo();
-    closeModal('systemMenuModal');
-    init();
-}
-
-function demoRemove() {
-    if (!confirm(T('DEMO_REMOVE_CONFIRM'))) return;
-    Store.removeDemo();
-    closeModal('systemMenuModal');
-    init();
-}
-
-/** Доступность кнопок демо в системном меню */
-function paintDemoButtons() {
-    const loaded = Store.demoLoaded();
-    const lb = document.getElementById('demoLoadBtn');
-    const rb = document.getElementById('demoRemoveBtn');
-    if (lb) lb.style.display = loaded ? 'none' : '';
-    if (rb) rb.style.display = loaded ? '' : 'none';
-}
-
 /* --- Откат последнего каскада (аварийный снимок) --- */
 function rollbackLastCascade() {
     const info = Store.rollbackInfo();
@@ -7286,6 +7173,15 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
         document.getElementById('bradyCsvBtn').style.display = stock.brand === 'Brady' ? '' : 'none';
     },
 
+    /** Адрес возврата для этикетки: Rack | Shelf | Bin (fallback — строка локации) */
+    addrLine(tool) {
+        const a = tool.address;
+        if (a && (a.rack || a.shelf || a.bin)) {
+            return [a.rack, a.shelf, a.bin].filter(Boolean).join(' | ');
+        }
+        return tool.location || '—';
+    },
+
     /** HTML одной этикетки под носитель и сущность */
     renderCell(stockKey, entityId, entityType) {
         const esc = Utils.esc;
@@ -7295,17 +7191,10 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
             const code = esc(tool.barcode || tool.id); // сканируемый код: внешняя наклейка или ID
             switch (stockKey) {
                 case 'genA':
-                    const holderA = tool.assigneeId ? `${Store.empName(tool.assigneeId)}` : 'N/A';
                     return `
                         <div class="label-details">
-                            <div class="id">${esc(tool.id)}</div>
-                            <div class="title">${esc(tool.name.length > 28 ? tool.name.slice(0, 28) + '…' : tool.name)}</div>
-                            <div>SN: <span>${esc(tool.sn || 'N/A')}</span></div>
-                            <div>Issued: <span>${Utils.fmtDate(tool.assignedAt)}</span></div>
-                            <div>Return Due: <span>${Utils.fmtDate(tool.dueReturn)}</span></div>
-                            <div>Calib Due: <span>${Utils.fmtDate(tool.calDue)}</span></div>
-                            <div>Holder: <span>${esc(holderA)}</span></div>
-                            <div>Location: <span>${esc(tool.location || 'N/A')}${tool.address ? ' | ' + esc(tool.address.zone) + ' | ' + esc(tool.address.rack) + ' ' + esc(tool.address.shelf) + '-' + esc(tool.address.bin) : ''}</span></div>
+                            <div class="title">${short(tool.name, 40)} | ${esc(tool.id)}</div>
+                            <div style="font-size:10px; font-weight:bold;">${esc(this.addrLine(tool))}</div>
                         </div>
                         <div class="label-qr"><canvas class="lbl-qr" data-qr-text="${CONFIG.QR_BASE_URL}/?tool=${encodeURIComponent(tool.id)}"></canvas></div>`;
                 case 'genB':
@@ -7353,8 +7242,8 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
                 case 'avery5163': return `
                     <div style="display:flex; width:100%; height:100%; gap:2mm; padding:2mm; align-items:center;">
                         <div style="flex:1; line-height:1.2;">
-                            <div style="font-size:24px; font-weight:bold; margin-bottom:4px;">${esc(tool.id)}</div>
-                            <div style="font-size:16px; font-weight:bold; word-break:break-word;">${short(tool.name, 45)}</div>
+                            <div style="font-size:16px; font-weight:bold; word-break:break-word;">${short(tool.name, 45)} | ${esc(tool.id)}</div>
+                            <div style="font-size:13px; font-weight:bold; margin-top:2mm;">${esc(this.addrLine(tool))}</div>
                         </div>
                         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2mm;">
                             <canvas class="lbl-qr" style="width:25mm; height:25mm;"></canvas>
@@ -7364,16 +7253,16 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
                 case 'avery5161': return `
                     <div style="display:flex; width:100%; height:100%; gap:2mm; padding:1.5mm; align-items:center;">
                         <div style="flex:1; line-height:1.2;">
-                            <div style="font-size:18px; font-weight:bold; margin-bottom:2px;">${esc(tool.id)}</div>
-                            <div style="font-size:13px; font-weight:bold; word-break:break-word;">${short(tool.name, 40)}</div>
+                            <div style="font-size:13px; font-weight:bold; word-break:break-word;">${short(tool.name, 40)} | ${esc(tool.id)}</div>
+                            <div style="font-size:10px; font-weight:bold; margin-top:1mm;">${esc(this.addrLine(tool))}</div>
                         </div>
                         <canvas class="lbl-qr" style="width:20mm; height:20mm;"></canvas>
                     </div>`;
                 case 'avery5366': return `
                     <div style="display:flex; width:100%; height:100%; gap:1.5mm; padding:0.8mm; align-items:center;">
                         <div style="flex:1; line-height:1.1;">
-                             <div style="font-size:12px; font-weight:bold;">${esc(tool.id)}</div>
-                             <div style="font-size:9px; font-weight:bold; word-break:break-word;">${short(tool.name, 25)}</div>
+                             <div style="font-size:9px; font-weight:bold; word-break:break-word;">${short(tool.name, 25)} | ${esc(tool.id)}</div>
+                             <div style="font-size:8px; font-weight:bold; margin-top:0.5mm;">${esc(this.addrLine(tool))}</div>
                         </div>
                         <canvas class="lbl-qr" style="width:13mm; height:13mm;"></canvas>
                     </div>`;
@@ -7528,17 +7417,11 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
     /* Type A: наклейка на инструмент (70×36мм) */
     renderTypeA(container, entityId) {
         const tool = Store.getTool(entityId) || { id: entityId, name: 'Unknown', sn: 'N/A', location: entityId };
-        const holder = tool.assigneeId ? `${Store.empName(tool.assigneeId)}` : 'N/A';
+        const name = tool.name.length > 40 ? tool.name.slice(0, 40) + '…' : tool.name;
         container.innerHTML = `
             <div class="label-details">
-                <div class="id">${Utils.esc(tool.id)}</div>
-                <div class="title">${Utils.esc(tool.name.length > 28 ? tool.name.slice(0, 28) + '…' : tool.name)}</div>
-                <div>SN: <span>${Utils.esc(tool.sn || 'N/A')}</span></div>
-                <div>Issued: <span>${Utils.fmtDate(tool.assignedAt)}</span></div>
-                <div>Return Due: <span>${Utils.fmtDate(tool.dueReturn)}</span></div>
-                <div>Calib Due: <span>${Utils.fmtDate(tool.calDue)}</span></div>
-                <div>Holder: <span>${Utils.esc(holder)}</span></div>
-                <div>Location: <span>${Utils.esc(tool.location || 'N/A')}</span></div>
+                <div class="title">${Utils.esc(name)} | ${Utils.esc(tool.id)}</div>
+                <div style="font-size:10px; font-weight:bold;">${Utils.esc(this.addrLine(tool))}</div>
             </div>
             <div class="label-qr"><canvas class="lbl-qr"></canvas></div>`;
         const canvas = container.querySelector('.lbl-qr');
