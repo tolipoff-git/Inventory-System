@@ -685,9 +685,9 @@ details[open] .faq-summary::before { transform: rotate(90deg); }
    ========================================================================== */
 @media print {
     /* --- Режим этикетки --- */
-    body.print-label-mode * { visibility: hidden; }
-    body.print-label-mode #printLabelContainer,
-    body.print-label-mode #printLabelContainer * { visibility: visible; }
+    body.print-label-mode > * { display: none !important; }
+    body.print-label-mode #appMainContainer { display: block !important; }
+    body.print-label-mode #appMainContainer > * { display: none !important; }
     body.print-label-mode #printLabelContainer {
         position: absolute;
         left: 0; top: 0;
@@ -697,11 +697,12 @@ details[open] .faq-summary::before { transform: rotate(90deg); }
         padding: 0;
     }
     body.print-label-mode .modal-overlay { display: none !important; }
-    body.print-label-mode #printLabelModal.active { display: block !important; background: none; }
+    body.print-label-mode #appMainContainer > #printLabelModal.active { display: block !important; background: none; }
     body.print-label-mode #printLabelModal .modal { border: none; box-shadow: none; padding: 0; margin: 0; background: none; max-width: none; width: auto; height: auto; }
     body.print-label-mode #printLabelModal .modal-header,
     body.print-label-mode #printLabelModal .modal-footer,
     body.print-label-mode #printLabelModal p { display: none !important; }
+    body.print-label-mode #printLabelModal .modal-body { padding: 0 !important; background: transparent !important; }
 
     /* --- Режим отчёта/СОП: прячем приложение целиком, показываем зону --- */
     body.print-zone-mode > * { display: none !important; }
@@ -1084,7 +1085,7 @@ select.work-only.form-control { max-width: 190px; }
         <button class="btn btn-warning" onclick="toggleLanguage()">🌐 <span id="langBtnText">RU | ENG</span></button>
 
         <div class="header-title-block">
-            <h1 class="header-title"><span data-i18n="Dashboard">Dashboard</span> <sup style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none;">v35</sup></h1>
+            <h1 class="header-title"><span data-i18n="Dashboard">Dashboard</span> <sup style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none;">v36</sup></h1>
             <div class="header-subtitle" data-i18n="Tools Inventory">Tools Inventory</div>
             <div class="brand-credit"><b>Igor Tolipov</b> <i>by Design</i></div>
         </div>
@@ -7299,7 +7300,6 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
                             <div style="font-size:10.5px; font-weight:bold;">${short(tool.name, 30)}</div>
                             <div>SN: ${esc(tool.sn || 'N/A')}</div>
                             <div>Spec: ${short(tool.spec || 'N/A', 24)}</div>
-                            <div style="font-size:7px; color:#333; margin-top:1mm;">${T('SCAN_LIVE_HINT')}</div>
                         </div>
                         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1mm;">
                             <canvas class="lbl-qr" style="width:20mm; height:20mm;"></canvas>
@@ -7311,7 +7311,6 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
                         <div style="flex:1; font-size:8px; line-height:1.2;">
                             <div style="font-size:12px; font-weight:bold;">${esc(tool.id)}</div>
                             <div style="font-size:9px;">${short(tool.name, 34)}</div>
-                            <div style="font-size:6.5px; color:#333;">${T('SCAN_LIVE_HINT')}</div>
                         </div>
                         <canvas class="lbl-qr" style="width:19mm; height:19mm;"></canvas>
                     </div>`;
