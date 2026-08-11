@@ -2526,6 +2526,10 @@ const Utils = {
         iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
         document.body.appendChild(iframe);
 
+        const stockKey = document.getElementById('ltmStock') ? document.getElementById('ltmStock').value : 'avery5161';
+        const stock = stockKey.startsWith('brady') ? Labels.STOCKS[stockKey] : { kind: 'sheet' };
+        const pageCss = stock.kind === 'sheet' ? '@page { size: letter; margin: 0; }' : `@page { size: ${stock.w}mm ${stock.h}mm; margin: 0; }`;
+
         const doc = iframe.contentWindow.document;
         doc.open();
         doc.write(`
@@ -2536,7 +2540,7 @@ const Utils = {
                 <title>Print Labels</title>
                 ${styles}
                 <style>
-                    @page { size: letter; margin: 0; }
+                    ${pageCss}
                     body { margin: 0; padding: 0; background: white; color: black !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     .label-preview-box, .label-preview-box * { color: black !important; }
                 </style>
@@ -5339,7 +5343,8 @@ function renderCategoryHub() {
     const lowStock = {};
     active.filter(isCons).forEach(t => {
         if (!t.minQty) return;
-        const inStock = active.filter(x => x.category === t.category && x.status === 'Active').length;
+        const inStock = active.filter(x => x.category === t.category && x.status === 'Active')
+                              .reduce((sum, x) => sum + (x.qty || 1), 0);
         if (inStock < t.minQty) lowStock[t.category] = `${inStock}/${t.minQty}`;
     });
     const lowStockHtml = Object.keys(lowStock).length
@@ -6512,6 +6517,8 @@ const Ops = {
             tool.status = 'Active';
         } else {
             tool.status = 'Maintenance'; // Needs Maintenance и Damaged → в очередь
+            if (condition === 'Needs Maintenance') tool.wear = Math.min(100, (tool.wear || 0) + 25);
+            if (condition === 'Damaged') tool.wear = Math.min(100, (tool.wear || 0) + 50);
         }
         Store.toolEvent(tool, `Returned — ${condition} (Signed: ${initials})`);
         if (emp) Store.empEvent(emp, `Returned ${tool.id} — ${condition} (Signed: ${initials})`);
@@ -8366,7 +8373,7 @@ const Kaizen = {
         if (hotCat) add(2, ['Tool Crib Manager'],
             `Average wear of "${hotCat[0]}" consumables exceeds 60% — schedule bulk replacement to minimize cam-out and scrap.`,
             `Средний износ расходки «${hotCat[0]}» выше 60% — запланируйте плановую замену партии против срыва шлицев и брака.`);
-        const lowStock = cons.filter(t => t.minQty > 0 && (t.maxQty || 0) <= t.minQty);
+        const lowStock = cons.filter(t => t.minQty > 0 && (t.qty || 1) <= t.minQty);
         if (lowStock.length) add(2, ['Administrator'],
             `Low stock on ${lowStock.length} consumable item(s) (${ids(lowStock)}) — approve a procurement request.`,
             `Низкий запас по ${lowStock.length} позициям расходки (${ids(lowStock)}) — утвердите заявку на закупку.`);
