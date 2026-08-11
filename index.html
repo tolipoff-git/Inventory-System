@@ -7157,29 +7157,24 @@ const Labels = {
                 
                 let html = '';
                 let pages = [];
-                let currentPageCells = [];
-                let currentPos = start;
-
-                Store.labelQueue.forEach(id => {
-                    const cellHTML = this.renderCell(stockKey, id, entityType);
-                    const col = (currentPos - 1) % stock.cols;
-                    const row = Math.floor((currentPos - 1) / stock.cols);
-                    currentPageCells.push(`<div class="sheet-cell" style="position:absolute; left:${stock.left + col * stock.pitchX}mm; top:${stock.top + row * stock.pitchY}mm; width:${stock.w}mm; height:${stock.h}mm; overflow:hidden;">${cellHTML}</div>`);
-                    
-                    if (currentPos >= perSheet) {
-                        pages.push(currentPageCells.join(''));
-                        currentPageCells = [];
-                        currentPos = 1;
-                    } else {
-                        currentPos++;
-                    }
-                });
+                let queueIdx = 0;
                 
-                if (currentPageCells.length > 0) {
-                    pages.push(currentPageCells.join(''));
+                while (queueIdx < Store.labelQueue.length) {
+                    let cells = '';
+                    for (let pos = 1; pos <= perSheet; pos++) {
+                        let cellHTML = '';
+                        if ((pages.length === 0 && pos >= start) || pages.length > 0) {
+                            if (queueIdx < Store.labelQueue.length) {
+                                cellHTML = this.renderCell(stockKey, Store.labelQueue[queueIdx], entityType);
+                                queueIdx++;
+                            }
+                        }
+                        const col = (pos - 1) % stock.cols, row = Math.floor((pos - 1) / stock.cols);
+                        cells += `<div class="sheet-cell" style="position:absolute; left:${stock.left + col * stock.pitchX}mm; top:${stock.top + row * stock.pitchY}mm; width:${stock.w}mm; height:${stock.h}mm; overflow:hidden;">${cellHTML}</div>`;
+                    }
+                    pages.push(cells);
                 }
-
-                html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; width:215.9mm; height:279.4mm; background:#fff; margin:0 auto${pi < pages.length - 1 ? '; page-break-after:always' : ''};">${p}</div>`).join('');
+html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; width:215.9mm; height:279.4mm; background:#fff; margin:0 auto${pi < pages.length - 1 ? '; page-break-after:always' : ''};">${p}</div>`).join('');
                 
                 container.className = 'label-preview-box sheet-mode';
                 container.innerHTML = html;
