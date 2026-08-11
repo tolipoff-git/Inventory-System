@@ -686,19 +686,16 @@ details[open] .faq-summary::before { transform: rotate(90deg); }
 @media print {
     /* --- Режим этикетки --- */
     body.print-label-mode > * { display: none !important; }
-    body.print-label-mode #appMainContainer { display: block !important; }
-    body.print-label-mode #appMainContainer > * { display: none !important; }
+    body.print-label-mode #printLabelModal.active { display: block !important; position: static !important; background: none; }
     body.print-label-mode #printLabelContainer {
-        position: absolute;
-        left: 0; top: 0;
         background: white !important;
         border: none !important;
         margin: 0;
         padding: 0;
     }
     body.print-label-mode .modal-overlay { display: none !important; }
-    body.print-label-mode #appMainContainer > #printLabelModal.active { display: block !important; background: none; }
-    body.print-label-mode #printLabelModal .modal { border: none; box-shadow: none; padding: 0; margin: 0; background: none; max-width: none; width: auto; height: auto; }
+
+    body.print-label-mode #printLabelModal .modal { position: static !important; border: none; box-shadow: none; padding: 0; margin: 0; background: none; max-width: none; width: auto; height: auto; max-height: none !important; }
     body.print-label-mode #printLabelModal .modal-header,
     body.print-label-mode #printLabelModal .modal-footer,
     body.print-label-mode #printLabelModal p { display: none !important; }
@@ -1085,7 +1082,7 @@ select.work-only.form-control { max-width: 190px; }
         <button class="btn btn-warning" onclick="toggleLanguage()">🌐 <span id="langBtnText">RU | ENG</span></button>
 
         <div class="header-title-block">
-            <h1 class="header-title"><span data-i18n="Dashboard">Dashboard</span> <sup style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none;">v36</sup></h1>
+            <h1 class="header-title"><span data-i18n="Dashboard">Dashboard</span> <sup style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none;">v37</sup></h1>
             <div class="header-subtitle" data-i18n="Tools Inventory">Tools Inventory</div>
             <div class="brand-credit"><b>Igor Tolipov</b> <i>by Design</i></div>
         </div>
