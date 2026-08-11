@@ -10,7 +10,6 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0a0f1d">
-<link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
 <title>Dashboard. Tools Inventory</title>
 
@@ -1047,8 +1046,6 @@ select.work-only.form-control { max-width: 190px; }
       }
     </script>
 
-    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
-
     <!-- Icons & Favicon for Desktop / Mobile Launchers -->
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
@@ -1269,40 +1266,6 @@ select.work-only.form-control { max-width: 190px; }
     </div>
 </div>
 
-<div class="modal-overlay" id="syncModal">
-    <div class="modal" style="max-width:540px;">
-        <div class="modal-header">
-            <h3 class="modal-title" data-i18n="Cross-Device Data Sync">Cross-Device Data Sync</h3>
-            <button class="close-btn" onclick="closeModal('syncModal')">&times;</button>
-        </div>
-        <div class="modal-body menu-stack">
-            <p style="font-size:0.9rem; color:var(--text-muted);">
-                Merge inventory data between your phone, laptop, and tablet without data loss.
-            </p>
-            <div class="form-group" style="text-align:left; background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; margin-bottom:15px;">
-                <label style="font-weight:bold;">Real-Time Cloud Sync Room Passcode:</label>
-                <div style="display:flex; gap:8px; margin-top:4px;">
-                    <input type="text" id="syncPasscodeInput" class="form-control" style="text-transform:uppercase; font-family:monospace; font-weight:bold;" placeholder="5S-8842">
-                    <button class="btn btn-warning" onclick="Sync.setPasscode(document.getElementById('syncPasscodeInput').value)">Set Key</button>
-                </div>
-                <div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">Use the same Passcode on your Phone and Laptop to link them together!</div>
-            </div>
-            <div class="form-group" style="text-align:left;">
-                <label>1. Export &amp; Backup Sync Package</label>
-                <div style="display:flex; gap:8px;">
-                    <button class="btn btn-warning" onclick="Sync.exportBundle()">⬇ Export Sync File (.inv)</button>
-                    <button class="btn btn-muted" onclick="Sync.copyToClipboard()">📋 Copy Code</button>
-                </div>
-            </div>
-            <div class="form-group" style="text-align:left; margin-top:15px;">
-                <label>2. Import &amp; Merge Sync Package</label>
-                <input type="file" id="syncFileInput" accept=".json,.inv" style="display:none;" onchange="Sync.handleFileSelect(event)">
-                <button class="btn wide" onclick="document.getElementById('syncFileInput').click()">📤 Upload &amp; Merge Sync File</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- FAQ / База знаний -->
 <div class="modal-overlay" id="faqModal">
     <div class="modal wide">
@@ -1352,7 +1315,6 @@ select.work-only.form-control { max-width: 190px; }
                 <span id="restoreBtnLabel" data-i18n="Restore Backup (.json)">Restore Backup (.json)</span>
                 <input type="file" style="display:none;" accept=".json" id="restoreFileInput" onchange="closeModal('systemMenuModal'); restoreBackup(event)">
             </label>
-            <button class="btn auth-admin" style="border:1px solid var(--accent); color:var(--accent);" onclick="closeModal('systemMenuModal'); Sync.pushCloud(); setTimeout(() => Sync.pullCloud(), 500); Utils.toast('Forcing full sync...');">🔄 <span data-i18n="Force Full Sync">Force Full Sync</span></button>
             <button class="btn btn-danger" onclick="closeModal('systemMenuModal'); forceUpdatePWA();">🔄 <span data-i18n="Force Update App">Force Update App</span></button>
         </div>
     </div>
@@ -2315,7 +2277,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v49',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v50',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-11',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -2728,7 +2690,7 @@ const translations = {
                 <details class="faq-details"><summary class="faq-summary">5. Procurement & Expense Requests</summary><div class="faq-content"><b>Multi-Item Cart:</b> The Procurement modal works like a shopping cart — add multiple line items (name, quantity, unit cost, reason, supplier link) one by one using <b>[+ Add to Request]</b>. A live table shows all items with a running Grand Total. Remove any item with ✕.<br><b>XLSX Export:</b> Click <b>Download Expense Request (.xlsx)</b> to generate a single official REQ003 form with all line items filled into rows 7, 8, 9, etc. of the corporate template. CSV export is also available.<br><b>Smart Recommendations:</b> The 5S Audit Report analyzes retirement trends and automatically generates <i>Procurement Recommendations</i> — which tools need replacing, how many, and why.</div></details>
                 <details class="faq-details"><summary class="faq-summary">6. Reports, Audit Log & SOPs</summary><div class="faq-content"><b>5S Audit Report:</b> Generates a full compliance report with active/overdue/damaged counts, Decommissioning Statistics (root causes, top losses), and data-driven Procurement Recommendations — all printable as a clean formatted form.<br><b>XLSX Full Export:</b> "Export Full Inventory" creates a styled multi-sheet Excel workbook with all tools, metadata, and status columns.<br><b>Audit Log:</b> Every critical action (assign, return, edit, retire, sync) is timestamped and logged. The log is browsable, searchable, and exportable to CSV. Auto-trimmed to 2000 entries to prevent storage overflow.<br><b>SOP Manuals:</b> Built-in Standard Operating Procedures (SOP-GEN-00, SOP-TW-01, SOP-BT-02, SOP-PB-03, SOP-DC-04). The "SOP" button on a tool card opens the matching manual automatically.</div></details>
                 <details class="faq-details"><summary class="faq-summary">7. Labels & Print Queue</summary><div class="faq-content"><b>Label Formats:</b> Three built-in label types: Type A (compact, for small tools), Type B (medium, with QR code), Type C (full-size, QR + barcode + address). All labels include the tool's full address path and are formatted for Avery 5961 sheets.<br><b>Print Queue:</b> Add multiple tools to the Print Queue from the label sub-menu. When ready, select <b>Print Queue (N)</b> to batch-print all queued labels on a single sheet — no duplicated QR codes, each label renders independently. Optionally clear the queue after printing.<br><b>Single Print:</b> Print a single label at any time without affecting the queue.</div></details>
-                <details class="faq-details"><summary class="faq-summary">8. Platform, Sync & Updates</summary><div class="faq-content"><b>Architecture:</b> 5S Tool Command Center v3 — a single-file offline-first PWA. All data persists locally in the browser (localStorage) with JSON backup/restore, RBAC role-based access (Administrator / Tool Crib Manager / Operator), and SHA-256 credential hashing.<br><b>Cross-Device Sync:</b> Use <b>Force Full Sync</b> (System Menu) or enable automatic cloud sync via a 6-character Sync Code to keep inventory synchronized across phone, laptop, and tablet. Merge logic uses strict timestamps to prevent data conflicts.<br><b>Automatic Updates:</b> When a developer pushes new features to GitHub, Cloudflare Pages builds and deploys the PWA automatically. The app checks for updates every 60 seconds — when a new version is detected, a 🚀 banner appears: <i>"New version available! Tap to update."</i> One tap applies the update instantly.<br><b>Force Update:</b> If the PWA is stuck on an old cached version, use the red <b>🔄 Force Update App</b> button in System Menu to unregister all Service Workers, clear all caches, and hard-reload the page.<br><br>Designed & engineered by <b>Igor Tolipov</b> · <i>by Design</i></div></details>
+                <details class="faq-details"><summary class="faq-summary">8. Platform, Sync & Updates</summary><div class="faq-content"><b>Architecture:</b> 5S Tool Command Center v3 — a single-file offline-first PWA. All data persists locally in the browser (localStorage) with JSON backup/restore, RBAC role-based access (Administrator / Tool Crib Manager / Operator), and SHA-256 credential hashing.<br><b>Cross-Device Transfer:</b> Move inventory between phone, laptop, and tablet via <b>Export Backup (.json)</b> → <b>Restore Backup (.json)</b> in System Menu. A restored backup fully replaces local data, so always export from the most up-to-date device.<br><b>Automatic Updates:</b> When a developer pushes new features to GitHub, Cloudflare Pages builds and deploys the PWA automatically. The app checks for updates every 60 seconds — when a new version is detected, a 🚀 banner appears: <i>"New version available! Tap to update."</i> One tap applies the update instantly.<br><b>Force Update:</b> If the PWA is stuck on an old cached version, use the red <b>🔄 Force Update App</b> button in System Menu to unregister all Service Workers, clear all caches, and hard-reload the page.<br><br>Designed & engineered by <b>Igor Tolipov</b> · <i>by Design</i></div></details>
             </div>`,
         'SCAN_LIVE_HINT': 'Scan for live status & history',
         'Action': 'Action',
@@ -3030,7 +2992,7 @@ const translations = {
                 <details class="faq-details"><summary class="faq-summary">5. Закупки и заявки</summary><div class="faq-content"><b>Корзина позиций:</b> Модалка закупки работает как корзина — добавляйте позиции (название, количество, цена, причина, ссылка) одну за другой кнопкой <b>[+ Add to Request]</b>. Живая таблица показывает все позиции с итогом Grand Total. Удалите любую позицию кнопкой ✕.<br><b>XLSX-экспорт:</b> Нажмите <b>Download Expense Request (.xlsx)</b> для генерации единой официальной формы REQ003 со всеми позициями в строках 7, 8, 9 и т.д. корпоративного шаблона. Также доступен CSV-экспорт.<br><b>Умные рекомендации:</b> Отчёт 5S Audit анализирует тренды списаний и автоматически формирует <i>Рекомендации к закупке</i> — какие инструменты нужно заменить, сколько и почему.</div></details>
                 <details class="faq-details"><summary class="faq-summary">6. Отчёты, журнал аудита и SOP</summary><div class="faq-content"><b>Отчёт 5S Audit:</b> Формирует полный отчёт соответствия с метриками актива/просрочек/повреждений, статистикой списаний (первопричины, топ потерь) и рекомендациями к закупке — всё печатается как чистая форма.<br><b>XLSX-экспорт:</b> «Export Full Inventory» создаёт стилизованную многолистовую Excel-книгу со всеми инструментами, метаданными и статусами.<br><b>Журнал аудита:</b> Каждое критическое действие (выдача, возврат, редактирование, списание, синхронизация) фиксируется с меткой времени. Журнал можно просматривать, искать и экспортировать в CSV. Автообрезка до 2000 записей для защиты от переполнения хранилища.<br><b>Мануалы SOP:</b> Вшитые стандартные операционные процедуры (SOP-GEN-00, SOP-TW-01, SOP-BT-02, SOP-PB-03, SOP-DC-04). Кнопка «SOP» на карточке инструмента открывает нужный мануал автоматически.</div></details>
                 <details class="faq-details"><summary class="faq-summary">7. Этикетки и очередь печати</summary><div class="faq-content"><b>Форматы этикеток:</b> Три встроенных типа: Тип A (компактный, для мелких инструментов), Тип B (средний, с QR-кодом), Тип C (полноразмерный, QR + штрихкод + адрес). Все этикетки включают полный адресный путь и форматированы под бумагу Avery 5961.<br><b>Очередь печати:</b> Добавляйте инструменты в очередь из подменю этикеток. Когда готовы — выберите <b>Print Queue (N)</b> для пакетной печати всех этикеток на одном листе, каждая рендерится независимо. Опционально очередь очищается после печати.<br><b>Одиночная печать:</b> Печатайте одну этикетку в любой момент, не затрагивая очередь.</div></details>
-                <details class="faq-details"><summary class="faq-summary">8. Платформа, синхронизация и обновления</summary><div class="faq-content"><b>Архитектура:</b> 5S Tool Command Center v3 — однофайловое офлайн-PWA. Все данные хранятся локально в браузере (localStorage) с бэкапом в JSON, ролевой моделью RBAC (Administrator / Tool Crib Manager / Operator) и SHA-256 хешированием паролей.<br><b>Синхронизация:</b> Используйте <b>Force Full Sync</b> (меню системы) или автоматическую облачную синхронизацию по 6-значному Sync Code для синхронизации между телефоном, ноутбуком и планшетом. Логика слияния использует строгие таймстемпы для предотвращения конфликтов данных.<br><b>Автообновление:</b> Когда разработчик пушит новые фичи в GitHub, Cloudflare Pages автоматически собирает и деплоит PWA. Приложение проверяет обновления каждые 60 секунд — при обнаружении новой версии появляется баннер 🚀 <i>«New version available! Tap to update.»</i> Одно нажатие — мгновенное обновление.<br><b>Принудительное обновление:</b> Если PWA застряло на старом кэше — красная кнопка <b>🔄 Force Update App</b> в меню системы удалит все Service Worker'ы, очистит кэш и перезагрузит страницу.<br><br>Разработка и дизайн — <b>Igor Tolipov</b> · <i>by Design</i></div></details>
+                <details class="faq-details"><summary class="faq-summary">8. Платформа, синхронизация и обновления</summary><div class="faq-content"><b>Архитектура:</b> 5S Tool Command Center v3 — однофайловое офлайн-PWA. Все данные хранятся локально в браузере (localStorage) с бэкапом в JSON, ролевой моделью RBAC (Administrator / Tool Crib Manager / Operator) и SHA-256 хешированием паролей.<br><b>Перенос между устройствами:</b> Через <b>Export Backup (.json)</b> → <b>Restore Backup (.json)</b> в системном меню. Восстановленный бэкап полностью заменяет локальные данные — экспортируйте всегда с самого актуального устройства.<br><b>Автообновление:</b> Когда разработчик пушит новые фичи в GitHub, Cloudflare Pages автоматически собирает и деплоит PWA. Приложение проверяет обновления каждые 60 секунд — при обнаружении новой версии появляется баннер 🚀 <i>«New version available! Tap to update.»</i> Одно нажатие — мгновенное обновление.<br><b>Принудительное обновление:</b> Если PWA застряло на старом кэше — красная кнопка <b>🔄 Force Update App</b> в меню системы удалит все Service Worker'ы, очистит кэш и перезагрузит страницу.<br><br>Разработка и дизайн — <b>Igor Tolipov</b> · <i>by Design</i></div></details>
             </div>`,
         'SCAN_LIVE_HINT': 'Сканируйте — актуальный статус и история',
         'Action': 'Действие',
@@ -3311,6 +3273,7 @@ const Store = {
 
     /* --- Ключи localStorage --- */
     KEYS: {
+        db: 'inv_inventory_db',   // единый ключ БД (save/load); остальные — legacy-миграция
         users: 'rbacUsers', ws: 'masterWorkstations', wp: 'masterWorkposts',
         programs: 'masterPrograms', wsProg: 'inv_wsProgram',
         personnel: 'masterPersonnel', tools: 'masterTools',
@@ -3322,6 +3285,7 @@ const Store = {
     programs: [], wsProgram: {}, // wsProgram: { 'DTS': 'USS' } — зона → программа; зоны без программы (Tool Gage, цех, склад) в карте отсутствуют
     auditLog: [], procurementLog: [], meta: { schemaVersion: CONFIG.SCHEMA_VERSION },
 
+    /** Экспорт всего состояния одним JSON (задел для merge-переноса между устройствами) */
     exportData() {
         return JSON.stringify({
             version: CONFIG.APP_VERSION,
@@ -3337,6 +3301,8 @@ const Store = {
         }, null, 2);
     },
 
+    /** Слияние чужого состояния с локальным (last-writer-wins по updatedAt/assignedAt).
+        Пока не вызывается из UI — задел для merge-восстановления бэкапов между устройствами. */
     mergeData(remoteJson) {
         let data;
         try {
@@ -3536,8 +3502,8 @@ const Store = {
                 meta: this.meta, labelQueue: this.labelQueue
             };
             // Trim audit log to prevent localStorage quota overflow
-            if (this.auditLog.length > 2000) {
-                this.auditLog = this.auditLog.slice(-2000);
+            if (this.auditLog.length > CONFIG.AUDIT_LOG_LIMIT) {
+                this.auditLog = this.auditLog.slice(-CONFIG.AUDIT_LOG_LIMIT);
                 state.auditLog = this.auditLog;
             }
             const raw = JSON.stringify(state);
@@ -3549,7 +3515,6 @@ const Store = {
         } catch (e) {
             alert('⚠ LocalStorage quota exceeded! Export a JSON backup now, then clear old data.');
         }
-        if (typeof Sync !== 'undefined' && Sync.onStoreMutation) Sync.onStoreMutation();
     },
 
     addToLabelQueue(id) {
@@ -4614,7 +4579,7 @@ const Auth = {
     /** Попытка логина: хэшируем ввод и сравниваем с хранимым хэшем */
     async login(username, password) {
         const hash = await Utils.hashPw(password);
-        return Store.users.find(x => x.username === username && (x.pwHash === hash || x.password === password));
+        return Store.users.find(x => x.username === username && x.pwHash === hash);
     },
 
     initGate() {
@@ -4629,34 +4594,36 @@ const Auth = {
         }
     },
 
-    authenticateGate() {
+    async authenticateGate() {
         const login = (document.getElementById('gateUserLogin')?.value || '').trim().toLowerCase();
         const pass = (document.getElementById('gatePassInput')?.value || '').trim();
         const errEl = document.getElementById('gateError');
-        
+
         if (!login || !pass) {
             if (errEl) { errEl.innerText = 'Please enter both Username and Password'; errEl.style.display = 'block'; }
             return;
         }
 
-
-
-        // 1. Check registered Store users by name, role or id
-        const foundUser = (Store.users || []).find(u => 
-            (u.name.toLowerCase() === login || u.role.toLowerCase() === login || String(u.id) === login) &&
-            (u.pass === pass)
+        // Единая проверка: username + SHA-256 хэш PIN (как в RBAC-логине)
+        const hash = await Utils.hashPw(pass);
+        const foundUser = (Store.users || []).find(u =>
+            String(u.username).toLowerCase() === login && u.pwHash === hash
         );
 
         if (foundUser) {
-            Auth.currentUser = foundUser;
+            // Гейт и RBAC — одна сессия: роль сразу активна для защищённых действий
+            Auth.current = { username: foundUser.username, role: foundUser.role };
+            Auth.persist();
             sessionStorage.setItem('inv_auth_active', 'true');
-            sessionStorage.setItem('inv_auth_user', JSON.stringify(foundUser));
             document.getElementById('mandatoryLoginModal').classList.remove('active');
             document.getElementById('appMainContainer').classList.remove('locked');
             document.getElementById('appMainContainer').style.display = 'block';
             if (errEl) errEl.style.display = 'none';
+            updateRBACUI();
             if (typeof renderAll === 'function') renderAll();
-            Utils.toast('🔓 System Unlocked! Welcome ' + foundUser.name);
+            Store.log('GATE_UNLOCK', foundUser.username);
+            Store.save();
+            Utils.toast('🔓 System Unlocked! Welcome ' + Utils.esc(foundUser.username));
         } else {
             if (errEl) { errEl.innerText = 'Invalid Username or Password'; errEl.style.display = 'block'; }
         }
@@ -4664,6 +4631,9 @@ const Auth = {
 
     lockSystem() {
         sessionStorage.removeItem('inv_auth_active');
+        Auth.current = { username: 'operator', role: 'Operator' };
+        Auth.persist();
+        updateRBACUI();
         document.getElementById('appMainContainer').classList.add('locked');
         document.getElementById('appMainContainer').style.setProperty('display', 'none', 'important');
         document.getElementById('mandatoryLoginModal').classList.add('active');
@@ -6706,7 +6676,7 @@ const Ops = {
 
         const renderPhoto = (p) => `
             <div style="position:relative; width:92px; display:inline-block; margin:4px;">
-                <img src="${p.data}" alt="photo" onclick="Photos.viewData(this.src)"
+                <img src="${Utils.esc(p.data)}" alt="photo" onclick="Photos.viewData(this.src)"
                      style="width:92px; height:92px; object-fit:cover; border-radius:4px; border:1px solid var(--border); cursor:zoom-in;">
                 <button data-action="photo-del" data-id="${Utils.esc(tool.id)}:${p.origIndex}" title="Delete"
                     style="position:absolute; top:-6px; right:-6px; width:22px; height:22px; border-radius:50%; border:none; background:var(--danger); color:#fff; cursor:pointer; font-size:12px; line-height:1;">✖</button>
@@ -8297,7 +8267,7 @@ const Photos = {
         const list = (tool.photos || []);
         return list.map((p, i) => `
             <div style="position:relative; width:92px;">
-                <img src="${p.data}" alt="photo ${i + 1}" onclick="Photos.viewData(this.src)"
+                <img src="${Utils.esc(p.data)}" alt="photo ${i + 1}" onclick="Photos.viewData(this.src)"
                      style="width:92px; height:92px; object-fit:cover; border-radius:4px; border:1px solid var(--border); cursor:zoom-in;">
                 <button data-action="photo-del" data-id="${Utils.esc(tool.id)}:${i}" title="Delete"
                     style="position:absolute; top:-6px; right:-6px; width:22px; height:22px; border-radius:50%; border:none; background:var(--danger); color:#fff; cursor:pointer; font-size:12px; line-height:1;">✖</button>
@@ -8922,7 +8892,6 @@ function init() {
     // Тихая самодиагностика: висячие ссылки — в консоль, ремонт через System Management
     const _issues = Store.integrityScan();
     if (_issues.length) console.warn(`[Integrity] ${_issues.length} dangling reference(s) — System Management → Integrity Check.`);
-    if (typeof Sync !== 'undefined' && Sync.init) Sync.init();
 
     // QR Deep Links Router
     const p = new URLSearchParams(window.location.search);
@@ -8948,123 +8917,6 @@ function init() {
         }, 300);
     }
 }
-
-const Sync = {
-    autoSyncEnabled: false,
-    blobUrl: '',
-    lastSyncTs: parseInt(localStorage.getItem('sys_last_sync_ts') || '0'),
-    isPulling: false,
-    isPushing: false,
-    debounceTimer: null,
-
-    init() {
-        this.startAutoSync();
-    },
-
-    startAutoSync() {
-        this.pullCloud();
-        if (this._pollTimer) clearInterval(this._pollTimer);
-        this._pollTimer = setInterval(() => this.pullCloud(), 30000);
-        window.addEventListener('online', () => this.pullCloud());
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') this.pullCloud();
-        });
-    },
-
-    onStoreMutation() {
-        if (!this.autoSyncEnabled) return;
-        clearTimeout(this.debounceTimer);
-        this.debounceTimer = setTimeout(() => this.pushCloud(), 1000);
-    },
-
-    async pushCloud() {
-        if (this.isPushing) {
-            clearTimeout(this.debounceTimer);
-            this.debounceTimer = setTimeout(() => this.pushCloud(), 1000);
-            return;
-        }
-        try {
-            this.isPushing = true;
-            const payload = Store.exportData();
-            const res = await fetch(this.blobUrl, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ts: Date.now(), data: payload })
-            });
-            if (res.ok) {
-                this.lastSyncTs = Date.now();
-                localStorage.setItem('sys_last_sync_ts', this.lastSyncTs.toString());
-                // console.log('[Sync] Pushed changes to cloud successfully');
-            }
-        } catch (e) {
-            console.warn('[Sync] Push offline/failed:', e.message);
-        } finally {
-            this.isPushing = false;
-        }
-    },
-
-    async pullCloud() {
-        if (this.isPulling || this.isPushing) return;
-        try {
-            this.isPulling = true;
-            const res = await fetch(this.blobUrl, { cache: 'no-store' });
-            if (res.ok) {
-                const remote = await res.json();
-                if (remote && remote.ts && remote.ts > this.lastSyncTs && remote.data) {
-                    // console.log('[Sync] New cloud updates found! Merging...');
-                    const mergeRes = Store.mergeData(remote.data);
-                    this.lastSyncTs = remote.ts;
-                    localStorage.setItem('sys_last_sync_ts', this.lastSyncTs.toString());
-                    if (mergeRes.success && (mergeRes.addedTools > 0 || mergeRes.updatedTools > 0 || mergeRes.addedEmp > 0 || mergeRes.updatedEmp > 0 || mergeRes.addedUsers > 0 || mergeRes.updatedUsers > 0 || mergeRes.listsUpdated)) {
-                        renderAll();
-                        Utils.toast(`⚡ Synced! Tools: +${mergeRes.addedTools}/${mergeRes.updatedTools} | Emp: +${mergeRes.addedEmp}/${mergeRes.updatedEmp} | Meta/Lists updated.`);
-                    }
-                }
-            }
-        } catch (e) {
-            // Silently handle offline network errors
-        } finally {
-            this.isPulling = false;
-        }
-    },
-
-    openModal() {
-        openModal('syncModal');
-    },
-
-    exportBundle() {
-        const json = Store.exportData();
-        Utils.downloadText(Utils.datedName('5S_Inventory_Sync', 'inv'), json, 'application/json');
-        Utils.toast('✅ Sync file exported successfully!');
-    },
-
-    copyToClipboard() {
-        const json = Store.exportData();
-        navigator.clipboard.writeText(json).then(() => {
-            Utils.toast('📋 Sync payload copied to clipboard!');
-        }).catch(() => {
-            Utils.toast('❌ Failed to copy payload');
-        });
-    },
-
-    handleFileSelect(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const res = Store.mergeData(e.target.result);
-            if (res.success) {
-                closeModal('syncModal');
-                renderAll();
-                Sync.pushCloud();
-                Utils.toast('✅ Manual Sync Complete!');
-            } else {
-                alert('Sync Error: ' + res.error);
-            }
-        };
-        reader.readAsText(file);
-    }
-};
 
 // Первый запуск: читаем localStorage (или seed), затем init
 Store.load();
