@@ -1084,7 +1084,7 @@ select.work-only.form-control { max-width: 190px; }
         <button class="btn btn-warning" onclick="toggleLanguage()">🌐 <span id="langBtnText">RU | ENG</span></button>
 
         <div class="header-title-block">
-            <h1 class="header-title"><span data-i18n="Dashboard">Dashboard</span> <sup style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none;">v39</sup></h1>
+            <h1 class="header-title"><span data-i18n="Dashboard">Dashboard</span> <sup style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none;">v40</sup></h1>
             <div class="header-subtitle" data-i18n="Tools Inventory">Tools Inventory</div>
             <div class="brand-credit"><b>Igor Tolipov</b> <i>by Design</i></div>
         </div>
@@ -7293,29 +7293,30 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
                             <div style="text-align:right; font-size:8px;">Shelf Audit QR</div>
                         </div>`;
                 case 'avery5163': return `
-                    <div style="display:flex; width:100%; height:100%; gap:2mm; padding:1.5mm;">
-                        <div style="flex:1; font-size:8px; line-height:1.3;">
-                            <div style="font-size:14px; font-weight:bold;">${esc(tool.id)}</div>
-                            <div style="font-size:10.5px; font-weight:bold;">${short(tool.name, 30)}</div>
-                            <div>SN: ${esc(tool.sn || 'N/A')}</div>
-                            <div>Spec: ${short(tool.spec || 'N/A', 24)}</div>
+                    <div style="display:flex; width:100%; height:100%; gap:2mm; padding:2mm; align-items:center;">
+                        <div style="flex:1; line-height:1.2;">
+                            <div style="font-size:24px; font-weight:bold; margin-bottom:4px;">${esc(tool.id)}</div>
+                            <div style="font-size:16px; font-weight:bold; word-break:break-word;">${short(tool.name, 45)}</div>
                         </div>
-                        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1mm;">
-                            <canvas class="lbl-qr" style="width:20mm; height:20mm;"></canvas>
-                            <canvas class="lbl-c39" data-code="${code}" style="width:32mm; height:8mm;"></canvas>
+                        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2mm;">
+                            <canvas class="lbl-qr" style="width:25mm; height:25mm;"></canvas>
+                            <canvas class="lbl-c39" data-code="${code}" style="width:35mm; height:9mm;"></canvas>
                         </div>
                     </div>`;
                 case 'avery5161': return `
-                    <div style="display:flex; width:100%; height:100%; gap:2mm; padding:1mm; align-items:center;">
-                        <div style="flex:1; font-size:8px; line-height:1.2;">
-                            <div style="font-size:12px; font-weight:bold;">${esc(tool.id)}</div>
-                            <div style="font-size:9px;">${short(tool.name, 34)}</div>
+                    <div style="display:flex; width:100%; height:100%; gap:2mm; padding:1.5mm; align-items:center;">
+                        <div style="flex:1; line-height:1.2;">
+                            <div style="font-size:18px; font-weight:bold; margin-bottom:2px;">${esc(tool.id)}</div>
+                            <div style="font-size:13px; font-weight:bold; word-break:break-word;">${short(tool.name, 40)}</div>
                         </div>
-                        <canvas class="lbl-qr" style="width:19mm; height:19mm;"></canvas>
+                        <canvas class="lbl-qr" style="width:20mm; height:20mm;"></canvas>
                     </div>`;
                 case 'avery5366': return `
                     <div style="display:flex; width:100%; height:100%; gap:1.5mm; padding:0.8mm; align-items:center;">
-                        <div style="flex:1; font-size:10px; font-weight:bold;">${esc(tool.id)}</div>
+                        <div style="flex:1; line-height:1.1;">
+                             <div style="font-size:12px; font-weight:bold;">${esc(tool.id)}</div>
+                             <div style="font-size:9px; font-weight:bold; word-break:break-word;">${short(tool.name, 25)}</div>
+                        </div>
                         <canvas class="lbl-qr" style="width:13mm; height:13mm;"></canvas>
                     </div>`;
                 case 'brady119': return `
