@@ -3587,7 +3587,7 @@ const Store = {
             // SN генерируется один раз и навсегда закрепляется за инструментом
             if (!t.sn) {
                 const rnd = Math.random().toString(36).substring(2, 10).toUpperCase();
-                t.sn = 'SN-' + rnd;
+                t.sn = (t.id.includes('-') ? t.id.split('-')[0] : 'SN') + '-' + rnd;
             }
             if (t.minQty === undefined) t.minQty = 0;
             if (t.maxQty === undefined) t.maxQty = 0;
@@ -6186,7 +6186,7 @@ const Ops = {
             barcode: document.getElementById('addToolBarcode').value.trim().toUpperCase(), // внешняя наклейка 5S00xxx
             sn: document.getElementById('addToolSN').value.trim().toUpperCase() // серийный номер
         };
-        if (!tool.sn) tool.sn = 'SN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+        if (!tool.sn) tool.sn = (tool.id.includes('-') ? tool.id.split('-')[0] : 'SN') + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
         if (address) tool.address = address;
         // Стейдженые фото прикрепляются к новому инструменту сразу при создании
         if (!Array.isArray(tool.photos)) tool.photos = [];
@@ -6359,7 +6359,7 @@ const Ops = {
             const clone = JSON.parse(JSON.stringify(tool));
             clone.id = Ops.suggestId(tool.id.split('-')[0]);
             clone.qty = issueQty;
-            clone.sn = 'SN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+            clone.sn = (tool.id.includes('-') ? tool.id.split('-')[0] : 'SN') + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
             Store.tools.push(clone);
             tool = clone; 
         }
