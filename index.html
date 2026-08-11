@@ -1084,7 +1084,7 @@ select.work-only.form-control { max-width: 190px; }
         <button class="btn btn-warning" onclick="toggleLanguage()">🌐 <span id="langBtnText">RU | ENG</span></button>
 
         <div class="header-title-block">
-            <h1 class="header-title"><span data-i18n="Dashboard">Dashboard</span> <sup style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none;">v43</sup></h1>
+            <h1 class="header-title"><span data-i18n="Dashboard">Dashboard</span> <sup style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none;">v44</sup></h1>
             <div class="header-subtitle" data-i18n="Tools Inventory">Tools Inventory</div>
             <div class="brand-credit"><b>Igor Tolipov</b> <i>by Design</i></div>
         </div>
@@ -2535,13 +2535,12 @@ const Utils = {
                 ${styles}
                 <style>
                     @page { size: letter; margin: 0; }
-                    body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    body { margin: 0; padding: 0; background: white; color: black !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .label-preview-box, .label-preview-box * { color: black !important; }
                 </style>
             </head>
             <body>
-                <div id="printLabelContainer" style="background:white;border:none;margin:0;padding:0;">
-                    ${clone.innerHTML}
-                </div>
+                ${clone.outerHTML}
             </body>
             </html>
         `);
