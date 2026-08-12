@@ -957,6 +957,11 @@ select.work-only.form-control { max-width: 190px; }
             // Check for updates every 60 seconds
             setInterval(() => reg.update(), 60000);
 
+            // …и сразу при возвращении во вкладку (PWA мог спать дольше интервала)
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') reg.update();
+            });
+
             reg.onupdatefound = () => {
               swNewWorker = reg.installing;
               if (swNewWorker) {
@@ -2277,8 +2282,8 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v50',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
-    BUILD_DATE: '2026-08-11',        // дата сборки для подвала
+    APP_VERSION: 'v51',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    BUILD_DATE: '2026-08-12',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
     WEAR_RETIRE_PCT: 75,             // износ, после которого инструмент списывается
@@ -2365,6 +2370,9 @@ const Utils = {
 
     /** Текущая метка времени ISO для истории и журнала */
     nowISO() { return new Date().toISOString(); },
+
+    /** Системный (автогенерированный) серийник формата SN-XXXXXXXX — не заводской номер */
+    isAutoSn(sn) { return /^SN-[0-9A-Z]{8}$/.test(sn || ''); },
 
     /** Разница в днях между датой и «сейчас» (отрицательная = просрочено) */
     daysUntil(v) {
@@ -2564,7 +2572,7 @@ const translations = {
         'Tool Class': 'Tool Class',
         'Inventory Number (ID)': 'Inventory Number (ID)',
         'ID_HINT': 'Auto: next free number in the selected class. Editable.',
-        'ID_BAD_FORMAT': 'Invalid number format. Use CLASS-NNN, e.g. TW-006 or PD-012.',
+        'ID_BAD_FORMAT': 'Invalid number format. Use CLASS-NNN (3-5 digits), e.g. TW-006.',
         'Controlled document — printed copies are uncontrolled': 'Controlled document — printed copies are uncontrolled',
         'KPI_COLLAPSE': 'Collapse/expand the card',
         'QR Scanner (Camera)': 'QR Scanner (Camera)',
@@ -2867,7 +2875,7 @@ const translations = {
         'Tool Class': 'Класс инструмента',
         'Inventory Number (ID)': 'Инвентарный номер (ID)',
         'ID_HINT': 'Авто: следующий свободный номер в выбранном классе. Можно править.',
-        'ID_BAD_FORMAT': 'Неверный формат номера. Используйте КЛАСС-NNN, напр. TW-006 или PD-012.',
+        'ID_BAD_FORMAT': 'Неверный формат номера. Используйте КЛАСС-NNN (3-5 цифр), напр. TW-006.',
         'Controlled document — printed copies are uncontrolled': 'Контролируемый документ — печатные копии неконтролируемы',
         'KPI_COLLAPSE': 'Свернуть/развернуть карточку',
         'QR Scanner (Camera)': 'QR-сканер (камера)',
@@ -3624,6 +3632,9 @@ const Store = {
         return (a && a.length) ? (a[a.length - 1].wear_pct || 0) : 0;
     },
 
+    /** Штамп времени последнего изменения карточки (задел для merge-переноса бэкапов) */
+    touch(tool) { tool.updatedAt = Utils.nowISO(); },
+
     /**
      * Автопересчёт просрочек при загрузке:
      * выданные с dueReturn < now и активные с calDue < now → статус Overdue.
@@ -3863,7 +3874,7 @@ const Store = {
             }));
         } catch (e) {
             if (typeof Utils !== 'undefined' && Utils.toast) {
-                Utils.toast('⚠️ Undo snapshot failed — storage full. Next action cannot be rolled back.', 'warning');
+                Utils.toast('⚠️ Undo snapshot failed — storage full. Next action cannot be rolled back.', 8000);
             }
         }
     },
@@ -5466,7 +5477,7 @@ function renderGrid() {
             <div class="tool-header" data-action="tool-detail" data-id="${Utils.esc(tool.id)}">
                 <div>
                     <div class="tool-title">${Utils.esc(tool.name)}</div>
-                    <div class="tool-id">${Utils.esc(tool.id)} · ${Utils.esc(tool.sn || '')} · Qty: ${tool.qty || 1}</div>
+                    <div class="tool-id">${Utils.esc(tool.id)} · Qty: ${tool.qty || 1}</div>
                 </div>
                 <div class="status-badge ${Utils.esc(tool.status)}">${Utils.esc(tool.status)}</div>
             </div>
@@ -6129,7 +6140,7 @@ const Ops = {
         const err = document.getElementById('addToolError');
         if (!id) { err.innerText = 'Tool ID is required.'; err.style.display = 'block'; return; }
         // Формат инвентарного номера: префикс класса (2-3 буквы) + дефис + 3 цифры
-        if (!/^[A-Z]{2,3}-\d{3}$/.test(id)) { err.innerText = T('ID_BAD_FORMAT'); err.style.display = 'block'; return; }
+        if (!/^[A-Z]{2,3}-\d{3,5}$/.test(id)) { err.innerText = T('ID_BAD_FORMAT'); err.style.display = 'block'; return; }
         if (Store.getTool(id)) { err.innerText = `Tool ID "${id}" already exists!`; err.style.display = 'block'; return; }
 
         const days = parseInt(document.getElementById('addToolInterval').value) || 0;
@@ -6187,7 +6198,10 @@ const Ops = {
         document.getElementById('editToolQty').value = tool.qty || 1;
         document.getElementById('editToolClass').value = tool.id.split('-')[0];
         document.getElementById('editToolBarcode').value = tool.barcode || '';
-        document.getElementById('editToolSN').value = tool.sn || '';
+        // Авто-SN не показываем как значение: пустое поле = оставить системный, placeholder его подсказывает
+        const snInput = document.getElementById('editToolSN');
+        if (Utils.isAutoSn(tool.sn)) { snInput.value = ''; snInput.placeholder = tool.sn + ' (auto)'; }
+        else { snInput.value = tool.sn || ''; snInput.placeholder = 'e.g. 1B8X9F2A'; }
         document.getElementById('editToolCat').value = tool.category || '';
         document.getElementById('editToolLoc').value = tool.location || '';
         
@@ -6266,6 +6280,7 @@ const Ops = {
             tool.maxQty = 0;
         }
         
+        Store.touch(tool);
         Store.log('TOOL_EDIT', tool.id);
         Store.save();
         if (typeof renderAll === 'function') renderAll(); else init();
@@ -6307,7 +6322,9 @@ const Ops = {
         let empVal = document.getElementById('assignEmp').value.trim();
         let emp = Store.getEmp(empVal) || Store.personnel.find(p => p.name.toLowerCase() === empVal.toLowerCase());
         if (!emp && empVal) {
-            emp = { id: 'EMP-' + Math.random().toString(36).substr(2, 6).toUpperCase(), name: empVal, history: [] };
+            let newEmpId;
+            do { newEmpId = 'EMP-' + Math.random().toString(36).substr(2, 6).toUpperCase(); } while (Store.getEmp(newEmpId));
+            emp = { id: newEmpId, name: empVal, history: [] };
             Store.personnel.push(emp);
         }
         const initials = document.getElementById('assignInitials').value.trim();
@@ -6328,10 +6345,12 @@ const Ops = {
 
         if (issueQty < (tool.qty || 1)) {
             tool.qty -= issueQty;
+            Store.touch(tool);
             const clone = JSON.parse(JSON.stringify(tool));
             clone.id = Ops.suggestId(tool.id.split('-')[0]);
             clone.qty = issueQty;
             clone.sn = (tool.id.includes('-') ? tool.id.split('-')[0] : 'SN') + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+            clone.barcode = ''; // штрихкод оригинала не наследуем — иначе дубль в системе
             Store.tools.push(clone);
             tool = clone; 
         }
@@ -6342,6 +6361,7 @@ const Ops = {
         tool.dueReturn = new Date(Date.now() + days * CONFIG.DAY_MS).toISOString();
         tool.location = `${document.getElementById('assignWs').value} / ${document.getElementById('assignPost').value}`;
         
+        Store.touch(tool);
         Store.toolEvent(tool, `Assigned to ${emp.name} for ${days}d (Qty: ${issueQty}, Signed: ${initials})`);
         Store.empEvent(emp, `Received ${tool.id} (Qty: ${issueQty}, Signed: ${initials})`);
         Store.log('TOOL_ASSIGN', `${tool.id} → ${emp.id} (Qty: ${issueQty})`);
@@ -6365,6 +6385,7 @@ const Ops = {
         const s = document.getElementById('transShelf').value;
         const b = document.getElementById('transBin').value;
         tool.location = `${z} - ${r} - ${s} - ${b}`;
+        Store.touch(tool);
         Store.toolEvent(tool, `Moved to ${tool.location}`);
         Store.log('TOOL_TRANSFER', `${tool.id} → ${tool.location}`);
         Store.save();
@@ -6391,6 +6412,7 @@ const Ops = {
         }
         tool.status = 'Maintenance';
         tool.assigneeId = null;
+        Store.touch(tool);
         Store.toolEvent(tool, 'Sent to maintenance queue');
         Store.log('TOOL_SERVICE', tool.id);
         Store.save();
@@ -6456,6 +6478,7 @@ const Ops = {
         if (!tool) return;
         tool.status = 'Backup';
         tool.calDue = new Date(Date.now() + 180 * CONFIG.DAY_MS).toISOString();
+        Store.touch(tool);
         tool.audit_history.push({
             date: Utils.nowISO().split('T')[0], inspector: Auth.current.username,
             wear_pct: Store.wearOf(tool), notes: 'Maintenance completed', result: 'PASS'
@@ -6489,9 +6512,18 @@ const Ops = {
             tool.status = 'Active';
         } else {
             tool.status = 'Maintenance'; // Needs Maintenance и Damaged → в очередь
-            if (condition === 'Needs Maintenance') tool.wear = Math.min(100, (tool.wear || 0) + 25);
-            if (condition === 'Damaged') tool.wear = Math.min(100, (tool.wear || 0) + 50);
+            // Износ фиксируем записью в audit_history — единственный источник,
+            // который читает Store.wearOf (дашборды, Kaizen, ротация).
+            const delta = condition === 'Damaged' ? 50 : 25;
+            tool.audit_history = tool.audit_history || [];
+            tool.audit_history.push({
+                date: Utils.nowISO().split('T')[0], inspector: initials,
+                wear_pct: Math.min(100, Store.wearOf(tool) + delta),
+                notes: `Returned in condition: ${condition}`,
+                result: condition === 'Damaged' ? 'FAIL' : 'NEEDS MAINTENANCE'
+            });
         }
+        Store.touch(tool);
         Store.toolEvent(tool, `Returned — ${condition} (Signed: ${initials})`);
         if (emp) Store.empEvent(emp, `Returned ${tool.id} — ${condition} (Signed: ${initials})`);
         Store.log('TOOL_RETURN', `${tool.id} (${condition})`);
@@ -6563,6 +6595,7 @@ const Ops = {
             date: dateStr, inspector: initials, wear_pct: +wear || 0,
             notes: `Decommissioned: ${reason}. ${notes}`, result: 'RETIRED / DECOMMISSIONED'
         });
+        Store.touch(tool);
         Store.log('TOOL_RETIRE', `${tool.id} (${reason}, ${wear}%)`);
         Store.save();
         closeModal('retireModal');
@@ -6578,6 +6611,7 @@ const Ops = {
         tool.status = 'Backup';
         delete tool.retiredAt; delete tool.retiredBy;
         delete tool.retireReason; delete tool.retireNotes; delete tool.retireWear;
+        Store.touch(tool);
         Store.toolEvent(tool, 'Restored from Archive to Backup');
         Store.log('TOOL_RESTORE', tool.id);
         Store.save();
@@ -6611,6 +6645,7 @@ const Ops = {
         list.forEach(t => {
             t.status = 'Maintenance';
             t.assigneeId = null;
+            Store.touch(t);
             Store.toolEvent(t, `Batch rotation swap executed by ${Auth.current.username}`);
         });
         Store.log('BATCH_ROTATION', `${list.length} tools`);
@@ -6635,7 +6670,8 @@ const Ops = {
         const isOverdue = tool.calDue && tool.calDue < Utils.nowISO().split('T')[0];
         document.getElementById('detDue').innerHTML = isOverdue ? `<span style="color:var(--danger); font-weight:bold;">${due} (OVERDUE)</span>` : due;
         
-        document.getElementById('detSN').innerText = tool.sn || 'N/A';
+        document.getElementById('detSN').innerText = tool.sn
+            ? tool.sn + (Utils.isAutoSn(tool.sn) ? ' (auto)' : '') : 'N/A';
         document.getElementById('detQty').innerText = tool.qty || 1;
         
         document.getElementById('detPrintBtn').setAttribute('data-action', 'print-label');
@@ -6885,13 +6921,17 @@ const Ops = {
             target.qty = (target.qty || 1) + order.qty;
             if (order.cost) target.cost = order.cost;
             if (order.purchase_url) target.purchase_url = order.purchase_url;
+            Store.touch(target);
             Store.toolEvent(target, `Received order ${order.id} (Qty: +${order.qty})`);
+            Store.log('ORDER_RECEIVE', `${order.id} → ${target.id} (Qty: +${order.qty})`);
             const idx = Store.tools.findIndex(t => t.id === orderId);
             if (idx >= 0) Store.tools.splice(idx, 1);
         } else {
             order.status = 'Active';
             order.id = Ops.suggestId(order.class ? order.class.split(' -')[0] : 'TOOL');
+            Store.touch(order);
             Store.toolEvent(order, `Received order ${orderId}, assigned ID ${order.id}`);
+            Store.log('ORDER_RECEIVE', `${orderId} → new ${order.id}`);
         }
         
         Store.save();
@@ -6903,6 +6943,7 @@ const Ops = {
         const idx = Store.tools.findIndex(t => t.id === orderId);
         if (idx >= 0) {
             Store.tools.splice(idx, 1);
+            Store.log('ORDER_CANCEL', orderId);
             Store.save();
             init();
         }
@@ -7798,6 +7839,7 @@ const Procure = {
                 purchase_url: item.link,
                 location: `${ws} / ${wp}`,
                 history: [`Ordered by ${initials}. Reason: ${item.reason}`],
+                audit_history: [], photos: [], sn: '',
                 targetToolId: item.toolId || null
             };
             
