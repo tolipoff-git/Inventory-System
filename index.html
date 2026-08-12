@@ -1357,6 +1357,20 @@ select.work-only.form-control { max-width: 190px; }
     </div>
 </div>
 
+<!-- Карточка закупки: полная информация, статусы, комментарии, логи -->
+<div class="modal-overlay" id="orderDetailModal">
+    <div class="modal wide">
+        <div class="modal-header">
+            <h3 class="modal-title" id="orderDetailTitle">📦</h3>
+            <button class="close-btn" onclick="closeModal('orderDetailModal')">&times;</button>
+        </div>
+        <div class="modal-body" id="orderDetailBody"></div>
+        <div class="modal-footer">
+            <button class="btn btn-muted" onclick="closeModal('orderDetailModal')" data-i18n="Close">Close</button>
+        </div>
+    </div>
+</div>
+
 <!-- Аудит поста 5S: оценки 1-5 по пяти столпам с рубриками -->
 <div class="modal-overlay" id="postAuditModal">
     <div class="modal narrow">
@@ -2345,7 +2359,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v57',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v58',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-12',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -2826,6 +2840,20 @@ const translations = {
         'ORDER_OPEN': 'In progress',
         'ORDER_RECEIVED': 'Received',
         'ORDER_CANCELLED': 'Cancelled',
+        'ORDER_CREATED': 'Created',
+        'ORDER_LINKED_TOOL': 'Linked tool',
+        'ORDER_NO_LINK': 'Not linked yet',
+        'ORDER_SUPPLIER': 'Supplier link',
+        'ORDER_REQUESTER': 'Requested by',
+        'ORDER_LOCATION': 'Delivery point',
+        'OPEN_TOOL_CARD': 'Open tool card',
+        'ORDER_TIMELINE': 'Status history',
+        'ORDER_LOGS': 'Audit log entries',
+        'Received into': 'Received into',
+        'Comments': 'Comments',
+        'NO_COMMENTS': 'No comments yet.',
+        'ADD_COMMENT': 'Add comment',
+        'COMMENT_EMPTY': 'Enter comment text.',
         'Type': 'Type',
         'Queue': 'Queue',
         'Permanent': 'Permanent',
@@ -2864,7 +2892,7 @@ const translations = {
                 <details class="faq-details"><summary class="faq-summary">2. Checkout, Return & Transfer</summary><div class="faq-content"><b>Assign Tool:</b> Select an employee from the personnel registry to check out a tool. If the tool is already assigned, a warning banner shows the current owner's name — reassigning automatically transfers ownership. If the person is not in the registry, the <b>+ New Person</b> shortcut opens the Personnel tab directly.<br><b>Return & Condition:</b> On return, the operator records the tool condition (Good / Needs Maintenance / Damaged). The condition impacts the employee's Care Score and triggers maintenance alerts.<br><b>Transfer:</b> Move any tool to a new physical address (Zone → Rack → Shelf → Bin) without changing its assignment status. All transfers are timestamped in the audit log.<br><b>QR & Barcode:</b> Hardware scanners (Keyboard Wedge, &lt;30ms) and the mobile 📷 QR button (native camera on Android/iOS) open tool or employee cards instantly from anywhere in the app.</div></details>
 <details class="faq-details"><summary class="faq-summary">3. Dashboard, KPI &amp; Culture Radar</summary><div class="faq-content"><b>Interactive Charts:</b> All dashboard charts (donut, bar, status) are clickable — tap any segment to filter the inventory grid to that category or status.<br><b>Production Culture Radar:</b> The 5S radar aggregates the latest 5S post audits into a factory-wide picture. Hover any pillar to see the best and worst posts (e.g., "Sort 5 — USS | Center Conveyor").<br><b>5S Post Audits:</b> A manager audits any workstation via the 📋 button in the station registry (or the Operations menu): each of the 5 pillars (Sort, Set in Order, Shine, Standardize, Sustain) is scored 1–5 with an on-screen rubric explaining exactly which condition matches each score (e.g., Shine: 1 = dirt, packaging and dust everywhere … 5 = spotless).<br><b>Care Score:</b> Every employee earns a Care Score (0–100, grades A–D) based on their return history. 'Good' returns maintain the score; 'Damaged' and 'Needs Maintenance' returns lower it. Scores appear in employee profiles, the personnel registry, and XLSX exports.</div></details>
                 <details class="faq-details"><summary class="faq-summary">4. Asset Lifecycle & Decommissioning</summary><div class="faq-content"><b>Photo Timeline:</b> Use "Add Photo" to capture a tool's condition at any point. Photos taken within 60 seconds of a checkout, return, or service event are visually embedded directly inside that event in the history timeline, creating a chronological photographic record.<br><b>Wear Tracking:</b> Each tool accumulates wear from condition reports. At 50% the card turns yellow (warning); at 75%+ the tool must be decommissioned.<br><b>Decommissioned Archive:</b> Retired tools are removed from the active inventory to keep the dashboard clean, but their full lifecycle — every checkout, return, photo, and maintenance record — remains accessible via <b>🗑 Decommissioned Assets</b> in the sidebar or System Menu.</div></details>
-<details class="faq-details"><summary class="faq-summary">5. Procurement &amp; Expense Requests</summary><div class="faq-content"><b>Multi-Item Cart:</b> The Procurement modal works like a shopping cart — add multiple line items (name, quantity, unit cost, reason, supplier link) one by one using <b>[+ Add to Request]</b>. A live table shows all items with a running Grand Total. Remove any item with ✕.<br><b>Orders Registry:</b> Every submitted request lands in the <b>Orders</b> registry (System Menu) with lifecycle statuses: Open → Received / Cancelled. Receiving an order can add its items straight into inventory; the full order history is kept in the procurement log.<br><b>XLSX Export:</b> Click <b>Download Expense Request (.xlsx)</b> to generate a single official REQ003 form with all line items filled into rows 7, 8, 9, etc. of the corporate template. CSV export is also available.<br><b>Smart Recommendations:</b> The 5S Audit Report analyzes retirement trends and automatically generates <i>Procurement Recommendations</i> — which tools need replacing, how many, and why.</div></details>
+<details class="faq-details"><summary class="faq-summary">5. Procurement &amp; Expense Requests</summary><div class="faq-content"><b>Multi-Item Cart:</b> The Procurement modal works like a shopping cart — add multiple line items (name, quantity, unit cost, reason, supplier link) one by one using <b>[+ Add to Request]</b>. A live table shows all items with a running Grand Total. Remove any item with ✕.<br><b>Orders Registry:</b> Every submitted request lands in the <b>Orders</b> registry (System Menu) with lifecycle statuses: Open → Received / Cancelled. Receiving an order adds its items straight into inventory and links the order to the tool card both ways. Click any order to open its full card: status timeline, comments, audit log entries, and the linked tool.<br><b>XLSX Export:</b> Click <b>Download Expense Request (.xlsx)</b> to generate a single official REQ003 form with all line items filled into rows 7, 8, 9, etc. of the corporate template. CSV export is also available.<br><b>Smart Recommendations:</b> The 5S Audit Report analyzes retirement trends and automatically generates <i>Procurement Recommendations</i> — which tools need replacing, how many, and why.</div></details>
                 <details class="faq-details"><summary class="faq-summary">6. Reports, Audit Log & SOPs</summary><div class="faq-content"><b>5S Audit Report:</b> Generates a full compliance report with active/overdue/damaged counts, Decommissioning Statistics (root causes, top losses), and data-driven Procurement Recommendations — all printable as a clean formatted form.<br><b>XLSX Full Export:</b> "Export Full Inventory" creates a styled multi-sheet Excel workbook with all tools, metadata, and status columns.<br><b>Audit Log:</b> Every critical action (assign, return, edit, retire, orders) is timestamped and logged. The log is browsable, searchable, and exportable to CSV. Auto-trimmed to 2000 entries to prevent storage overflow.<br><b>SOP Manuals:</b> Built-in Standard Operating Procedures (SOP-GEN-00, SOP-TW-01, SOP-BT-02, SOP-PB-03, SOP-DC-04). The "SOP" button on a tool card opens the matching manual automatically.</div></details>
 <details class="faq-details"><summary class="faq-summary">7. Labels &amp; Print Queue</summary><div class="faq-content"><b>Label Layout:</b> Line 1: <b>Description | ID</b>; below — the storage address <b>Rack | Shelf | Bin</b>, so even if a tool was moved it can always be returned to its exact place.<br><b>Label Formats:</b> Three built-in label types: Type A (compact, for small tools), Type B (medium, with QR code), Type C (full-size, QR + barcode + address). All labels include the tool's full address path and are formatted for Avery 5961 sheets.<br><b>Print Queue:</b> Add multiple tools to the Print Queue from the label sub-menu. When ready, select <b>Print Queue (N)</b> to batch-print all queued labels on a single sheet — no duplicated QR codes, each label renders independently. Optionally clear the queue after printing.<br><b>Single Print:</b> Print a single label at any time without affecting the queue.</div></details>
                 <details class="faq-details"><summary class="faq-summary">8. Platform &amp; Updates</summary><div class="faq-content"><b>Architecture:</b> 5S Tool Command Center v3 — a single-file offline-first PWA. All data persists locally in the browser (localStorage) with JSON backup/restore, RBAC role-based access (Administrator / Tool Crib Manager / Operator), and SHA-256 credential hashing.<br><b>Cross-Device Transfer:</b> Move inventory between phone, laptop, and tablet via <b>Export Backup (.json)</b> → <b>Restore Backup (.json)</b> in System Menu. A restored backup fully replaces local data, so always export from the most up-to-date device.<br><b>Automatic Updates:</b> When a developer pushes new features to GitHub, Cloudflare Pages builds and deploys the PWA automatically. The app checks for updates every 60 seconds — when a new version is detected, a 🚀 banner appears: <i>"New version available! Tap to update."</i> One tap applies the update instantly.<br><b>Force Update:</b> If the PWA is stuck on an old cached version, use the red <b>🔄 Force Update App</b> button in System Menu to unregister all Service Workers, clear all caches, and hard-reload the page.<br><br>Designed & engineered by <b>Igor Tolipov</b> · <i>by Design</i></div></details>
@@ -3233,6 +3261,20 @@ const translations = {
         'ORDER_OPEN': 'В работе',
         'ORDER_RECEIVED': 'Получено',
         'ORDER_CANCELLED': 'Отменено',
+        'ORDER_CREATED': 'Создана',
+        'ORDER_LINKED_TOOL': 'Связанный инструмент',
+        'ORDER_NO_LINK': 'Пока не привязан',
+        'ORDER_SUPPLIER': 'Ссылка на поставщика',
+        'ORDER_REQUESTER': 'Заявитель',
+        'ORDER_LOCATION': 'Точка поставки',
+        'OPEN_TOOL_CARD': 'Открыть карточку инструмента',
+        'ORDER_TIMELINE': 'История статусов',
+        'ORDER_LOGS': 'Записи журнала аудита',
+        'Received into': 'Оприходовано в',
+        'Comments': 'Комментарии',
+        'NO_COMMENTS': 'Комментариев пока нет.',
+        'ADD_COMMENT': 'Добавить комментарий',
+        'COMMENT_EMPTY': 'Введите текст комментария.',
         'Type': 'Тип',
         'Queue': 'Очередь',
         'Permanent': 'Постоянный',
@@ -3271,7 +3313,7 @@ const translations = {
                 <details class="faq-details"><summary class="faq-summary">2. Выдача, возврат и перемещение</summary><div class="faq-content"><b>Назначение:</b> Выберите сотрудника из справочника для выдачи инструмента. Если инструмент уже у кого-то — появится предупреждение с именем текущего владельца, переназначение автоматически передаст право. Если человека нет в списке — ссылка <b>+ New Person</b> откроет вкладку «Personnel» напрямую.<br><b>Возврат и состояние:</b> При возврате оператор фиксирует состояние (Good / Needs Maintenance / Damaged). Состояние влияет на Care Score сотрудника и запускает оповещения о ремонте.<br><b>Перемещение:</b> Переместите инструмент на новый адрес (Зона → Стеллаж → Полка → Ячейка) без изменения статуса выдачи. Все перемещения фиксируются в журнале аудита.<br><b>QR и штрихкоды:</b> Аппаратные сканеры (Keyboard Wedge, &lt;30мс) и мобильная кнопка 📷 QR (нативная камера Android/iOS) открывают карточку инструмента или сотрудника мгновенно из любого места приложения.</div></details>
 <details class="faq-details"><summary class="faq-summary">3. Дашборд, KPI и радар культуры</summary><div class="faq-content"><b>Интерактивные графики:</b> Все диаграммы (донат, бары, статус) кликабельны — нажмите на сегмент, чтобы отфильтровать инвентарь по категории или статусу.<br><b>Радар культуры производства:</b> 5S-радар собирает последние аудиты постов в общую картину по фабрике. Наведите курсор на столп — увидите лучший и худший посты (напр., «Сортировка 5 — USS | Center Conveyor»).<br><b>5S-аудит постов:</b> Менеджер аудирует любой пост кнопкой 📋 в реестре постов (или через меню операций): каждый из 5 столпов (Сортировка, Порядок, Чистота, Стандартизация, Совершенствование) оценивается от 1 до 5 с экранной расшифровкой, какое состояние соответствует каждой оценке (напр., Чистота: 1 — везде мусор, упаковки и пыль … 5 — идеально чисто).<br><b>Care Score:</b> Каждый сотрудник получает балл бережливости (0–100, оценки A–D) на основе истории возвратов. 'Good' сохраняет рейтинг; 'Damaged' и 'Needs Maintenance' снижают. Баллы видны в профилях, справочнике и XLSX-экспорте.</div></details>
                 <details class="faq-details"><summary class="faq-summary">4. Жизненный цикл и списание</summary><div class="faq-content"><b>Фото-таймлайн:</b> Используйте «Add Photo» для фиксации состояния в любой момент. Фото, сделанные в течение 60 секунд после события (выдача/возврат/ремонт), визуально встраиваются прямо в это событие в истории, создавая хронологическую фотолетопись.<br><b>Износ:</b> Каждый инструмент накапливает износ из отчётов о состоянии. При 50% карточка становится жёлтой (предупреждение); при 75%+ инструмент должен быть списан.<br><b>Архив списанных:</b> Списанные инструменты скрываются из активной базы, но их полная история жизни — каждая выдача, возврат, фото и ремонт — доступна через <b>🗑 Decommissioned Assets</b> в боковой панели или меню системы.</div></details>
-<details class="faq-details"><summary class="faq-summary">5. Закупки и заявки</summary><div class="faq-content"><b>Корзина позиций:</b> Модалка закупки работает как корзина — добавляйте позиции (название, количество, цена, причина, ссылка) одну за другой кнопкой <b>[+ Add to Request]</b>. Живая таблица показывает все позиции с итогом Grand Total. Удалите любую позицию кнопкой ✕.<br><b>Реестр заявок:</b> Каждая заявка попадает в <b>Реестр заявок</b> (системное меню) со статусами жизненного цикла: В работе → Получена / Отменена. При приёмке заявки позиции можно сразу добавить в инвентарь; вся история заявок хранится в журнале закупок.<br><b>XLSX-экспорт:</b> Нажмите <b>Download Expense Request (.xlsx)</b> для генерации единой официальной формы REQ003 со всеми позициями в строках 7, 8, 9 и т.д. корпоративного шаблона. Также доступен CSV-экспорт.<br><b>Умные рекомендации:</b> Отчёт 5S Audit анализирует тренды списаний и автоматически формирует <i>Рекомендации к закупке</i> — какие инструменты нужно заменить, сколько и почему.</div></details>
+<details class="faq-details"><summary class="faq-summary">5. Закупки и заявки</summary><div class="faq-content"><b>Корзина позиций:</b> Модалка закупки работает как корзина — добавляйте позиции (название, количество, цена, причина, ссылка) одну за другой кнопкой <b>[+ Add to Request]</b>. Живая таблица показывает все позиции с итогом Grand Total. Удалите любую позицию кнопкой ✕.<br><b>Реестр заявок:</b> Каждая заявка попадает в <b>Реестр заявок</b> (системное меню) со статусами жизненного цикла: В работе → Получена / Отменена. При приёмке заявки позиции оприходуются в инвентарь, а заявка связывается с карточкой инструмента в обе стороны. Клик по любой заявке открывает её полную карточку: историю статусов, комментарии, записи журнала аудита и связанный инструмент.<br><b>XLSX-экспорт:</b> Нажмите <b>Download Expense Request (.xlsx)</b> для генерации единой официальной формы REQ003 со всеми позициями в строках 7, 8, 9 и т.д. корпоративного шаблона. Также доступен CSV-экспорт.<br><b>Умные рекомендации:</b> Отчёт 5S Audit анализирует тренды списаний и автоматически формирует <i>Рекомендации к закупке</i> — какие инструменты нужно заменить, сколько и почему.</div></details>
                 <details class="faq-details"><summary class="faq-summary">6. Отчёты, журнал аудита и SOP</summary><div class="faq-content"><b>Отчёт 5S Audit:</b> Формирует полный отчёт соответствия с метриками актива/просрочек/повреждений, статистикой списаний (первопричины, топ потерь) и рекомендациями к закупке — всё печатается как чистая форма.<br><b>XLSX-экспорт:</b> «Export Full Inventory» создаёт стилизованную многолистовую Excel-книгу со всеми инструментами, метаданными и статусами.<br><b>Журнал аудита:</b> Каждое критическое действие (выдача, возврат, редактирование, списание, заявки) фиксируется с меткой времени. Журнал можно просматривать, искать и экспортировать в CSV. Автообрезка до 2000 записей для защиты от переполнения хранилища.<br><b>Мануалы SOP:</b> Вшитые стандартные операционные процедуры (SOP-GEN-00, SOP-TW-01, SOP-BT-02, SOP-PB-03, SOP-DC-04). Кнопка «SOP» на карточке инструмента открывает нужный мануал автоматически.</div></details>
 <details class="faq-details"><summary class="faq-summary">7. Этикетки и очередь печати</summary><div class="faq-content"><b>Макет этикетки:</b> Строка 1: <b>Описание | ID</b>; ниже — адрес хранения <b>Стеллаж | Полка | Ячейка</b>, поэтому даже если инструмент переместили, его всегда можно вернуть точно на своё место.<br><b>Форматы этикеток:</b> Три встроенных типа: Тип A (компактный, для мелких инструментов), Тип B (средний, с QR-кодом), Тип C (полноразмерный, QR + штрихкод + адрес). Все этикетки включают полный адресный путь и форматированы под бумагу Avery 5961.<br><b>Очередь печати:</b> Добавляйте инструменты в очередь из подменю этикеток. Когда готовы — выберите <b>Print Queue (N)</b> для пакетной печати всех этикеток на одном листе, каждая рендерится независимо. Опционально очередь очищается после печати.<br><b>Одиночная печать:</b> Печатайте одну этикетку в любой момент, не затрагивая очередь.</div></details>
                 <details class="faq-details"><summary class="faq-summary">8. Платформа и обновления</summary><div class="faq-content"><b>Архитектура:</b> 5S Tool Command Center v3 — однофайловое офлайн-PWA. Все данные хранятся локально в браузере (localStorage) с бэкапом в JSON, ролевой моделью RBAC (Administrator / Tool Crib Manager / Operator) и SHA-256 хешированием паролей.<br><b>Перенос между устройствами:</b> Через <b>Export Backup (.json)</b> → <b>Restore Backup (.json)</b> в системном меню. Восстановленный бэкап полностью заменяет локальные данные — экспортируйте всегда с самого актуального устройства.<br><b>Автообновление:</b> Когда разработчик пушит новые фичи в GitHub, Cloudflare Pages автоматически собирает и деплоит PWA. Приложение проверяет обновления каждые 60 секунд — при обнаружении новой версии появляется баннер 🚀 <i>«New version available! Tap to update.»</i> Одно нажатие — мгновенное обновление.<br><b>Принудительное обновление:</b> Если PWA застряло на старом кэше — красная кнопка <b>🔄 Force Update App</b> в меню системы удалит все Service Worker'ы, очистит кэш и перезагрузит страницу.<br><br>Разработка и дизайн — <b>Igor Tolipov</b> · <i>by Design</i></div></details>
@@ -5262,6 +5304,9 @@ const Actions = {
     'retire':        id => doAction('Administrator', () => Ops.openRetireModal(id)),
     'receive-order': id => doAction('Tool Crib Manager', () => Ops.receiveOrder(id)),
     'cancel-order':  id => doAction('Tool Crib Manager', () => Ops.cancelOrder(id)),
+    'order-detail':  id => Ops.openOrderDetail(id),
+    'order-open-tool': id => { closeModal('orderDetailModal'); closeModal('ordersModal'); Ops.openDetailModal(id); },
+    'add-order-comment': id => doAction('Operator', () => Ops.addOrderComment(id)),
     'return':        id => Ops.returnTool(id),
     'remove-emp':    id => Ops.removeEmp(id),
     'edit-emp':      id => editRegistryEmp(id),
@@ -7337,6 +7382,7 @@ const Ops = {
         
         const target = order.targetToolId ? Store.getTool(order.targetToolId) : Store.tools.find(t => t.name === order.name && t.status !== 'Pending Delivery' && t.status !== 'Retired');
         
+        let receivedInto;
         if (target) {
             target.qty = (target.qty || 1) + order.qty;
             if (order.cost) target.cost = order.cost;
@@ -7344,6 +7390,7 @@ const Ops = {
             Store.touch(target);
             Store.toolEvent(target, `Received order ${order.id} (Qty: +${order.qty})`);
             Store.log('ORDER_RECEIVE', `${order.id} → ${target.id} (Qty: +${order.qty})`);
+            receivedInto = target.id;
             const idx = Store.tools.findIndex(t => t.id === orderId);
             if (idx >= 0) Store.tools.splice(idx, 1);
         } else {
@@ -7352,15 +7399,17 @@ const Ops = {
             Store.touch(order);
             Store.toolEvent(order, `Received order ${orderId}, assigned ID ${order.id}`);
             Store.log('ORDER_RECEIVE', `${orderId} → new ${order.id}`);
+            receivedInto = order.id;
         }
 
         // Журнал заявок: статус «получено»
         const rec = Store.procurementLog.find(l => l.orderId === orderId);
-        if (rec) { rec.status = 'received'; rec.receivedAt = Utils.nowISO().split('T')[0]; }
+        if (rec) { rec.status = 'received'; rec.receivedAt = Utils.nowISO().split('T')[0]; rec.receivedInto = receivedInto; }
 
         Store.save();
         init();
         if (document.getElementById('ordersModal').classList.contains('active')) this.openOrders();
+        if (document.getElementById('orderDetailModal').classList.contains('active')) this.openOrderDetail(orderId);
     },
 
     cancelOrder(orderId) {
@@ -7375,6 +7424,7 @@ const Ops = {
             Store.save();
             init();
             if (document.getElementById('ordersModal').classList.contains('active')) this.openOrders();
+            if (document.getElementById('orderDetailModal').classList.contains('active')) this.openOrderDetail(orderId);
         }
     },
 
@@ -7442,15 +7492,37 @@ const Ops = {
         Utils.toast(T('AUDIT_SAVED'));
     },
 
-    /* ---------- Реестр заявок: открытые + история со статусами ---------- */
+    /* ---------- Реестр заявок: сводка, открытые + история со статусами ---------- */
     openOrders() {
         const open = Store.tools.filter(t => t.status === 'Pending Delivery');
+        const log = Store.procurementLog;
+        const sumOf = arr => arr.reduce((s, r) => s + (+r.total || ((+r.qty || 0) * (+r.cost || 0)) || 0), 0);
+        const openRecs = log.filter(l => (l.status || 'open') === 'open');
+        const recvRecs = log.filter(l => l.status === 'received');
+        const cnclRecs = log.filter(l => l.status === 'cancelled');
+        // Сводка по статусам: количество и сумма
+        const chip = (color, label, n, sum) =>
+            `<div style="flex:1; min-width:110px; text-align:center; border:1px solid var(--border); border-radius:6px; padding:8px;">
+                <div style="font-size:1.3rem; font-weight:bold; color:${color};">${n}</div>
+                <div style="font-size:0.8rem; color:var(--text-muted);">${label}</div>
+                <div style="font-size:0.85rem; font-weight:bold;">$${sum.toFixed(2)}</div>
+            </div>`;
+        const summary = `<div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+            ${chip('var(--warning)', T('ORDER_OPEN'), openRecs.length, sumOf(openRecs))}
+            ${chip('var(--success)', T('ORDER_RECEIVED'), recvRecs.length, sumOf(recvRecs))}
+            ${chip('var(--danger)', T('ORDER_CANCELLED'), cnclRecs.length, sumOf(cnclRecs))}
+        </div>`;
+
+        const detailBtn = id => `<button class="btn audit-btn" data-action="order-detail" data-id="${Utils.esc(id)}">${T('Details')}</button>`;
+        const cmtCnt = l => (l && l.comments && l.comments.length) ? ` · 💬 ${l.comments.length}` : '';
+
         const openHtml = open.length ? open.map(o => `
             <div class="history-item">
                 <span><strong>${Utils.esc(o.id)}</strong> — ${Utils.esc(o.name)} ×${o.qty || 1}${o.cost ? ` · $${(+o.cost).toFixed(2)}` : ''}<br>
-                    <span style="color:var(--text-muted); font-size:0.85rem;">${Utils.esc(o.location || '')}${o.targetToolId ? ' → ' + Utils.esc(o.targetToolId) : ''}</span>
+                    <span style="color:var(--text-muted); font-size:0.85rem;">${Utils.esc(o.location || '')}${o.targetToolId ? ' → ' + Utils.esc(o.targetToolId) : ''}${cmtCnt(log.find(l => l.orderId === o.id))}</span>
                 </span>
                 <div style="white-space:nowrap;">
+                    ${detailBtn(o.id)}
                     <button class="btn btn-success audit-btn" data-action="receive-order" data-id="${Utils.esc(o.id)}">${T('Mark as Received')}</button>
                     <button class="btn btn-danger audit-btn" data-action="cancel-order" data-id="${Utils.esc(o.id)}">${T('Cancel Order')}</button>
                 </div>
@@ -7464,22 +7536,118 @@ const Ops = {
             const [c, label] = map[s] || map.open;
             return `<span style="color:${c}; font-weight:bold; white-space:nowrap;">${label}</span>`;
         };
-        const hist = [...Store.procurementLog].reverse();
+        const hist = [...log].reverse();
         const histHtml = hist.length ? hist.map(l => `
             <div class="history-item">
-                <span>${Utils.esc(l.name)} ×${l.qty} · $${(+l.total || 0).toFixed(2)}<br>
-                    <span style="color:var(--text-muted); font-size:0.85rem;">${Utils.esc(l.date || '')} · ${Utils.esc(l.reason || '')} · ${Utils.esc(l.initials || '')}</span>
+                <span>${l.orderId ? `<strong>${Utils.esc(l.orderId)}</strong> — ` : ''}${Utils.esc(l.name)} ×${l.qty} · $${(+l.total || 0).toFixed(2)}<br>
+                    <span style="color:var(--text-muted); font-size:0.85rem;">${Utils.esc(l.date || '')} · ${Utils.esc(l.reason || '')} · ${Utils.esc(l.initials || '')}${l.receivedInto ? ' → ' + Utils.esc(l.receivedInto) : ''}${cmtCnt(l)}</span>
                 </span>
-                ${badge(l.status)}
+                <div style="white-space:nowrap;">${badge(l.status)} ${l.orderId ? detailBtn(l.orderId) : ''}</div>
             </div>`).join('')
             : `<div style="text-align:center; color:var(--text-muted); padding:10px;">${T('No order history yet.')}</div>`;
 
-        document.getElementById('ordersList').innerHTML = `
+        document.getElementById('ordersList').innerHTML = summary + `
             <h4 style="color:var(--primary); margin:0 0 8px; border-bottom:1px dashed var(--border); padding-bottom:5px;">${T('Open Orders')}</h4>
             <div class="history-list" style="margin-bottom:16px;">${openHtml}</div>
             <h4 style="color:var(--primary); margin:0 0 8px; border-bottom:1px dashed var(--border); padding-bottom:5px;">${T('Order History')}</h4>
             <div class="history-list">${histHtml}</div>`;
         openModal('ordersModal');
+    },
+
+    /* ---------- Карточка закупки: детали, история статусов, комментарии, логи ---------- */
+    openOrderDetail(orderId) {
+        const rec = Store.procurementLog.find(l => l.orderId === orderId);
+        if (!rec) { Utils.toast(T('Tool not found:') + ' ' + orderId); return; }
+        const order = Store.getTool(orderId); // живёт в tools, пока заявка открыта
+        const status = rec.status || 'open';
+        const badgeMap = { open: ['var(--warning)', T('ORDER_OPEN')],
+                           received: ['var(--success)', T('ORDER_RECEIVED')],
+                           cancelled: ['var(--danger)', T('ORDER_CANCELLED')] };
+        const [bc, bl] = badgeMap[status] || badgeMap.open;
+        const total = +rec.total || ((+rec.qty || 0) * (+rec.cost || 0)) || 0;
+        const muted = 'color:var(--text-muted); font-size:0.85rem;';
+
+        document.getElementById('orderDetailTitle').innerHTML =
+            `📦 ${Utils.esc(orderId)} · <span style="color:${bc}; font-size:0.9rem;">${bl}</span>`;
+
+        // Связь с инвентарём: куда оприходована заявка (или целевая карточка у открытой)
+        const linkedId = rec.receivedInto || (order && order.targetToolId) || null;
+        const linkedTool = linkedId ? Store.getTool(linkedId) : null;
+        const linkHtml = linkedTool
+            ? `${Utils.esc(linkedTool.id)} — ${Utils.esc(linkedTool.name)} <button class="btn audit-btn" data-action="order-open-tool" data-id="${Utils.esc(linkedTool.id)}">${T('OPEN_TOOL_CARD')}</button>`
+            : (linkedId ? Utils.esc(linkedId) : `<span style="${muted}">${T('ORDER_NO_LINK')}</span>`);
+
+        // Основная информация по закупке
+        const row = (k, v) => `<div style="display:flex; justify-content:space-between; gap:10px; padding:4px 0; border-bottom:1px dashed var(--border);"><span style="${muted}">${k}</span><span style="text-align:right;">${v}</span></div>`;
+        const info = [
+            row(T('Name'), `<strong>${Utils.esc(rec.name)}</strong>`),
+            row(T('Qty'), `${rec.qty} × $${(+rec.cost || 0).toFixed(2)} = <strong>$${total.toFixed(2)}</strong>`),
+            row(T('Reason'), Utils.esc(rec.reason || '—')),
+            row(T('ORDER_SUPPLIER'), rec.link ? `<a href="${Utils.esc(rec.link)}" target="_blank" rel="noopener">${Utils.esc(rec.link)}</a>` : '—'),
+            row(T('ORDER_REQUESTER'), Utils.esc(rec.initials || '—')),
+            row(T('ORDER_LOCATION'), Utils.esc([rec.ws, rec.wp].filter(Boolean).join(' / ') || '—')),
+            row(T('Status'), `<span style="color:${bc}; font-weight:bold;">${bl}</span>`),
+            row(T('ORDER_LINKED_TOOL'), linkHtml),
+        ].join('');
+
+        // История статусов
+        const tlItem = (label, date, extra = '') =>
+            `<div class="history-item"><span><strong>${label}</strong>${extra}<br><span style="${muted}">${Utils.esc(date || '')}</span></span></div>`;
+        let timeline = tlItem(T('ORDER_CREATED'), rec.date, ` · ${Utils.esc(rec.initials || '')}`);
+        if (rec.receivedAt) timeline += tlItem(T('ORDER_RECEIVED'), rec.receivedAt, rec.receivedInto ? ` · ${T('Received into')} ${Utils.esc(rec.receivedInto)}` : '');
+        if (rec.cancelledAt) timeline += tlItem(T('ORDER_CANCELLED'), rec.cancelledAt);
+
+        // Комментарии (рабочая переписка по заявке)
+        const comments = rec.comments || [];
+        const commentsHtml = comments.length
+            ? comments.map(c => `<div class="history-item"><span>${Utils.esc(c.text)}<br><span style="${muted}">${Utils.esc(c.ts)} · ${Utils.esc(c.user)}</span></span></div>`).join('')
+            : `<div style="text-align:center; color:var(--text-muted); padding:6px;">${T('NO_COMMENTS')}</div>`;
+
+        // Связанные записи системного журнала аудита
+        const logs = Store.auditLog.filter(e => String(e.details).includes(orderId)).reverse();
+        const logsHtml = logs.length
+            ? logs.map(e => `<div class="history-item"><span><strong>${Utils.esc(e.action)}</strong> — ${Utils.esc(e.details)}<br><span style="${muted}">${Utils.esc(e.ts.replace('T', ' ').slice(0, 19))} · ${Utils.esc(e.user)}</span></span></div>`).join('')
+            : `<div style="text-align:center; color:var(--text-muted); padding:6px;">—</div>`;
+
+        // Действия по открытой заявке
+        const actions = status === 'open' ? `
+            <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+                <button class="btn btn-success" data-action="receive-order" data-id="${Utils.esc(orderId)}">${T('Mark as Received')}</button>
+                <button class="btn btn-danger" data-action="cancel-order" data-id="${Utils.esc(orderId)}">${T('Cancel Order')}</button>
+            </div>` : '';
+
+        document.getElementById('orderDetailBody').innerHTML = `
+            ${actions}
+            <div style="margin-bottom:14px;">${info}</div>
+            <h4 style="color:var(--primary); margin:0 0 8px; border-bottom:1px dashed var(--border); padding-bottom:5px;">${T('ORDER_TIMELINE')}</h4>
+            <div class="history-list" style="margin-bottom:14px;">${timeline}</div>
+            <h4 style="color:var(--primary); margin:0 0 8px; border-bottom:1px dashed var(--border); padding-bottom:5px;">${T('Comments')}</h4>
+            <div class="history-list" style="margin-bottom:8px;">${commentsHtml}</div>
+            <div style="display:flex; gap:8px; margin-bottom:14px;">
+                <input id="orderCommentText" class="form-control" placeholder="${T('ADD_COMMENT')}…" style="flex:1;">
+                <button class="btn" data-action="add-order-comment" data-id="${Utils.esc(orderId)}">${T('Add')}</button>
+            </div>
+            <h4 style="color:var(--primary); margin:0 0 8px; border-bottom:1px dashed var(--border); padding-bottom:5px;">${T('ORDER_LOGS')}</h4>
+            <div class="history-list">${logsHtml}</div>`;
+        openModal('orderDetailModal');
+    },
+
+    /** Комментарий к заявке: автор — текущий пользователь */
+    addOrderComment(orderId) {
+        const inp = document.getElementById('orderCommentText');
+        const text = (inp.value || '').trim();
+        if (!text) { Utils.toast(T('COMMENT_EMPTY')); return; }
+        const rec = Store.procurementLog.find(l => l.orderId === orderId);
+        if (!rec) return;
+        (rec.comments = rec.comments || []).push({
+            ts: Utils.nowISO().replace('T', ' ').slice(0, 19),
+            user: Auth.current.username,
+            text
+        });
+        Store.log('ORDER_COMMENT', `${orderId}: ${text.slice(0, 80)}`);
+        Store.save();
+        this.openOrderDetail(orderId);
+        if (document.getElementById('ordersModal').classList.contains('active')) this.openOrders();
     },
 
     exportAuditLogCSV() {
@@ -8372,7 +8540,7 @@ const Procure = {
         // Log each item to procurement log and tool history
         this.items.forEach(item => {
             const orderId = 'ORD-' + Math.random().toString(36).substr(2, 6).toUpperCase();
-            const req = { ...item, date: Utils.nowISO().split('T')[0], ws, wp, initials, orderId, status: 'open' };
+            const req = { ...item, date: Utils.nowISO().split('T')[0], ws, wp, initials, orderId, status: 'open', comments: [], receivedInto: null };
             const orderTool = {
                 id: orderId,
                 name: item.name,
