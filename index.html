@@ -2282,7 +2282,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v53',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v54',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-12',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -2674,6 +2674,87 @@ const translations = {
         'Workposts:': 'Workposts:',
         'CULTURE_LEGEND': '★ best culture · ▼ worst · click a station to filter tools',
         'wear': 'wear',
+        'Wear': 'Wear',
+        'Sort': 'Sort', 'Set in Order': 'Set in Order', 'Shine': 'Shine',
+        'Standardize': 'Standardize', 'Sustain': 'Sustain',
+        'No data yet.': 'No data yet.',
+        'tools have a defined place.': 'tools have a defined place.',
+        'at address storage or assigned.': 'at address storage or assigned.',
+        'Average wear': 'Average wear',
+        'have SN, category and spec.': 'have SN, category and spec.',
+        'not overdue.': 'not overdue.',
+        'No tools on this station yet — not rated.': 'No tools on this station yet — not rated.',
+        'CULTURE_DESC': '{n} tools · {o} overdue · {m} in service · avg wear {w}%',
+        'Routine Service': 'Routine Service',
+        'Acknowledge': 'Acknowledge',
+        'Add Line Item': 'Add Line Item',
+        'Add to Request': 'Add to Request',
+        'Clear Queue after print': 'Clear Queue after print',
+        'Edit Tool': 'Edit Tool',
+        'Force Update App': 'Force Update App',
+        'Item': 'Item',
+        'Password / PIN': 'Password / PIN',
+        'Print Queue (N)': 'Print Queue (N)',
+        'Print Single': 'Print Single',
+        'Qty': 'Qty',
+        'Qty to Issue': 'Qty to Issue',
+        'Quantity / Units': 'Quantity / Units',
+        'Quantity:': 'Quantity:',
+        'Queued:': 'Queued:',
+        'Reason:': 'Reason:',
+        'Save Changes': 'Save Changes',
+        'Save': 'Save',
+        'Serial Number': 'Serial Number',
+        'System Terms & Rights': 'System Terms & Rights',
+        'System Terms, License & Copyright Notice': 'System Terms, License & Copyright Notice',
+        'Total $': 'Total $',
+        'Total Quantity': 'Total Quantity',
+        'Unit $': 'Unit $',
+        'Unit Cost ($):': 'Unit Cost ($):',
+        'Username / Login': 'Username / Login',
+        'ключ': 'ключ',
+        'unknown date': 'unknown date',
+        'DB_SIZE_WARN': '⚠ Database size is approaching the 5MB limit. Please export a JSON backup soon.',
+        'DB_QUOTA_EXCEEDED': '⚠ LocalStorage quota exceeded! Export a JSON backup now, then clear old data.',
+        'BACKUP_BAD_SCHEMA': 'Invalid backup file schema.',
+        'BACKUP_RESTORED': 'Backup restored successfully!',
+        'BACKUP_PARSE_ERR': 'Error parsing JSON backup.',
+        'Restore backup from': 'Restore backup from',
+        'Current data will be REPLACED.': 'Current data will be REPLACED.',
+        'USER_EXISTS': 'Username already exists!',
+        'ADMIN_NODELETE': 'Cannot delete default admin account.',
+        'Delete user': 'Delete user',
+        'BARCODE_UNKNOWN': 'Barcode not recognized in system.',
+        'Tool is already issued to': 'Tool is already issued to',
+        'Process a return first.': 'Process a return first.',
+        'Cannot issue more than available quantity': 'Cannot issue more than available quantity',
+        'RETIRE_CONFIRM': 'Retire {id} permanently? It will move to the Archive.',
+        'RESTORE_TOOL_CONFIRM': 'Restore {id} from Archive back to Backup stock?',
+        'NO_ROTATE': 'No tools to rotate.',
+        'ROTATE_CONFIRM': 'Rotate {n} tools to Maintenance queue?',
+        'ROTATED_DONE': 'Successfully rotated {n} tools. Swapped Primary with Backup.',
+        'EMP_REMOVE_BLOCKED': 'Cannot remove {name}: {n} tool(s) still assigned ({ids}).\nProcess returns first',
+        'EMP_REMOVE_CONFIRM': 'Remove employee {name}?',
+        'NO_ITEMS_EXPORT': 'No items to export.',
+        'REQ_LIMIT': 'The REQ003 form holds 15 line items max. Please split the request.',
+        'REQ_FAILED': 'Error generating Expense Request. CSV export is still available.',
+        'XLSX_INIT_FAILED': 'Excel library failed to initialize. Exporting CSV instead.',
+        'XLSX_FAILED_CSV': 'XLSX export failed: {msg}\nExporting CSV instead.',
+        'LOGOUT_CONFIRM': 'Logout and switch to Operator role?',
+        'ORDER_CANCEL_CONFIRM': 'Cancel this order?',
+        'PHOTO_REMOVE_CONFIRM': 'Remove this photo?',
+        'ROLLBACK_SNAPSHOT_FAILED': '⚠️ Undo snapshot failed — storage full. Next action cannot be rolled back.',
+        'UNLOCKED_WELCOME': '🔓 System Unlocked! Welcome ',
+        'LOCKED': '🔒 System Locked',
+        'TOOL_UPDATED': 'Tool updated',
+        'Tool not found:': 'Tool not found:',
+        'GATE_EMPTY': 'Please enter both Username and Password',
+        'GATE_INVALID': 'Invalid Username or Password',
+        'ID_REQUIRED': 'Tool ID is required.',
+        'INITIALS_REQUIRED': 'Initials are required for accountability.',
+        'PROC_ITEM_REQUIRED': 'Please enter Item Name and Quantity.',
+        'PROC_INITIALS_REQUIRED': 'Please fill in Requester Initials.',
+        'PROC_EMPTY': 'Please add at least one item to the request.',
         'In service': 'In service',
         'Not rated': 'Not rated',
         // SOP
@@ -2976,6 +3057,87 @@ const translations = {
         'Workposts:': 'Рабочих постов:',
         'CULTURE_LEGEND': '★ лучшая культура · ▼ худшая · клик по станции фильтрует инструменты',
         'wear': 'износ',
+        'Wear': 'Износ',
+        'Sort': 'Сортировка', 'Set in Order': 'Соблюдение порядка', 'Shine': 'Чистота',
+        'Standardize': 'Стандартизация', 'Sustain': 'Самодисциплина',
+        'No data yet.': 'Нет данных.',
+        'tools have a defined place.': 'имеют определённое место.',
+        'at address storage or assigned.': 'на адресном хранении или выданы.',
+        'Average wear': 'Средний износ',
+        'have SN, category and spec.': 'с серийным номером, категорией и спецификацией.',
+        'not overdue.': 'не просрочено.',
+        'No tools on this station yet — not rated.': 'На станции нет инструмента — не оценивается.',
+        'CULTURE_DESC': '{n} инстр. · {o} просроч. · {m} в сервисе · ср. износ {w}%',
+        'Routine Service': 'Плановое обслуживание',
+        'Acknowledge': 'Подтвердить',
+        'Add Line Item': 'Добавить позицию',
+        'Add to Request': 'В заявку',
+        'Clear Queue after print': 'Очистить очередь после печати',
+        'Edit Tool': 'Редактировать инструмент',
+        'Force Update App': 'Обновить приложение',
+        'Item': 'Позиция',
+        'Password / PIN': 'Пароль / PIN',
+        'Print Queue (N)': 'Печать очереди (N)',
+        'Print Single': 'Печать одной',
+        'Qty': 'Кол-во',
+        'Qty to Issue': 'Кол-во к выдаче',
+        'Quantity / Units': 'Количество / Ед.',
+        'Quantity:': 'Количество:',
+        'Queued:': 'В очереди:',
+        'Reason:': 'Причина:',
+        'Save Changes': 'Сохранить изменения',
+        'Save': 'Сохранить',
+        'Serial Number': 'Серийный номер',
+        'System Terms & Rights': 'Условия и права',
+        'System Terms, License & Copyright Notice': 'Условия, лицензия и авторские права',
+        'Total $': 'Итого $',
+        'Total Quantity': 'Общее количество',
+        'Unit $': 'Цена $',
+        'Unit Cost ($):': 'Цена за ед. ($):',
+        'Username / Login': 'Имя пользователя / Логин',
+        'ключ': 'ключ',
+        'unknown date': 'неизвестная дата',
+        'DB_SIZE_WARN': '⚠ База приближается к лимиту 5МБ. Рекомендуется экспортировать JSON-бэкап.',
+        'DB_QUOTA_EXCEEDED': '⚠ Хранилище переполнено! Срочно экспортируйте JSON-бэкап и очистите старые данные.',
+        'BACKUP_BAD_SCHEMA': 'Неверная структура файла бэкапа.',
+        'BACKUP_RESTORED': 'Бэкап успешно восстановлен!',
+        'BACKUP_PARSE_ERR': 'Ошибка разбора JSON-бэкапа.',
+        'Restore backup from': 'Восстановить бэкап от',
+        'Current data will be REPLACED.': 'Текущие данные будут ЗАМЕЩЕНЫ.',
+        'USER_EXISTS': 'Пользователь уже существует!',
+        'ADMIN_NODELETE': 'Нельзя удалить учётную запись администратора по умолчанию.',
+        'Delete user': 'Удалить пользователя',
+        'BARCODE_UNKNOWN': 'Штрихкод не найден в системе.',
+        'Tool is already issued to': 'Инструмент уже выдан:',
+        'Process a return first.': 'Сначала оформите возврат.',
+        'Cannot issue more than available quantity': 'Нельзя выдать больше доступного количества',
+        'RETIRE_CONFIRM': 'Списать {id} навсегда? Инструмент уйдёт в архив.',
+        'RESTORE_TOOL_CONFIRM': 'Восстановить {id} из архива в резервный запас?',
+        'NO_ROTATE': 'Нет инструментов для ротации.',
+        'ROTATE_CONFIRM': 'Отправить {n} инстр. в очередь обслуживания?',
+        'ROTATED_DONE': 'Ротация выполнена: {n} инстр. Основной заменён резервным.',
+        'EMP_REMOVE_BLOCKED': 'Нельзя удалить {name}: ещё числится {n} инстр. ({ids}).\nСначала оформите возврат',
+        'EMP_REMOVE_CONFIRM': 'Удалить сотрудника {name}?',
+        'NO_ITEMS_EXPORT': 'Нет позиций для экспорта.',
+        'REQ_LIMIT': 'Форма REQ003 вмещает максимум 15 позиций. Разделите заявку.',
+        'REQ_FAILED': 'Ошибка формирования заявки. CSV-экспорт по-прежнему доступен.',
+        'XLSX_INIT_FAILED': 'Excel-библиотека не инициализировалась. Экспортирую CSV.',
+        'XLSX_FAILED_CSV': 'Ошибка XLSX-экспорта: {msg}\nЭкспортирую CSV.',
+        'LOGOUT_CONFIRM': 'Выйти и переключиться на роль оператора?',
+        'ORDER_CANCEL_CONFIRM': 'Отменить заказ?',
+        'PHOTO_REMOVE_CONFIRM': 'Удалить фото?',
+        'ROLLBACK_SNAPSHOT_FAILED': '⚠️ Снимок для отката не создан — хранилище переполнено. Следующее действие нельзя будет отменить.',
+        'UNLOCKED_WELCOME': '🔓 Система разблокирована! Добро пожаловать, ',
+        'LOCKED': '🔒 Система заблокирована',
+        'TOOL_UPDATED': 'Инструмент обновлён',
+        'Tool not found:': 'Инструмент не найден:',
+        'GATE_EMPTY': 'Введите имя пользователя и пароль',
+        'GATE_INVALID': 'Неверное имя пользователя или пароль',
+        'ID_REQUIRED': 'Укажите ID инструмента.',
+        'INITIALS_REQUIRED': 'Инициалы обязательны для отчётности.',
+        'PROC_ITEM_REQUIRED': 'Введите название позиции и количество.',
+        'PROC_INITIALS_REQUIRED': 'Укажите инициалы заявителя.',
+        'PROC_EMPTY': 'Добавьте хотя бы одну позицию в заявку.',
         'In service': 'В обслуживании',
         'Not rated': 'Без оценки',
         // SOP
@@ -3517,12 +3679,12 @@ const Store = {
             }
             const raw = JSON.stringify(state);
             if (raw.length > 4000000 && !sessionStorage.getItem('inv_quota_warn')) {
-                alert('⚠ Warning: Database size is approaching the 5MB limit. Please consider exporting a JSON backup soon.');
+                alert(T('DB_SIZE_WARN'));
                 sessionStorage.setItem('inv_quota_warn', 'true');
             }
             localStorage.setItem('inv_inventory_db', raw);
         } catch (e) {
-            alert('⚠ LocalStorage quota exceeded! Export a JSON backup now, then clear old data.');
+            alert(T('DB_QUOTA_EXCEEDED'));
         }
     },
 
@@ -3875,7 +4037,7 @@ const Store = {
             }));
         } catch (e) {
             if (typeof Utils !== 'undefined' && Utils.toast) {
-                Utils.toast('⚠️ Undo snapshot failed — storage full. Next action cannot be rolled back.', 8000);
+                Utils.toast(T('ROLLBACK_SNAPSHOT_FAILED'), 8000);
             }
         }
     },
@@ -3978,8 +4140,8 @@ const Store = {
         reader.onload = e => {
             try {
                 const data = JSON.parse(e.target.result);
-                if (!data.tools || !data.personnel) { alert('Invalid backup file schema.'); return; }
-                if (!confirm(`Restore backup from ${data.exportedAt || 'unknown date'}?\nTools: ${data.tools.length}. Current data will be REPLACED.`)) return;
+                if (!data.tools || !data.personnel) { alert(T('BACKUP_BAD_SCHEMA')); return; }
+                if (!confirm(`${T('Restore backup from')} ${data.exportedAt || T('unknown date')}?\n${T('Tools:')} ${data.tools.length}. ${T('Current data will be REPLACED.')}`)) return;
                 this.workstations = data.masterWorkstations || [];
                 this.workposts    = data.masterWorkposts || [];
                 this.programs     = data.masterPrograms || [];
@@ -3993,8 +4155,8 @@ const Store = {
                 this.log('BACKUP_RESTORE', `schema v${data.schemaVersion || 1}`);
                 this.save();
                 init();
-                alert('Backup restored successfully!');
-            } catch { alert('Error parsing JSON backup.'); }
+                alert(T('BACKUP_RESTORED'));
+            } catch { alert(T('BACKUP_PARSE_ERR')); }
         };
         reader.readAsText(file);
         event.target.value = '';
@@ -4612,7 +4774,7 @@ const Auth = {
         const errEl = document.getElementById('gateError');
 
         if (!login || !pass) {
-            if (errEl) { errEl.innerText = 'Please enter both Username and Password'; errEl.style.display = 'block'; }
+            if (errEl) { errEl.innerText = T('GATE_EMPTY'); errEl.style.display = 'block'; }
             return;
         }
 
@@ -4635,9 +4797,9 @@ const Auth = {
             if (typeof renderAll === 'function') renderAll();
             Store.log('GATE_UNLOCK', foundUser.username);
             Store.save();
-            Utils.toast('🔓 System Unlocked! Welcome ' + Utils.esc(foundUser.username));
+            Utils.toast(T('UNLOCKED_WELCOME') + Utils.esc(foundUser.username));
         } else {
-            if (errEl) { errEl.innerText = 'Invalid Username or Password'; errEl.style.display = 'block'; }
+            if (errEl) { errEl.innerText = T('GATE_INVALID'); errEl.style.display = 'block'; }
         }
     },
 
@@ -4650,7 +4812,7 @@ const Auth = {
         document.getElementById('appMainContainer').style.setProperty('display', 'none', 'important');
         document.getElementById('mandatoryLoginModal').classList.add('active');
         document.getElementById('gatePassInput').value = '';
-        Utils.toast('🔒 System Locked');
+        Utils.toast(T('LOCKED'));
     }
 };
 
@@ -4687,7 +4849,7 @@ async function submitLogin() {
 /** Клик по статусу в шапке: оператор → окно логина, остальные → сброс до Operator */
 function promptLogin() {
     if (Auth.current.username !== 'operator') {
-        if (!confirm('Logout and switch to Operator role?')) return;
+        if (!confirm(T('LOGOUT_CONFIRM'))) return;
         Store.log('LOGOUT', Auth.current.username);
         Auth.current = { username: 'operator', role: 'Operator' };
         Auth.persist();
@@ -4738,7 +4900,7 @@ async function addRegistryRbac() {
     const p = document.getElementById('regRbacPass').value.trim();
     const r = document.getElementById('regRbacRole').value;
     if (!u || !p) return;
-    if (Store.users.find(x => x.username === u)) { alert('Username already exists!'); return; }
+    if (Store.users.find(x => x.username === u)) { alert(T('USER_EXISTS')); return; }
     Store.users.push({ username: u, pwHash: await Utils.hashPw(p), role: r });
     Store.log('RBAC_ADD_USER', u);
     Store.save();
@@ -4749,8 +4911,8 @@ async function addRegistryRbac() {
 
 function removeRbacUser(index) {
     const user = Store.users[index];
-    if (user.username === 'admin') { alert('Cannot delete default admin account.'); return; }
-    if (!confirm(`Delete user "${user.username}"?`)) return;
+    if (user.username === 'admin') { alert(T('ADMIN_NODELETE')); return; }
+    if (!confirm(`${T('Delete user')} "${user.username}"?`)) return;
     Store.meta = Store.meta || {};
     Store.meta.deletedUsers = Store.meta.deletedUsers || [];
     if (!Store.meta.deletedUsers.includes(user.username)) Store.meta.deletedUsers.push(user.username);
@@ -5131,11 +5293,8 @@ const Charts = {
      */
     compute5S() {
         const active = Store.activeTools();
-        if (!active.length) return [
-            { pillar: 'Sort', score: 3, desc: 'No data yet.' }, { pillar: 'Set in Order', score: 3, desc: 'No data yet.' },
-            { pillar: 'Shine', score: 3, desc: 'No data yet.' }, { pillar: 'Standardize', score: 3, desc: 'No data yet.' },
-            { pillar: 'Sustain', score: 3, desc: 'No data yet.' }
-        ];
+        if (!active.length) return ['Sort', 'Set in Order', 'Shine', 'Standardize', 'Sustain']
+            .map(p => ({ pillar: T(p), score: 3, desc: T('No data yet.') }));
         const clamp = r => Math.max(1, Math.min(5, Math.round(1 + 4 * r)));
         const pct = n => `${Math.round(n * 100)}%`;
 
@@ -5146,11 +5305,11 @@ const Charts = {
         const compliant = active.filter(t => t.status !== 'Overdue').length / active.length;
 
         return [
-            { pillar: 'Sort',         score: clamp(withLocation),  desc: `${pct(withLocation)} tools have a defined place.` },
-            { pillar: 'Set in Order', score: clamp(addressed),     desc: `${pct(addressed)} at address storage or assigned.` },
-            { pillar: 'Shine',        score: Math.max(1, Math.min(5, Math.round(5 - avgWear / 20))), desc: `Average wear ${Math.round(avgWear)}%.` },
-            { pillar: 'Standardize',  score: clamp(standardized),  desc: `${pct(standardized)} have SN, category and spec.` },
-            { pillar: 'Sustain',      score: clamp(compliant),     desc: `${pct(compliant)} not overdue.` }
+            { pillar: T('Sort'),         score: clamp(withLocation),  desc: `${pct(withLocation)} ${T('tools have a defined place.')}` },
+            { pillar: T('Set in Order'), score: clamp(addressed),     desc: `${pct(addressed)} ${T('at address storage or assigned.')}` },
+            { pillar: T('Shine'),        score: Math.max(1, Math.min(5, Math.round(5 - avgWear / 20))), desc: `${T('Average wear')} ${Math.round(avgWear)}%.` },
+            { pillar: T('Standardize'),  score: clamp(standardized),  desc: `${pct(standardized)} ${T('have SN, category and spec.')}` },
+            { pillar: T('Sustain'),      score: clamp(compliant),     desc: `${pct(compliant)} ${T('not overdue.')}` }
         ];
     },
 
@@ -5218,12 +5377,13 @@ const Charts = {
 
         const scoreOf = tools => {
             // Станция без инструмента не оценивается: серый луч, вне гонки ★/▼
-            if (!tools.length) return { score: 0, rated: false, desc: 'No tools on this station yet — not rated.' };
+            if (!tools.length) return { score: 0, rated: false, desc: T('No tools on this station yet — not rated.') };
             const overdue = tools.filter(t => t.status === 'Overdue').length;
             const maint = tools.filter(t => t.status === 'Maintenance').length;
             const wear = Math.round(tools.reduce((a, t) => a + Store.wearOf(t), 0) / tools.length);
             const score = Math.max(5, Math.min(100, Math.round(100 - overdue * 20 - maint * 10 - wear * 0.4)));
-            return { score, rated: true, desc: `${tools.length} tools · ${overdue} overdue · ${maint} in service · avg wear ${wear}%` };
+            const desc = T('CULTURE_DESC').replace('{n}', tools.length).replace('{o}', overdue).replace('{m}', maint).replace('{w}', wear);
+            return { score, rated: true, desc };
         };
 
         const ranked = Store.workstations
@@ -5258,7 +5418,7 @@ const Charts = {
                     <span style="font-size:0.8rem; background:var(--warning); color:#000; padding:2px 7px; border-radius:3px; white-space:nowrap; align-self:flex-start;">${Utils.esc(t.category)}</span>
                 </div>
                 <div style="font-size:0.88rem; margin-bottom:8px; color:var(--text-main);">
-                    Reason: ${Utils.esc(t.history.length ? t.history[t.history.length - 1] : 'Routine Service')}
+                    ${T('Reason:')} ${Utils.esc(t.history.length ? t.history[t.history.length - 1] : T('Routine Service'))}
                 </div>
                 <button class="btn btn-success" style="font-size:0.85rem; padding:7px; width:100%;" data-action="complete-maint" data-id="${Utils.esc(t.id)}">${T('[Complete Maintenance]')}</button>
             </div>`).join('') || `<div style="color:var(--text-muted); font-size:0.9rem; padding:10px;">${T('No tools currently in maintenance.')}</div>`;
@@ -5269,7 +5429,7 @@ const Charts = {
             const color = wear > CONFIG.WEAR_RETIRE_PCT ? 'var(--danger)' : wear > CONFIG.WEAR_WARN_PCT ? 'var(--warning)' : 'var(--success)';
             return `<div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-bottom:6px; border-bottom:1px dashed var(--border); padding-bottom:4px;">
                 <span style="color:var(--text-main);">${Utils.esc(t.id)} — ${Utils.esc(t.name.split(' ')[0])}…</span>
-                <strong style="color:${color}">${wear}% Wear</strong>
+                <strong style="color:${color}">${wear}% ${T('Wear')}</strong>
             </div>`;
         }).join('') || `<div style="font-size:0.9rem; color:var(--text-muted);">${T('No consumables found.')}</div>`;
 
@@ -6034,7 +6194,7 @@ const Ops = {
         if (tool) { this.openDetailModal(tool.id); return; }
         const emp = Store.getEmp(id); // getEmp также сверяет badge
         if (emp) { this.openEmployeeProfile(emp.id); return; }
-        alert('Barcode not recognized in system.');
+        alert(T('BARCODE_UNKNOWN'));
     },
 
     /* ---------- Добавление инструмента ---------- */
@@ -6139,7 +6299,7 @@ const Ops = {
     submitAddTool() {
         const id = document.getElementById('addToolID').value.trim().toUpperCase();
         const err = document.getElementById('addToolError');
-        if (!id) { err.innerText = 'Tool ID is required.'; err.style.display = 'block'; return; }
+        if (!id) { err.innerText = T('ID_REQUIRED'); err.style.display = 'block'; return; }
         // Формат инвентарного номера: префикс класса (2-3 буквы) + дефис + 3 цифры
         if (!/^[A-Z]{2,3}-\d{3,5}$/.test(id)) { err.innerText = T('ID_BAD_FORMAT'); err.style.display = 'block'; return; }
         if (Store.getTool(id)) { err.innerText = `Tool ID "${id}" already exists!`; err.style.display = 'block'; return; }
@@ -6286,7 +6446,7 @@ const Ops = {
         Store.save();
         if (typeof renderAll === 'function') renderAll(); else init();
         closeModal('editToolModal');
-        Utils.toast('Tool updated', 'success');
+        Utils.toast(T('TOOL_UPDATED'), 'success');
     },
 
     /* ---------- Выдача ---------- */
@@ -6295,7 +6455,7 @@ const Ops = {
         if (!tool) return;
         // Защита от двойной выдачи: сначала нужен возврат
         if ((tool.status === 'Issued' || tool.status === 'Overdue') && tool.assigneeId) {
-            alert(`Tool is already issued to ${Store.empName(tool.assigneeId)}.\nProcess a return first.`);
+            alert(`${T('Tool is already issued to')} ${Store.empName(tool.assigneeId)}.\n${T('Process a return first.')}`);
             return;
         }
         document.getElementById('assignToolId').value = toolId;
@@ -6335,12 +6495,12 @@ const Ops = {
         if (!tool || !emp) return;
         if (!initials) {
             const err = document.getElementById('assignError');
-            err.innerText = 'Initials are required for accountability.';
+            err.innerText = T('INITIALS_REQUIRED');
             err.style.display = 'block';
             return;
         }
         if (issueQty > (tool.qty || 1)) {
-            alert(`Cannot issue more than available quantity (${tool.qty || 1})`);
+            alert(`${T('Cannot issue more than available quantity')} (${tool.qty || 1})`);
             return;
         }
 
@@ -6448,7 +6608,7 @@ const Ops = {
         const queueBtn = document.getElementById('modalPrintQueueBtn');
         if (queueBtn) {
             queueBtn.style.display = qLen > 0 ? 'inline-block' : 'none';
-            queueBtn.innerText = '🖨 Print Queue (' + qLen + ')';
+            queueBtn.innerText = '🖨 ' + T('Print Queue (N)').replace('N', qLen);
         }
         
         this.onStockChange();
@@ -6570,7 +6730,7 @@ const Ops = {
     submitRetire() {
         const tool = Store.getTool(document.getElementById('retireToolId').value);
         if (!tool) return;
-        if (!confirm(`Retire ${tool.id} permanently? It will move to the Archive.`)) return;
+        if (!confirm(T('RETIRE_CONFIRM').replace('{id}', tool.id))) return;
         const wear = document.getElementById('retireWear').value;
         const reason = document.getElementById('retireReason').value;
         const initials = document.getElementById('retireInitials').value.trim() || 'N/A';
@@ -6608,7 +6768,7 @@ const Ops = {
     restoreTool(toolId) {
         const tool = Store.getTool(toolId);
         if (!tool) return;
-        if (!confirm(`Restore ${tool.id} from Archive back to Backup stock?`)) return;
+        if (!confirm(T('RESTORE_TOOL_CONFIRM').replace('{id}', tool.id))) return;
         tool.status = 'Backup';
         delete tool.retiredAt; delete tool.retiredBy;
         delete tool.retireReason; delete tool.retireNotes; delete tool.retireWear;
@@ -6641,8 +6801,8 @@ const Ops = {
 
     executeBatchRotation() {
         const list = window.batchCandidates || [];
-        if (!list.length) { alert('No tools to rotate.'); closeModal('batchRotationModal'); return; }
-        if (!confirm(`Rotate ${list.length} tools to Maintenance queue?`)) return;
+        if (!list.length) { alert(T('NO_ROTATE')); closeModal('batchRotationModal'); return; }
+        if (!confirm(T('ROTATE_CONFIRM').replace('{n}', list.length))) return;
         list.forEach(t => {
             t.status = 'Maintenance';
             t.assigneeId = null;
@@ -6653,7 +6813,7 @@ const Ops = {
         Store.save();
         closeModal('batchRotationModal');
         init();
-        alert(`Successfully rotated ${list.length} tools. Swapped Primary with Backup.`);
+        alert(T('ROTATED_DONE').replace('{n}', list.length));
     },
 
     /* ---------- Карточка инструмента ---------- */
@@ -6840,10 +7000,10 @@ const Ops = {
         const emp = Store.personnel[index];
         const holding = Store.tools.filter(t => t.assigneeId === emp.id);
         if (holding.length) {
-            alert(`Cannot remove ${emp.name}: ${holding.length} tool(s) still assigned (${holding.map(t => t.id).join(', ')}).\nProcess returns first.`);
+            alert(T('EMP_REMOVE_BLOCKED').replace('{name}', emp.name).replace('{n}', holding.length).replace('{ids}', holding.map(t => t.id).join(', ')));
             return;
         }
-        if (!confirm(`Remove employee ${emp.name}?`)) return;
+        if (!confirm(T('EMP_REMOVE_CONFIRM').replace('{name}', emp.name))) return;
         Store.meta = Store.meta || {};
         Store.meta.deletedEmp = Store.meta.deletedEmp || [];
         if (!Store.meta.deletedEmp.includes(emp.id)) Store.meta.deletedEmp.push(emp.id);
@@ -6940,7 +7100,7 @@ const Ops = {
     },
 
     cancelOrder(orderId) {
-        if (!confirm('Cancel this order?')) return;
+        if (!confirm(T('ORDER_CANCEL_CONFIRM'))) return;
         const idx = Store.tools.findIndex(t => t.id === orderId);
         if (idx >= 0) {
             Store.tools.splice(idx, 1);
@@ -7058,7 +7218,7 @@ const Labels = {
         const queueBtn = document.getElementById('modalPrintQueueBtn');
         if (queueBtn) {
             queueBtn.style.display = qLen > 0 ? 'inline-block' : 'none';
-            queueBtn.innerText = '🖨 Print Queue (' + qLen + ')';
+            queueBtn.innerText = '🖨 ' + T('Print Queue (N)').replace('N', qLen);
         }
     },
 
@@ -7772,7 +7932,7 @@ const Procure = {
 
         if (!name || !qty) {
             const err = document.getElementById('procureError');
-            err.innerText = 'Please enter Item Name and Quantity.';
+            err.innerText = T('PROC_ITEM_REQUIRED');
             err.style.display = 'block';
             setTimeout(() => err.style.display = 'none', 3000);
             return;
@@ -7822,13 +7982,13 @@ const Procure = {
         const initials = document.getElementById('procureInitials').value.trim();
         if (!initials) {
             const err = document.getElementById('procureError');
-            err.innerText = 'Please fill in Requester Initials.';
+            err.innerText = T('PROC_INITIALS_REQUIRED');
             err.style.display = 'block';
             return;
         }
         if (this.items.length === 0) {
             const err = document.getElementById('procureError');
-            err.innerText = 'Please add at least one item to the request.';
+            err.innerText = T('PROC_EMPTY');
             err.style.display = 'block';
             return;
         }
@@ -7893,9 +8053,9 @@ const Procure = {
 
     async exportXLSX() {
         const initials = document.getElementById('procureInitials').value.trim();
-        if (this.items.length === 0) { alert('No items to export.'); return; }
+        if (this.items.length === 0) { alert(T('NO_ITEMS_EXPORT')); return; }
         // Форма REQ003 вмещает 15 позиций (строки 7..21) — иначе делим заявку
-        if (this.items.length > 15) { alert('The REQ003 form holds 15 line items max. Please split the request.'); return; }
+        if (this.items.length > 15) { alert(T('REQ_LIMIT')); return; }
 
         try {
             const entries = ZipStore.read(ZipStore.fromBase64(REQ_TEMPLATE_B64));
@@ -7930,12 +8090,12 @@ const Procure = {
                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         } catch (e) {
             console.error('Expense Request generation failed', e);
-            alert('Error generating Expense Request. CSV export is still available.');
+            alert(T('REQ_FAILED'));
         }
     },
 
     exportCSV() {
-        if (this.items.length === 0) { alert('No items to export.'); return; }
+        if (this.items.length === 0) { alert(T('NO_ITEMS_EXPORT')); return; }
         const initials = document.getElementById('procureInitials').value.trim();
         const ws = document.getElementById('procureWs').value;
         const wp = document.getElementById('procureWp').value;
@@ -8310,7 +8470,7 @@ const Photos = {
     remove(toolId, index) {
         const tool = Store.getTool(toolId);
         if (!tool || !tool.photos || !tool.photos[index]) return;
-        if (!confirm('Remove this photo?')) return;
+        if (!confirm(T('PHOTO_REMOVE_CONFIRM'))) return;
         tool.photos.splice(index, 1);
         Store.log('TOOL_PHOTO_DEL', tool.id);
         Store.save();
@@ -8767,7 +8927,7 @@ const Reports = {
     async exportInventoryXLSX() {
         if (typeof ExcelJS === 'undefined') {
             // Библиотека вшита в index.html — undefined значит, что её блок не выполнился
-            alert('Excel library failed to initialize. Exporting CSV instead.');
+            alert(T('XLSX_INIT_FAILED'));
             this.exportInventoryCSV();
             return;
         }
@@ -8967,7 +9127,7 @@ const Reports = {
             Store.save();
         } catch (e) {
             console.error('Inventory XLSX failed', e);
-            alert(`XLSX export failed: ${e.message}\nExporting CSV instead.`);
+            alert(T('XLSX_FAILED_CSV').replace('{msg}', e.message));
             this.exportInventoryCSV();
         }
     },
@@ -9045,7 +9205,7 @@ function init() {
             if (Store.getTool(toolId)) {
                 Ops.openDetailModal(toolId);
             } else {
-                Utils.toast(`Tool not found: ${Utils.esc(toolId)}`, 'var(--danger)');
+                Utils.toast(`${T('Tool not found:')} ${Utils.esc(toolId)}`, 6000);
             }
             window.history.replaceState({}, document.title, window.location.pathname);
         }, 300);
