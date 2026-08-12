@@ -1338,6 +1338,7 @@ select.work-only.form-control { max-width: 190px; }
             <button class="btn btn-success" onclick="closeModal('opsMenuModal'); exportInventoryXLSX()" data-i18n="Export Full Inventory (.xlsx)">Export Full Inventory (.xlsx)</button>
             <button class="btn btn-warning" onclick="closeModal('opsMenuModal'); openProcureModal()" data-i18n="Procure / Order Tool">Procure / Order Tool</button>
             <button class="btn" onclick="closeModal('opsMenuModal'); openOrdersModal()" data-i18n="Purchase Orders">Purchase Orders</button>
+            <button class="btn" onclick="closeModal('opsMenuModal'); openPostAuditModal()" data-i18n="5S Post Audit">5S Post Audit</button>
         </div>
     </div>
 </div>
@@ -1352,6 +1353,39 @@ select.work-only.form-control { max-width: 190px; }
         <div class="modal-body" id="ordersList"></div>
         <div class="modal-footer">
             <button class="btn btn-muted" onclick="closeModal('ordersModal')" data-i18n="Close">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Аудит поста 5S: оценки 1-5 по пяти столпам с рубриками -->
+<div class="modal-overlay" id="postAuditModal">
+    <div class="modal narrow">
+        <div class="modal-header">
+            <h3 class="modal-title">📋 <span data-i18n="5S Post Audit">5S Post Audit</span></h3>
+            <button class="close-btn" onclick="closeModal('postAuditModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row">
+                <div class="form-group">
+                    <label data-i18n="Workstation">Workstation</label>
+                    <select id="auditWs" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="Post">Post</label>
+                    <select id="auditPost" class="form-control"></select>
+                </div>
+            </div>
+            <div id="auditLastInfo" style="font-size:0.82rem; color:var(--text-muted); margin-bottom:8px;"></div>
+            <div id="auditPillars"></div>
+            <div class="form-group">
+                <label data-i18n="Auditor Initials">Auditor Initials</label>
+                <input type="text" id="auditInitials" class="form-control" placeholder="IT">
+            </div>
+            <div id="auditError" style="display:none; color:var(--danger); font-size:0.9rem; margin-top:6px;"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-muted" onclick="closeModal('postAuditModal')" data-i18n="Cancel">Cancel</button>
+            <button class="btn btn-success" onclick="submitPostAudit()" data-i18n="Submit Audit">Submit Audit</button>
         </div>
     </div>
 </div>
@@ -1439,6 +1473,11 @@ select.work-only.form-control { max-width: 190px; }
             <div class="form-group">
                 <label data-i18n="Serial Number">Serial Number</label>
                 <input type="text" id="addToolSN" class="form-control" placeholder="e.g. 1B8X9F2A">
+            </div>
+            <div class="form-group">
+                <label data-i18n="Article / Part No.">Article / Part No.</label>
+                <input type="text" id="addToolArticle" class="form-control" placeholder="e.g. 1061227">
+                <div class="form-hint" data-i18n="ARTICLE_HINT">For consumables without a serial number (drills, taps, bits).</div>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -1555,6 +1594,11 @@ select.work-only.form-control { max-width: 190px; }
             <div class="form-group">
                 <label data-i18n="Serial Number">Serial Number</label>
                 <input type="text" id="editToolSN" class="form-control" placeholder="e.g. 1B8X9F2A">
+            </div>
+            <div class="form-group">
+                <label data-i18n="Article / Part No.">Article / Part No.</label>
+                <input type="text" id="editToolArticle" class="form-control" placeholder="e.g. 1061227">
+                <div class="form-hint" data-i18n="ARTICLE_HINT">For consumables without a serial number (drills, taps, bits).</div>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -1747,6 +1791,10 @@ select.work-only.form-control { max-width: 190px; }
             <div class="form-group">
                 <div style="font-size:0.8rem; color:var(--text-muted);" data-i18n="Serial Number">Serial Number</div>
                 <div id="detSN" style="font-size:1rem; font-family:monospace; letter-spacing:0.5px;">N/A</div>
+            </div>
+            <div class="form-group">
+                <div style="font-size:0.8rem; color:var(--text-muted);" data-i18n="Article / Part No.">Article / Part No.</div>
+                <div id="detArticle" style="font-size:1rem; font-family:monospace; letter-spacing:0.5px;">N/A</div>
             </div>
             <div class="form-group">
                 <div style="font-size:0.8rem; color:var(--text-muted);" data-i18n="Total Quantity">Total Quantity</div>
@@ -2297,7 +2345,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v55',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v56',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-12',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -2778,6 +2826,22 @@ const translations = {
         'ORDER_OPEN': 'In progress',
         'ORDER_RECEIVED': 'Received',
         'ORDER_CANCELLED': 'Cancelled',
+        'Type': 'Type',
+        'Queue': 'Queue',
+        'Permanent': 'Permanent',
+        'Consumables': 'Consumables',
+        'Maintenance queue': 'Maintenance queue',
+        'Article / Part No.': 'Article / Part No.',
+        'ARTICLE_HINT': 'For consumables without a serial number (drills, taps, bits).',
+        '5S Post Audit': '5S Post Audit',
+        'Auditor Initials': 'Auditor Initials',
+        'Submit Audit': 'Submit Audit',
+        'AUDIT_NEED_POST': 'Select workstation and post.',
+        'AUDIT_SAVED': 'Audit saved',
+        'AUDIT_BEST': 'Best',
+        'AUDIT_WORST': 'Worst',
+        'AUDIT_SCORE': 'Score',
+        'Last audit:': 'Last audit:',
         'In service': 'In service',
         'Not rated': 'Not rated',
         // SOP
@@ -3169,6 +3233,22 @@ const translations = {
         'ORDER_OPEN': 'В работе',
         'ORDER_RECEIVED': 'Получено',
         'ORDER_CANCELLED': 'Отменено',
+        'Type': 'Тип',
+        'Queue': 'Очередь',
+        'Permanent': 'Постоянный',
+        'Consumables': 'Расходники',
+        'Maintenance queue': 'Очередь обслуживания',
+        'Article / Part No.': 'Артикул',
+        'ARTICLE_HINT': 'Для расходников без серийного номера (свёрла, метчики, биты).',
+        '5S Post Audit': '5S-аудит поста',
+        'Auditor Initials': 'Инициалы аудитора',
+        'Submit Audit': 'Сохранить аудит',
+        'AUDIT_NEED_POST': 'Выберите станцию и пост.',
+        'AUDIT_SAVED': 'Аудит сохранён',
+        'AUDIT_BEST': 'Лучший',
+        'AUDIT_WORST': 'Худший',
+        'AUDIT_SCORE': 'Оценка',
+        'Last audit:': 'Последний аудит:',
         'In service': 'В обслуживании',
         'Not rated': 'Без оценки',
         // SOP
@@ -3485,7 +3565,7 @@ const Store = {
     /* --- Живое состояние --- */
     users: [], workstations: [], workposts: [], personnel: [], tools: [], labelQueue: [],
     programs: [], wsProgram: {}, // wsProgram: { 'DTS': 'USS' } — зона → программа; зоны без программы (Tool Gage, цех, склад) в карте отсутствуют
-    auditLog: [], procurementLog: [], meta: { schemaVersion: CONFIG.SCHEMA_VERSION },
+    auditLog: [], procurementLog: [], audits5s: [], meta: { schemaVersion: CONFIG.SCHEMA_VERSION },
 
     /** Экспорт всего состояния одним JSON (задел для merge-переноса между устройствами) */
     exportData() {
@@ -3499,6 +3579,8 @@ const Store = {
             personnel: this.personnel,
             users: this.users,
             auditLog: this.auditLog,
+            procurementLog: this.procurementLog,
+            audits5s: this.audits5s,
             labelQueue: this.labelQueue
         }, null, 2);
     },
@@ -3555,7 +3637,7 @@ const Store = {
             this.auditLog = Array.from(logMap.values()).sort((a, b) => b.ts.localeCompare(a.ts));
         }
 
-        ['workstations', 'programs', 'workposts', 'labelQueue'].forEach(key => {
+        ['workstations', 'programs', 'workposts', 'labelQueue', 'audits5s'].forEach(key => {
             if (Array.isArray(data[key])) {
                 data[key].forEach(val => {
                     const exists = typeof val === 'object' && val !== null ? 
@@ -3660,6 +3742,7 @@ const Store = {
                 this.tools = db.tools || Seed.tools();
                 this.auditLog = db.auditLog || [];
                 this.procurementLog = db.procurementLog || [];
+                this.audits5s     = db.audits5s || [];
                 this.labelQueue = db.labelQueue || [];
                 this.meta = db.meta || { schemaVersion: 1 };
                 this.migrate();
@@ -3688,6 +3771,7 @@ const Store = {
         }
         this.auditLog     = read(this.KEYS.audit, []);
         this.procurementLog = read(this.KEYS.procurement, []);
+        this.audits5s     = read('inv_audits5s', []);
         this.labelQueue   = JSON.parse(localStorage.getItem('inv_labelQueue') || '[]');
         this.meta         = read(this.KEYS.meta, { schemaVersion: 1 });
         this.migrate();
@@ -3701,7 +3785,7 @@ const Store = {
                 users: this.users, workstations: this.workstations, workposts: this.workposts,
                 programs: this.programs, wsProgram: this.wsProgram, personnel: this.personnel,
                 tools: this.tools, auditLog: this.auditLog, procurementLog: this.procurementLog,
-                meta: this.meta, labelQueue: this.labelQueue
+                audits5s: this.audits5s, meta: this.meta, labelQueue: this.labelQueue
             };
             // Trim audit log to prevent localStorage quota overflow
             if (this.auditLog.length > CONFIG.AUDIT_LOG_LIMIT) {
@@ -3762,6 +3846,7 @@ const Store = {
             if (t.maxQty === undefined) t.maxQty = 0;
             if (t.qty === undefined) t.qty = 1;
             if (t.barcode === undefined) t.barcode = ''; // внешний штрихкод с физической наклейки (5S00xxx), если ≠ ID
+            if (t.article === undefined) t.article = ''; // артикул/парт-номер (у расходников вместо SN)
         });
         // Схема v3: посты — объекты {name, ws} с родительской зоной.
         // Старые плоские строки → объекты без зоны (ws=null, группа «Без зоны»).
@@ -4162,6 +4247,7 @@ const Store = {
             tools: this.tools,
             rbacUsers: this.users,
             procurementLog: this.procurementLog,
+            audits5s: this.audits5s,
             auditLog: this.auditLog
         };
         Utils.downloadText(Utils.datedName('5s_tool_system_backup', 'json'), JSON.stringify(data, null, 2), 'application/json');
@@ -4186,6 +4272,7 @@ const Store = {
                 this.tools        = data.tools;
                 this.users        = data.rbacUsers || this.users;
                 this.procurementLog = data.procurementLog || [];
+                this.audits5s     = data.audits5s || [];
                 this.auditLog     = data.auditLog || [];
                 this.migrate();
                 this.log('BACKUP_RESTORE', `schema v${data.schemaVersion || 1}`);
@@ -5078,11 +5165,22 @@ function showKpiTooltip(evt, type) {
 }
 
 /* --- Фильтры (из графиков и KPI) --- */
+
+/** Единые предикаты типа инвентаря (хаб, фильтры, грид) */
+const isPermanentTool = t => CONFIG.PERMANENT_PREFIXES.some(p => t.id.startsWith(p));
+const isConsumableTool = t => CONFIG.CONSUMABLE_PREFIXES.some(p => t.id.startsWith(p)) || t.type === 'Consumable';
+/** Очередь обслуживания: Maintenance/Overdue + калибровка в ближайшие дни */
+const inMaintQueue = t => t.status === 'Maintenance' || t.status === 'Overdue' ||
+    (Utils.daysUntil(t.calDue) !== null && Utils.daysUntil(t.calDue) <= CONFIG.CAL_WARNING_DAYS);
+
 function setFilter(type, value) {
     UI.currentFilter = { type, value };
+    const TYPE_LABEL = { status: 'Status', workstation: 'Workstation', permanent: 'Type', consumable: 'Type', maintq: 'Queue' };
+    const VALUE_LABEL = { permanent: 'Permanent', consumable: 'Consumables', maintq: 'Maintenance queue' };
+    const v = value || VALUE_LABEL[type] || '';
     document.getElementById('filterIndicator').classList.add('active');
     document.getElementById('filterText').innerText =
-        T('FILTERED_BY').replace('{type}', T(type === 'status' ? 'Status' : 'Workstation')).replace('{value}', T(value));
+        T('FILTERED_BY').replace('{type}', T(TYPE_LABEL[type] || type)).replace('{value}', T(v));
     setViewMode('grid');
 }
 
@@ -5105,6 +5203,9 @@ function applyFilters(list) {
     const f = UI.currentFilter;
     if (f.type === 'status') out = out.filter(t => t.status === f.value);
     else if (f.type === 'workstation') out = out.filter(t => Ops.workstationOf(t) === f.value);
+    else if (f.type === 'permanent') out = out.filter(isPermanentTool);
+    else if (f.type === 'consumable') out = out.filter(isConsumableTool);
+    else if (f.type === 'maintq') out = out.filter(inMaintQueue);
 
     if (UI.searchQuery) {
         const q = UI.searchQuery;
@@ -5179,7 +5280,8 @@ const Actions = {
     'move-reg':      (id, el) => doAction('Administrator', () => RegEdit.openMoveWp(id, el.dataset.ws || null)),
     'move-ws':       id => doAction('Administrator', () => RegEdit.openMoveWs(id)),
     'print-loc':     id => Labels.openPrintLabelModal(id, 'location'),
-    'toggle-queue':  id => { Store.toggleLabelQueue(id); renderAll(); }
+    'toggle-queue':  id => { Store.toggleLabelQueue(id); renderAll(); },
+    'audit-post':    (id, el) => doAction('Tool Crib Manager', () => Ops.openPostAudit(el.dataset.ws || null, id || null))
 };
 
 document.addEventListener('click', e => {
@@ -5191,6 +5293,69 @@ document.addEventListener('click', e => {
 });
 </script>
 <script>
+/* ============================================================================
+   РУБРИКИ 5S-АУДИТА ПОСТА
+   Каждый столп — 5 уровней с описанием состояния. Менеджер при аудите видит,
+   какая оценка какому состоянию соответствует (субъективность минимальна).
+   ============================================================================ */
+const S5_RUBRICS = [
+    { id: 'sort', key: 'Sort',
+      en: ['Needed and unneeded items are mixed; clutter everywhere',
+           'Unneeded items on the floor and surfaces',
+           'Unneeded items exist but are set aside separately',
+           'Unneeded items are red-tagged and moved to quarantine',
+           'Only what is needed — nothing extra'],
+      ru: ['Нужное перемешано с ненужным, лишнее повсюду',
+           'Лишние предметы на полу и поверхностях',
+           'Лишнее есть, но сложено отдельно',
+           'Лишнее промаркировано и выведено в зону карантина',
+           'Только нужное — ничего лишнего'] },
+    { id: 'setOrder', key: 'Set in Order',
+      en: ['Tools lie anywhere; no designated places',
+           'Places exist but are not labeled',
+           'Places are labeled; some tools out of place',
+           'Everything in place; minor marking flaws',
+           'Everything in its place; addresses and shadow boards match'],
+      ru: ['Инструмент лежит где попало, мест нет',
+           'Места есть, но не подписаны',
+           'Места подписаны, часть инструмента не на местах',
+           'Всё на местах, мелкие нарушения разметки',
+           'Всё на своих местах, адреса и теневые контуры совпадают'] },
+    { id: 'shine', key: 'Shine',
+      en: ['Trash everywhere: packaging, bags, dust on tables, dirty tools',
+           'Only trash on the floor',
+           'Only small debris on ~30% of the area',
+           'Only dust',
+           'Clean'],
+      ru: ['Везде мусор: упаковки, пакеты, пыль на столах, инструмент грязный',
+           'Только мусор на полу',
+           'Только мелкий мусор на ~30% площади',
+           'Только пыль',
+           'Чисто'] },
+    { id: 'standardize', key: 'Standardize',
+      en: ['No standards, no labeling',
+           'Standards exist but are ignored',
+           'Standards partially followed (~30% deviations)',
+           'Standards followed; rare deviations',
+           'Standards followed by all; checklists in use'],
+      ru: ['Нет стандартов и маркировки',
+           'Стандарты есть, но не соблюдаются',
+           'Стандарты соблюдаются частично (~30% отклонений)',
+           'Стандарты соблюдаются, единичные отклонения',
+           'Стандарты соблюдаются всеми, ведутся чек-листы'] },
+    { id: 'sustain', key: 'Sustain',
+      en: ['No audits; violations repeat',
+           'Rare audits; fixes are not tracked',
+           'Regular audits; fixes are delayed',
+           'Violations are fixed on time',
+           'Improvements are sustained; the team maintains itself'],
+      ru: ['Аудитов нет, нарушения повторяются',
+           'Аудиты редко, исправления не отслеживаются',
+           'Аудиты регулярны, но устранение затягивается',
+           'Нарушения устраняются в срок',
+           'Улучшения устойчивы, команда поддерживает порядок сама'] }
+];
+
 /* ============================================================================
    МОДУЛЬ: Charts
    SVG-графики: донат статусов, загрузка станций, радар 5S.
@@ -5328,16 +5493,40 @@ const Charts = {
      * Sustain — доля не просроченных.
      */
     compute5S() {
+        const PILLARS = ['Sort', 'Set in Order', 'Shine', 'Standardize', 'Sustain'];
+
+        // 1. Есть аудиты постов → оценка фабрики = среднее по последним аудитам,
+        //    в подсказке — лучший и худший пост по столпу («топ»)
+        if (Store.audits5s && Store.audits5s.length) {
+            const latest = {};
+            Store.audits5s.forEach(a => {
+                const k = `${a.ws}|${a.post}`;
+                if (!latest[k] || String(a.date) > String(latest[k].date)) latest[k] = a;
+            });
+            const posts = Object.values(latest);
+            return PILLARS.map((p, pi) => {
+                const rid = S5_RUBRICS[pi].id;
+                const ranked = [...posts].sort((a, b) => (b.scores[rid] || 0) - (a.scores[rid] || 0));
+                const best = ranked[0], worst = ranked[ranked.length - 1];
+                const avg = posts.reduce((s, a) => s + (a.scores[rid] || 0), 0) / posts.length;
+                const fmt = a => `${a.ws} | ${a.post}`;
+                const desc = posts.length > 1
+                    ? `${T('AUDIT_BEST')}: ${best.scores[rid]} — ${fmt(best)} · ${T('AUDIT_WORST')}: ${worst.scores[rid]} — ${fmt(worst)}`
+                    : `${fmt(best)} — ${T('AUDIT_SCORE')}: ${best.scores[rid]}/5`;
+                return { pillar: T(p), score: Math.max(1, Math.min(5, Math.round(avg))), desc };
+            });
+        }
+
+        // 2. Аудитов нет — оценка выводится из данных инструментов
         const active = Store.activeTools();
-        if (!active.length) return ['Sort', 'Set in Order', 'Shine', 'Standardize', 'Sustain']
-            .map(p => ({ pillar: T(p), score: 3, desc: T('No data yet.') }));
+        if (!active.length) return PILLARS.map(p => ({ pillar: T(p), score: 3, desc: T('No data yet.') }));
         const clamp = r => Math.max(1, Math.min(5, Math.round(1 + 4 * r)));
         const pct = n => `${Math.round(n * 100)}%`;
 
         const withLocation = active.filter(t => t.location && t.location !== 'Pending').length / active.length;
         const addressed = active.filter(t => t.assigneeId || (t.location && (t.location.includes('-') || Store.workstations.some(w => t.location.includes(w))))).length / active.length;
         const avgWear = active.reduce((a, t) => a + Store.wearOf(t), 0) / active.length;
-        const standardized = active.filter(t => t.sn && t.category && t.spec && t.spec !== 'N/A').length / active.length;
+        const standardized = active.filter(t => (t.sn || t.article) && t.category && t.spec && t.spec !== 'N/A').length / active.length;
         const compliant = active.filter(t => t.status !== 'Overdue').length / active.length;
 
         return [
@@ -5509,8 +5698,7 @@ function renderCategoryHub() {
     const hub = document.getElementById('categoryHubGrid');
     if (!hub) return;
     const active = Store.activeTools();
-    const isPerm = t => CONFIG.PERMANENT_PREFIXES.some(p => t.id.startsWith(p));
-    const isCons = t => CONFIG.CONSUMABLE_PREFIXES.some(p => t.id.startsWith(p)) || t.type === 'Consumable';
+    const isPerm = isPermanentTool, isCons = isConsumableTool;
 
     const perm = active.filter(isPerm);
     const issuedCount = active.filter(t => t.assigneeId).length;
@@ -5635,11 +5823,11 @@ function renderCategoryHub() {
         ${urgent ? `<div style="margin-top:6px;">${urgent}</div>` : ''}`;
 
     hub.innerHTML =
-        card(T('HUB_TOOLS'), toolsBody, `<button class="btn wide" onclick="setViewMode('grid')">${T('[Explore Tools]')}</button>`, false, 'hub_tools') +
-        card(T('HUB_STAFF'), staffBody, `<button class="btn wide" onclick="doAction('Administrator', openRegistryModal)">${T('[View Personnel Assets]')}</button>`, false, 'hub_staff') +
+        card(T('HUB_TOOLS'), toolsBody, `<button class="btn wide" onclick="setFilter('permanent')">${T('[Explore Tools]')}</button>`, false, 'hub_tools') +
+        card(T('HUB_STAFF'), staffBody, `<button class="btn wide" onclick="setFilter('status','Issued')">${T('[View Personnel Assets]')}</button>`, false, 'hub_staff') +
         card(T('HUB_WS'), wsBody, `<button class="btn wide" onclick="doAction('Administrator', openRegistryModal)">${T('[View Workstations]')}</button>`, false, 'hub_ws') +
-        card(T('HUB_CONS'), consBody, `<button class="btn wide" onclick="setViewMode('grid')">${T('[View Consumables]')}</button>`, false, 'hub_cons') +
-        card(T('HUB_MAINT'), maintBody, `<button class="btn btn-warning wide" onclick="setFilter('status','Maintenance')">${T('[Open Service Queue]')}</button>`, true, 'hub_maint') +
+        card(T('HUB_CONS'), consBody, `<button class="btn wide" onclick="setFilter('consumable')">${T('[View Consumables]')}</button>`, false, 'hub_cons') +
+        card(T('HUB_MAINT'), maintBody, `<button class="btn btn-warning wide" onclick="setFilter('maintq')">${T('[Open Service Queue]')}</button>`, true, 'hub_maint') +
         card(T('HUB_SOP'), `
             <div style="display:flex; flex-direction:column; gap:8px; justify-content:center; height:100%;">
                 <button class="btn btn-muted" style="font-size:0.9rem;" onclick="openSop('GEN')">📖 SOP-GEN-00 (5S Handling)</button>
@@ -5732,7 +5920,7 @@ function populateAllDropdowns() {
         el.innerHTML = html;
         if (val && Store.workstations.includes(val)) el.value = val;
     });
-    fillWs(['regEmpWs', 'assignWs', 'addToolLoc', 'editToolLoc', 'transZone', 'addToolZone', 'editToolZone', 'procureWs']);
+    fillWs(['regEmpWs', 'assignWs', 'addToolLoc', 'editToolLoc', 'transZone', 'addToolZone', 'editToolZone', 'procureWs', 'auditWs']);
 
     // Посты зависят от зоны (иерархия зона → посты): выбрал зону — в списке только её посты
     const pair = (wsId, postId) => {
@@ -5750,6 +5938,7 @@ function populateAllDropdowns() {
     // pair('addToolZone', 'addToolRack');
     // pair('editToolZone', 'editToolRack');
     pair('procureWs', 'procureWp');
+    pair('auditWs', 'auditPost');
 
     // Подсказки категорий при добавлении инструмента
     const cats = [...new Set(Store.tools.map(t => t.category).filter(Boolean))];
@@ -5807,8 +5996,9 @@ function renderRegistryLists() {
     const delBtn = (type, name, ws) => `<button class="btn btn-danger audit-btn" data-action="remove-reg" data-regtype="${type}" data-id="${Utils.esc(name)}" data-ws="${Utils.esc(ws || '')}">✖</button>`;
 
     // Строка поста (вложенная в зону или в группу «Без зоны»)
+    const auditBtn = (name, ws) => `<button class="btn audit-btn" data-action="audit-post" data-id="${Utils.esc(name)}" data-ws="${Utils.esc(ws || '')}" title="${T('5S Post Audit')}">📋</button>`;
     const postRow = (p, ctx) => `<li class="history-item"><span style="color:var(--text-muted);">↳ ${Utils.esc(p.name)}</span>
-        <div>${renBtn('workposts', p.name, ctx)}${moveBtn(p.name, ctx)}${locBtn(p.name)}${delBtn('workposts', p.name, ctx)}</div></li>`;
+        <div>${auditBtn(p.name, ctx)}${renBtn('workposts', p.name, ctx)}${moveBtn(p.name, ctx)}${locBtn(p.name)}${delBtn('workposts', p.name, ctx)}</div></li>`;
 
     // Блок зоны с вложенными постами (иерархия программа → зона → посты)
     const wsBlock = ws => {
@@ -6312,7 +6502,7 @@ const Ops = {
 
     openAddToolModal() {
         // Полный сброс формы: значения прошлого добавления не должны просачиваться
-        ['addToolName', 'addToolSpec', 'addToolInterval', 'addToolBarcode', 'addToolSN'].forEach(id => document.getElementById(id).value = ''); document.getElementById('addToolQty').value = '1';
+        ['addToolName', 'addToolSpec', 'addToolInterval', 'addToolBarcode', 'addToolSN', 'addToolArticle'].forEach(id => document.getElementById(id).value = ''); document.getElementById('addToolQty').value = '1';
         const typeSel = document.getElementById('addToolType');
         typeSel.value = 'Permanent';
         document.getElementById('addToolStockRow').style.display = 'none';
@@ -6372,7 +6562,8 @@ const Ops = {
             minQty: type === 'Consumable' ? (parseInt(document.getElementById('addToolMinQty').value) || 0) : 0,
             maxQty: type === 'Consumable' ? (parseInt(document.getElementById('addToolMaxQty').value) || 0) : 0,
             barcode: document.getElementById('addToolBarcode').value.trim().toUpperCase(), // внешняя наклейка 5S00xxx
-            sn: document.getElementById('addToolSN').value.trim().toUpperCase() // серийный номер
+            sn: document.getElementById('addToolSN').value.trim().toUpperCase(), // серийный номер
+            article: document.getElementById('addToolArticle').value.trim() // артикул (у расходников вместо SN)
         };
         if (!tool.sn) tool.sn = (tool.id.includes('-') ? tool.id.split('-')[0] : 'SN') + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
         if (address) tool.address = address;
@@ -6407,6 +6598,7 @@ const Ops = {
         const snInput = document.getElementById('editToolSN');
         if (Utils.isAutoSn(tool.sn)) { snInput.value = ''; snInput.placeholder = tool.sn + ' (auto)'; }
         else { snInput.value = tool.sn || ''; snInput.placeholder = 'e.g. 1B8X9F2A'; }
+        document.getElementById('editToolArticle').value = tool.article || '';
         document.getElementById('editToolCat').value = tool.category || '';
         document.getElementById('editToolLoc').value = tool.location || '';
         
@@ -6470,6 +6662,7 @@ const Ops = {
         
         const newSn = document.getElementById('editToolSN').value.trim().toUpperCase();
         if (newSn) tool.sn = newSn;
+        tool.article = document.getElementById('editToolArticle').value.trim();
 
         tool.category = document.getElementById('editToolCat').value.trim() || 'Uncategorized';
         tool.location = document.getElementById('editToolLoc').value || '';
@@ -6501,7 +6694,7 @@ const Ops = {
         Store.save();
         if (typeof renderAll === 'function') renderAll(); else init();
         closeModal('editToolModal');
-        Utils.toast(T('TOOL_UPDATED'), 'success');
+        Utils.toast(T('TOOL_UPDATED'));
     },
 
     /* ---------- Выдача ---------- */
@@ -6898,6 +7091,7 @@ const Ops = {
         
         document.getElementById('detSN').innerText = tool.sn
             ? tool.sn + (Utils.isAutoSn(tool.sn) ? ' (auto)' : '') : 'N/A';
+        document.getElementById('detArticle').innerText = tool.article || 'N/A';
         document.getElementById('detQty').innerText = tool.qty || 1;
         
         document.getElementById('detPrintBtn').setAttribute('data-action', 'print-label');
@@ -7182,6 +7376,70 @@ const Ops = {
             init();
             if (document.getElementById('ordersModal').classList.contains('active')) this.openOrders();
         }
+    },
+
+    /* ---------- Аудит поста 5S ---------- */
+    openPostAudit(ws = null, post = null) {
+        populateAllDropdowns();
+        if (ws) {
+            ensureOption('auditWs', ws);
+            document.getElementById('auditWs').value = ws;
+            document.getElementById('auditWs').dispatchEvent(new Event('change')); // перезалить посты зоны
+        }
+        if (post) {
+            ensureOption('auditPost', post);
+            document.getElementById('auditPost').value = post;
+        }
+        document.getElementById('auditInitials').value = '';
+        document.getElementById('auditError').style.display = 'none';
+        // Последний аудит выбранного поста — контекст для менеджера
+        const info = document.getElementById('auditLastInfo');
+        const renderLast = () => {
+            const w = document.getElementById('auditWs').value, p = document.getElementById('auditPost').value;
+            const last = (Store.audits5s || []).filter(a => a.ws === w && a.post === p)
+                .sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
+            info.innerText = last
+                ? `${T('Last audit:')} ${last.date} · ${last.auditor} · ${S5_RUBRICS.map(r => last.scores[r.id]).join('/')}`
+                : '';
+        };
+        document.getElementById('auditPost').onchange = renderLast;
+        renderLast();
+        // Столпы с рубриками: выбрал оценку — видишь её описание
+        document.getElementById('auditPillars').innerHTML = S5_RUBRICS.map((r, pi) => `
+            <div class="form-group" style="border:1px solid var(--border); border-radius:6px; padding:10px;">
+                <label>${T(r.key)}</label>
+                <select id="auditScore${pi}" class="form-control" onchange="Ops.auditRubric(${pi})">
+                    ${[1, 2, 3, 4, 5].map(v => `<option value="${v}">${v}</option>`).join('')}
+                </select>
+                <div id="auditRubric${pi}" style="font-size:0.82rem; color:var(--text-muted); margin-top:5px;"></div>
+            </div>`).join('');
+        S5_RUBRICS.forEach((_, pi) => this.auditRubric(pi));
+        openModal('postAuditModal');
+    },
+
+    /** Описание выбранной оценки столпа (рубрика) */
+    auditRubric(pi) {
+        const v = +document.getElementById('auditScore' + pi).value;
+        const r = S5_RUBRICS[pi];
+        document.getElementById('auditRubric' + pi).innerText =
+            `${v} — ${currentLang === 'RU' ? r.ru[v - 1] : r.en[v - 1]}`;
+    },
+
+    submitPostAudit() {
+        const ws = document.getElementById('auditWs').value;
+        const post = document.getElementById('auditPost').value;
+        const initials = document.getElementById('auditInitials').value.trim();
+        const err = document.getElementById('auditError');
+        if (!ws || !post) { err.innerText = T('AUDIT_NEED_POST'); err.style.display = 'block'; return; }
+        if (!initials) { err.innerText = T('INITIALS_REQUIRED'); err.style.display = 'block'; return; }
+        const scores = {};
+        S5_RUBRICS.forEach((r, pi) => scores[r.id] = +document.getElementById('auditScore' + pi).value);
+        Store.audits5s.push({ ws, post, scores, auditor: initials, date: Utils.nowISO().split('T')[0] });
+        Store.log('AUDIT_5S', `${ws} | ${post}: ${S5_RUBRICS.map(r => scores[r.id]).join('/')}`);
+        Store.save();
+        closeModal('postAuditModal');
+        init();
+        Utils.toast(T('AUDIT_SAVED'));
     },
 
     /* ---------- Реестр заявок: открытые + история со статусами ---------- */
@@ -9264,6 +9522,8 @@ function generate5SReport() { Reports.generate5S(); }
 function print5SReport() { Reports.print5S(); }
 function exportInventoryXLSX() { Reports.exportInventoryXLSX(); }
 function openOrdersModal() { Ops.openOrders(); }
+function openPostAuditModal() { doAction('Tool Crib Manager', () => Ops.openPostAudit()); }
+function submitPostAudit() { Ops.submitPostAudit(); }
 </script>
 <script>
 const Theme = {
