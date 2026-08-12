@@ -2282,7 +2282,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v52',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v53',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-12',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -8495,22 +8495,17 @@ const Kaizen = {
    ============================================================================ */
 const Reports = {
 
-    /* ---------- 5S-отчёт (модалка) ---------- */
-    generate5S() {
-        const active = Store.activeTools();
-        const compliant = active.filter(t => t.status === 'Active' || t.status === 'Issued' || t.status === 'Backup').length;
-        const rate = active.length ? ((compliant / active.length) * 100).toFixed(1) : '100.0';
-        const count = s => active.filter(t => t.status === s).length;
-
+    /* ---------- Общие данные по списаниям (экранный отчёт + печать) ---------- */
+    retireStats() {
         const retired = Store.tools.filter(t => t.status === 'Retired' || t.status === 'retired');
-        const getRetireInfo = (t) => {
+        const getInfo = (t) => {
             let reason = t.retireReason || null;
-            let ts = t.updatedAt || ''; 
-            let evt = t.history ? t.history.find(h => h.includes('Retired on') || h.includes('Retired:') || h.includes('Decommissioned:')) : null;
+            let ts = t.updatedAt || '';
+            const evt = t.history ? t.history.find(h => h.includes('Retired on') || h.includes('Retired:') || h.includes('Decommissioned:')) : null;
             if (evt) {
                 ts = evt.split('|')[0].trim();
                 if (!reason) {
-                    let rMatch = evt.match(/Reason:\s*([^,)]+)/);
+                    const rMatch = evt.match(/Reason:\s*([^,)]+)/);
                     if (rMatch) reason = rMatch[1].trim();
                     else if (evt.includes('Retired:')) reason = evt.split('Retired:')[1].trim();
                     else if (evt.includes('Decommissioned:')) reason = evt.split('Decommissioned:')[1].trim();
@@ -8518,19 +8513,97 @@ const Reports = {
             }
             return { tool: t, reason: reason || 'Wear > 75% / Damaged', ts };
         };
-        const retiredData = retired.map(getRetireInfo);
-        retiredData.sort((a, b) => b.ts.localeCompare(a.ts));
-
-        let reasonsMap = {};
-        let retiredCategories = {};
-        retiredData.forEach(d => { 
-            reasonsMap[d.reason] = (reasonsMap[d.reason] || 0) + 1; 
-            let cat = d.tool.category || 'General Tools';
-            retiredCategories[cat] = (retiredCategories[cat] || 0) + 1;
+        const data = retired.map(getInfo).sort((a, b) => b.ts.localeCompare(a.ts));
+        const reasonsMap = {}, byCategory = {};
+        let freqReason = 'N/A', maxC = 0;
+        data.forEach(d => {
+            reasonsMap[d.reason] = (reasonsMap[d.reason] || 0) + 1;
+            const cat = d.tool.category || 'General Tools';
+            byCategory[cat] = (byCategory[cat] || 0) + 1;
+            if (reasonsMap[d.reason] > maxC) { maxC = reasonsMap[d.reason]; freqReason = d.reason; }
         });
-        let freqReason = 'N/A';
-        let maxC = 0;
-        for (let r in reasonsMap) { if (reasonsMap[r] > maxC) { maxC = reasonsMap[r]; freqReason = r; } }
+        return { retired, data, reasonsMap, byCategory, freqReason };
+    },
+
+    /* ---------- Детализация закупок: по каждой позиции — дата последнего
+       прихода, причина расходования, перечень ID, необходимое количество.
+       Источники: procurementLog, история инструментов, данные списаний. --- */
+    procurementDetail() {
+        const rows = [];
+        // Последний заказ по названию позиции (журнал закупок)
+        const lastOrder = {};
+        Store.procurementLog.forEach(l => {
+            const key = (l.name || '').toLowerCase();
+            if (!lastOrder[key] || String(l.date) > String(lastOrder[key].date))
+                lastOrder[key] = { date: l.date, reason: l.reason };
+        });
+        // Последний приход по истории инструмента («Received order …»)
+        const lastReceipt = t => {
+            let d = null;
+            (t.history || []).forEach(h => {
+                if (h.includes('Received order')) {
+                    const day = h.slice(0, 10);
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(day) && (!d || day > d)) d = day;
+                }
+            });
+            return d;
+        };
+
+        // 1. Расходники ниже минимального остатка → докупить до maxQty
+        Store.activeTools()
+            .filter(t => t.type === 'Consumable' && (t.minQty || 0) > 0 && (t.qty || 0) <= t.minQty)
+            .forEach(t => {
+                const need = Math.max((t.maxQty || 0) - (t.qty || 0), t.minQty - (t.qty || 0));
+                const lo = lastOrder[(t.name || '').toLowerCase()];
+                rows.push({
+                    name: t.name, ids: t.id,
+                    lastIn: lastReceipt(t) || (lo ? lo.date : '—'),
+                    reason: `Below min stock (${t.qty || 0}/${t.minQty})` + (lo ? `; last order: ${lo.reason}` : ''),
+                    need
+                });
+            });
+
+        // 2. Списанные позиции → замена (группировка по названию)
+        const byName = {};
+        this.retireStats().data.forEach(d => {
+            const k = d.tool.name || d.tool.category || 'Unknown';
+            const g = byName[k] = byName[k] || { ids: [], reasons: {}, last: '' };
+            g.ids.push(d.tool.id);
+            g.reasons[d.reason] = true;
+            if (d.ts > g.last) g.last = d.ts;
+        });
+        Object.entries(byName).forEach(([name, g]) => {
+            rows.push({
+                name, ids: g.ids.join(', '),
+                lastIn: '—',
+                reason: `Retired ${g.ids.length} pcs (${Object.keys(g.reasons).join(', ')}) · last ${g.last || 'n/a'}`,
+                need: g.ids.length
+            });
+        });
+        return rows;
+    },
+
+    /** Таблица детализации закупок (общая для экрана и печати) */
+    procDetailTable() {
+        const rows = this.procurementDetail();
+        if (!rows.length) return '<p>Inventory levels stable. No procurement needed.</p>';
+        const body = rows.map(r =>
+            `<tr><td>${Utils.esc(r.name)}</td><td>${Utils.esc(r.ids)}</td><td>${Utils.esc(r.lastIn)}</td>` +
+            `<td>${Utils.esc(r.reason)}</td><td style="text-align:center;"><b>${r.need}</b></td></tr>`).join('');
+        return `<table><tr><th>Position</th><th>IDs</th><th>Last Receipt</th>` +
+            `<th>Consumption Basis</th><th>Needed Qty</th></tr>${body}</table>`;
+    },
+
+    /* ---------- 5S-отчёт (модалка) ---------- */
+    generate5S() {
+        const active = Store.activeTools();
+        const compliant = active.filter(t => t.status === 'Active' || t.status === 'Issued' || t.status === 'Backup').length;
+        const rate = active.length ? ((compliant / active.length) * 100).toFixed(1) : '100.0';
+        const count = s => active.filter(t => t.status === s).length;
+
+        const rs = this.retireStats();
+        const retired = rs.retired, retiredData = rs.data, freqReason = rs.freqReason;
+        const retiredCategories = rs.byCategory;
 
         const recentRetiredHtml = retiredData.slice(0, 5).map(d => `<li><strong>${Utils.esc(d.tool.id)}</strong> (${Utils.esc(d.tool.name)}) — ${Utils.esc(d.reason)}</li>`).join('');
         
@@ -8598,6 +8671,9 @@ const Reports = {
             <h4 style="color:var(--primary); margin-top:20px; margin-bottom:10px; border-bottom:1px dashed var(--border); padding-bottom:5px;">Procurement Recommendations</h4>
             <ul style="font-size:0.9rem;">${procurementHtml}</ul>
 
+            <h4 style="color:var(--primary); margin-top:20px; margin-bottom:10px; border-bottom:1px dashed var(--border); padding-bottom:5px;">Procurement Detail</h4>
+            ${this.procDetailTable()}
+
             <h4 style="color:var(--primary); margin-top:20px; margin-bottom:10px; border-bottom:1px dashed var(--border); padding-bottom:5px;">Workstation Tool Load &amp; Loss Risk</h4>
             <table>
                 <tr><th>Workstation</th><th>Tool Load</th><th>Overdue</th><th>Risk Index</th></tr>
@@ -8639,6 +8715,11 @@ const Reports = {
             ? warnings.map(w => `<li><strong>${Utils.esc(w.id)}</strong> (${Utils.esc(w.name)}) — ${Utils.esc(w.status)}</li>`).join('')
             : '<li>No current warnings. All clear.</li>';
 
+        // Списания и закупки: те же данные, что на экране
+        const rs = this.retireStats();
+        const recentRetired = rs.data.slice(0, 5).map(d =>
+            `<li><strong>${Utils.esc(d.tool.id)}</strong> (${Utils.esc(d.tool.name)}) — ${Utils.esc(d.reason)}</li>`).join('');
+
         Utils.printHtml(`
             <h1>5S Production Engineering Audit Report</h1>
             <div class="pz-meta">Generated: ${Utils.fmtDate(Utils.nowISO())} · By: ${Utils.esc(Auth.current.username)} (${Utils.esc(Auth.current.role)}) · 5S Tools Inventory</div>
@@ -8654,7 +8735,8 @@ const Reports = {
                 <tr><td>Issued</td><td>${count('Issued')}</td></tr>
                 <tr><td>Backup</td><td>${count('Backup')}</td></tr>
                 <tr><td>Maintenance</td><td>${count('Maintenance')}</td></tr>
-                <tr><td>Overdue</td><td>${count('Overdue')}</td></tr></table>
+                <tr><td>Overdue</td><td>${count('Overdue')}</td></tr>
+                <tr><td>Decommissioned (Retired)</td><td>${rs.retired.length}</td></tr></table>
             <h2>5S Pillars Assessment</h2>
             <table><tr><th>Pillar</th><th>Score</th><th>Finding</th></tr>${pillars}</table>
             <h2>Workstation Production Culture</h2>
@@ -8663,6 +8745,11 @@ const Reports = {
             <table><tr><th>Workstation</th><th>Tool Load</th><th>Overdue</th><th>Risk Index</th></tr>${wsRows}</table>
             <h2>Overdue / Maintenance Warnings</h2>
             <ul>${warnHtml}</ul>
+            <h2>Decommissioning Statistics</h2>
+            <p>Total retired: <b>${rs.retired.length}</b> · Most frequent reason: <b>${Utils.esc(rs.freqReason)}</b></p>
+            <ul>${recentRetired || '<li>None</li>'}</ul>
+            <h2>Procurement Detail</h2>
+            ${this.procDetailTable()}
             <h2>Kaizen Recommendations — ${currentLang === 'RU' ? 'по ролям и проблемам' : 'by role & detected problem'}</h2>
             ${Kaizen.renderPrint()}
             <div class="pz-sign"><div>Prepared by (Tool Crib Manager)</div><div>Reviewed by (5S Lead)</div></div>`);
