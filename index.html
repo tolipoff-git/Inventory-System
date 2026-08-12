@@ -1337,6 +1337,21 @@ select.work-only.form-control { max-width: 190px; }
             <button class="btn btn-warning work-hide" onclick="closeModal('opsMenuModal'); generate5SReport()" data-i18n="Generate 5S Report">Generate 5S Report</button>
             <button class="btn btn-success" onclick="closeModal('opsMenuModal'); exportInventoryXLSX()" data-i18n="Export Full Inventory (.xlsx)">Export Full Inventory (.xlsx)</button>
             <button class="btn btn-warning" onclick="closeModal('opsMenuModal'); openProcureModal()" data-i18n="Procure / Order Tool">Procure / Order Tool</button>
+            <button class="btn" onclick="closeModal('opsMenuModal'); openOrdersModal()" data-i18n="Purchase Orders">Purchase Orders</button>
+        </div>
+    </div>
+</div>
+
+<!-- Реестр заявок на закупку -->
+<div class="modal-overlay" id="ordersModal">
+    <div class="modal wide">
+        <div class="modal-header">
+            <h3 class="modal-title">📦 <span data-i18n="Purchase Orders">Purchase Orders</span></h3>
+            <button class="close-btn" onclick="closeModal('ordersModal')">&times;</button>
+        </div>
+        <div class="modal-body" id="ordersList"></div>
+        <div class="modal-footer">
+            <button class="btn btn-muted" onclick="closeModal('ordersModal')" data-i18n="Close">Close</button>
         </div>
     </div>
 </div>
@@ -2282,7 +2297,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v54',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v55',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-12',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -2755,6 +2770,14 @@ const translations = {
         'PROC_ITEM_REQUIRED': 'Please enter Item Name and Quantity.',
         'PROC_INITIALS_REQUIRED': 'Please fill in Requester Initials.',
         'PROC_EMPTY': 'Please add at least one item to the request.',
+        'Purchase Orders': 'Purchase Orders',
+        'Open Orders': 'Open Orders',
+        'Order History': 'Order History',
+        'No open orders.': 'No open orders.',
+        'No order history yet.': 'No order history yet.',
+        'ORDER_OPEN': 'In progress',
+        'ORDER_RECEIVED': 'Received',
+        'ORDER_CANCELLED': 'Cancelled',
         'In service': 'In service',
         'Not rated': 'Not rated',
         // SOP
@@ -3138,6 +3161,14 @@ const translations = {
         'PROC_ITEM_REQUIRED': 'Введите название позиции и количество.',
         'PROC_INITIALS_REQUIRED': 'Укажите инициалы заявителя.',
         'PROC_EMPTY': 'Добавьте хотя бы одну позицию в заявку.',
+        'Purchase Orders': 'Заявки на закупку',
+        'Open Orders': 'Открытые заявки',
+        'Order History': 'История заявок',
+        'No open orders.': 'Нет открытых заявок.',
+        'No order history yet.': 'Истории заявок пока нет.',
+        'ORDER_OPEN': 'В работе',
+        'ORDER_RECEIVED': 'Получено',
+        'ORDER_CANCELLED': 'Отменено',
         'In service': 'В обслуживании',
         'Not rated': 'Без оценки',
         // SOP
@@ -3781,13 +3812,18 @@ const Store = {
     getEmp(idOrName) { return this.personnel.find(p => p.id === idOrName || p.name === idOrName || (p.badge && p.badge.toUpperCase() === String(idOrName).toUpperCase())); },
     empName(id)      { const e = this.getEmp(id); return e ? e.name : 'Unknown'; },
 
-    /** Активные (не списанные) инструменты */
+    /** Активный инвентарь: без списанных и без заказов «Pending Delivery»
+        (заказы — не активы; их учёт ведёт реестр заявок) */
     activeTools() { 
         if (!this._activeTools) {
-            this._activeTools = this.tools.filter(t => t.status !== 'Retired' && t.status !== 'retired');
+            this._activeTools = this.tools.filter(t =>
+                t.status !== 'Retired' && t.status !== 'retired' && t.status !== 'Pending Delivery');
         }
         return this._activeTools;
     },
+
+    /** Списанные (архив) */
+    retiredTools() { return this.tools.filter(t => t.status === 'Retired' || t.status === 'retired'); },
 
     /** Последний известный износ инструмента (по audit_history), 0 если аудитов не было */
     wearOf(tool) {
@@ -5527,7 +5563,7 @@ function renderCategoryHub() {
         ${row(`<span style="color:var(--warning);">● Maintenance</span>`, perm.filter(t => t.status === 'Maintenance').length)}
         ${row(`<span style="color:var(--danger);">● Overdue</span>`, perm.filter(t => t.status === 'Overdue').length)}
         ${row(`⚗ ${T('Calibration due ≤14d')}`, permCal, permCal ? 'var(--warning)' : 'var(--success)')}
-        ${row(`<a href="#" onclick="doAction('Administrator', openArchiveModal); return false;" style="color:var(--text-main); text-decoration:underline;">🗑 Decommissioned Assets</a>`, Store.tools.length - Store.activeTools().length, 'var(--text-muted)')}`;
+        ${row(`<a href="#" onclick="doAction('Administrator', openArchiveModal); return false;" style="color:var(--text-main); text-decoration:underline;">🗑 Decommissioned Assets</a>`, Store.retiredTools().length, 'var(--text-muted)')}`;
 
     /* --- Хаб персонала: кто, сколько держит, калибровки, просрочки, бережливость --- */
     const staffRows = Store.personnel.slice(0, 4).map(emp => {
@@ -5665,6 +5701,14 @@ function renderGrid() {
 }
 
 /* --- Справочники: списки и выпадающие --- */
+
+/** Значение карточки обязано существовать среди опций select — иначе оно молча сбрасывается */
+function ensureOption(id, val) {
+    const el = document.getElementById(id);
+    if (el && val && !Array.from(el.options).some(o => o.value === val))
+        el.appendChild(new Option(val, val));
+}
+
 function populateAllDropdowns() {
     const fill = (ids, items) => ids.forEach(id => {
         const el = document.getElementById(id);
@@ -6367,6 +6411,10 @@ const Ops = {
         document.getElementById('editToolLoc').value = tool.location || '';
         
         if (tool.address) {
+            ensureOption('editToolZone', tool.address.zone);
+            ensureOption('editToolRack', tool.address.rack);
+            ensureOption('editToolShelf', tool.address.shelf);
+            ensureOption('editToolBin', tool.address.bin);
             document.getElementById('editToolZone').value = tool.address.zone || '';
             document.getElementById('editToolRack').value = tool.address.rack || '';
             document.getElementById('editToolShelf').value = tool.address.shelf || '';
@@ -6427,8 +6475,15 @@ const Ops = {
         tool.location = document.getElementById('editToolLoc').value || '';
         tool.spec = document.getElementById('editToolSpec').value.trim();
         
-        if (z && r && s && b) tool.address = { zone: z, rack: r, shelf: s, bin: b };
-        else delete tool.address;
+        // Адрес: незаполненные поля сохраняют прежнее значение (защита от потери),
+        // полностью пустая форма — осознанное удаление адреса
+        const prevAddr = tool.address || {};
+        if (z || r || s || b) {
+            tool.address = {
+                zone: z || prevAddr.zone || '', rack: r || prevAddr.rack || '',
+                shelf: s || prevAddr.shelf || '', bin: b || prevAddr.bin || ''
+            };
+        } else delete tool.address;
         
         const days = parseInt(document.getElementById('editToolInterval').value) || 0;
         if (days) tool.calDue = new Date(Date.now() + days * CONFIG.DAY_MS).toISOString();
@@ -6535,6 +6590,15 @@ const Ops = {
     openTransferModal(toolId) {
         document.getElementById('transferToolId').value = toolId;
         populateAllDropdowns();
+        // Текущий адрес — стартовая точка перемещения
+        const tool = Store.getTool(toolId);
+        const a = tool && tool.address;
+        ['transZone|zone', 'transRack|rack', 'transShelf|shelf', 'transBin|bin'].forEach(pair => {
+            const [id, key] = pair.split('|');
+            const val = a ? (a[key] || '') : '';
+            ensureOption(id, val);
+            document.getElementById(id).value = val;
+        });
         openModal('transferModal');
     },
 
@@ -6546,6 +6610,7 @@ const Ops = {
         const s = document.getElementById('transShelf').value;
         const b = document.getElementById('transBin').value;
         tool.location = `${z} - ${r} - ${s} - ${b}`;
+        if (z && r && s && b) tool.address = { zone: z, rack: r, shelf: s, bin: b };
         Store.touch(tool);
         Store.toolEvent(tool, `Moved to ${tool.location}`);
         Store.log('TOOL_TRANSFER', `${tool.id} → ${tool.location}`);
@@ -7094,9 +7159,14 @@ const Ops = {
             Store.toolEvent(order, `Received order ${orderId}, assigned ID ${order.id}`);
             Store.log('ORDER_RECEIVE', `${orderId} → new ${order.id}`);
         }
-        
+
+        // Журнал заявок: статус «получено»
+        const rec = Store.procurementLog.find(l => l.orderId === orderId);
+        if (rec) { rec.status = 'received'; rec.receivedAt = Utils.nowISO().split('T')[0]; }
+
         Store.save();
         init();
+        if (document.getElementById('ordersModal').classList.contains('active')) this.openOrders();
     },
 
     cancelOrder(orderId) {
@@ -7104,10 +7174,54 @@ const Ops = {
         const idx = Store.tools.findIndex(t => t.id === orderId);
         if (idx >= 0) {
             Store.tools.splice(idx, 1);
+            // Журнал заявок: статус «отменено» (запись сохраняется для истории)
+            const rec = Store.procurementLog.find(l => l.orderId === orderId);
+            if (rec) { rec.status = 'cancelled'; rec.cancelledAt = Utils.nowISO().split('T')[0]; }
             Store.log('ORDER_CANCEL', orderId);
             Store.save();
             init();
+            if (document.getElementById('ordersModal').classList.contains('active')) this.openOrders();
         }
+    },
+
+    /* ---------- Реестр заявок: открытые + история со статусами ---------- */
+    openOrders() {
+        const open = Store.tools.filter(t => t.status === 'Pending Delivery');
+        const openHtml = open.length ? open.map(o => `
+            <div class="history-item">
+                <span><strong>${Utils.esc(o.id)}</strong> — ${Utils.esc(o.name)} ×${o.qty || 1}${o.cost ? ` · $${(+o.cost).toFixed(2)}` : ''}<br>
+                    <span style="color:var(--text-muted); font-size:0.85rem;">${Utils.esc(o.location || '')}${o.targetToolId ? ' → ' + Utils.esc(o.targetToolId) : ''}</span>
+                </span>
+                <div style="white-space:nowrap;">
+                    <button class="btn btn-success audit-btn" data-action="receive-order" data-id="${Utils.esc(o.id)}">${T('Mark as Received')}</button>
+                    <button class="btn btn-danger audit-btn" data-action="cancel-order" data-id="${Utils.esc(o.id)}">${T('Cancel Order')}</button>
+                </div>
+            </div>`).join('')
+            : `<div style="text-align:center; color:var(--text-muted); padding:10px;">${T('No open orders.')}</div>`;
+
+        const badge = s => {
+            const map = { open: ['var(--warning)', T('ORDER_OPEN')],
+                          received: ['var(--success)', T('ORDER_RECEIVED')],
+                          cancelled: ['var(--danger)', T('ORDER_CANCELLED')] };
+            const [c, label] = map[s] || map.open;
+            return `<span style="color:${c}; font-weight:bold; white-space:nowrap;">${label}</span>`;
+        };
+        const hist = [...Store.procurementLog].reverse();
+        const histHtml = hist.length ? hist.map(l => `
+            <div class="history-item">
+                <span>${Utils.esc(l.name)} ×${l.qty} · $${(+l.total || 0).toFixed(2)}<br>
+                    <span style="color:var(--text-muted); font-size:0.85rem;">${Utils.esc(l.date || '')} · ${Utils.esc(l.reason || '')} · ${Utils.esc(l.initials || '')}</span>
+                </span>
+                ${badge(l.status)}
+            </div>`).join('')
+            : `<div style="text-align:center; color:var(--text-muted); padding:10px;">${T('No order history yet.')}</div>`;
+
+        document.getElementById('ordersList').innerHTML = `
+            <h4 style="color:var(--primary); margin:0 0 8px; border-bottom:1px dashed var(--border); padding-bottom:5px;">${T('Open Orders')}</h4>
+            <div class="history-list" style="margin-bottom:16px;">${openHtml}</div>
+            <h4 style="color:var(--primary); margin:0 0 8px; border-bottom:1px dashed var(--border); padding-bottom:5px;">${T('Order History')}</h4>
+            <div class="history-list">${histHtml}</div>`;
+        openModal('ordersModal');
     },
 
     exportAuditLogCSV() {
@@ -7999,8 +8113,8 @@ const Procure = {
 
         // Log each item to procurement log and tool history
         this.items.forEach(item => {
-            const req = { ...item, date: Utils.nowISO().split('T')[0], ws, wp, initials };
             const orderId = 'ORD-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+            const req = { ...item, date: Utils.nowISO().split('T')[0], ws, wp, initials, orderId, status: 'open' };
             const orderTool = {
                 id: orderId,
                 name: item.name,
@@ -8974,7 +9088,7 @@ const Reports = {
                 ['Maintenance & Cal. Queue', active.filter(t => t.status === 'Maintenance').length],
                 ['Overdue Alerts', active.filter(t => t.status === 'Overdue').length],
                 ['Backup Stock', active.filter(t => t.status === 'Backup').length],
-                ['Retired (Archive)', Store.tools.length - active.length]
+                ['Retired (Archive)', Store.retiredTools().length]
             ];
             sum.getCell('A4').value = 'KEY METRICS';
             sum.getCell('A4').font = { bold: true, size: 12, color: { argb: 'FF45A29E' } };
@@ -9149,6 +9263,7 @@ const Reports = {
 function generate5SReport() { Reports.generate5S(); }
 function print5SReport() { Reports.print5S(); }
 function exportInventoryXLSX() { Reports.exportInventoryXLSX(); }
+function openOrdersModal() { Ops.openOrders(); }
 </script>
 <script>
 const Theme = {
