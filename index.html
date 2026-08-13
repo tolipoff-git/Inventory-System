@@ -767,8 +767,10 @@ details[open] .faq-summary::before { transform: rotate(90deg); }
     .btn { min-height: 42px; font-size: 0.95rem; }
     .tool-actions .btn { min-width: 47%; font-size: 0.88rem; min-height: 44px; }
     input, select, textarea { font-size: 16px !important; }
-    .search-bar input { font-size: 16px; padding: 12px; }
-    #qrScanBtn { min-height: 48px; }
+    .search-bar { flex-wrap: wrap; }
+    .search-bar select { flex-basis: 100%; order: -1; }
+    .search-bar input { font-size: 16px; padding: 12px; flex: 1; min-width: 0; }
+    #qrScanBtn { min-height: 48px; flex-shrink: 0; }
     .menu-stack .btn { width: 100%; }
     .audit-counters { gap: 10px; }
     .audit-counter { flex: 1 1 40%; }
@@ -2374,7 +2376,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v62',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v63',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-12',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
