@@ -2374,7 +2374,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v61',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v62',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-12',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -5301,13 +5301,11 @@ function applyFilters(list) {
     else if (f.type === 'maintq') out = out.filter(inMaintQueue);
     else if (f.type === 'location_qr') {
         const parts = f.value.split(':');
-        let qZ, qR, qS, qB;
-        for (let i = 2; i < parts.length; i++) {
-            if (parts[i].startsWith('Z')) qZ = parts[i].substring(1).toLowerCase();
-            if (parts[i].startsWith('R')) qR = parts[i].substring(1).toLowerCase();
-            if (parts[i].startsWith('S')) qS = parts[i].substring(1).toLowerCase();
-            if (parts[i].startsWith('B')) qB = parts[i].substring(1).toLowerCase();
-        }
+        // Format: LOC:LEVEL:Zone:Rack:Shelf:Bin
+        const qZ = parts[2] ? parts[2].toLowerCase() : null;
+        const qR = parts[3] ? parts[3].toLowerCase() : null;
+        const qS = parts[4] ? parts[4].toLowerCase() : null;
+        const qB = parts[5] ? parts[5].toLowerCase() : null;
         out = out.filter(t => {
             if (!t.address) return false;
             if (qZ && (t.address.zone || '').toLowerCase() !== qZ) return false;
@@ -8377,12 +8375,10 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
             qrPayload = loc;
             let parts = loc.split(':');
             let formatted = [];
-            for (let i = 2; i < parts.length; i++) {
-                if (parts[i].startsWith('Z')) formatted.push('Zone ' + parts[i].substring(1));
-                if (parts[i].startsWith('R')) formatted.push('Rack ' + parts[i].substring(1));
-                if (parts[i].startsWith('S')) formatted.push('Shelf ' + parts[i].substring(1));
-                if (parts[i].startsWith('B')) formatted.push('Bin ' + parts[i].substring(1));
-            }
+            if (parts[2]) formatted.push('Zone: ' + parts[2]);
+            if (parts[3]) formatted.push('Rack: ' + parts[3]);
+            if (parts[4]) formatted.push('Shelf: ' + parts[4]);
+            if (parts[5]) formatted.push('Bin: ' + parts[5]);
             displayLoc = formatted.join(' → ');
             cat = 'Storage Location';
         } else if (entityType === 'tool') {
@@ -8437,12 +8433,17 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
 function selectLabelType(t) { Labels.selectLabelType(t); }
 function printLocationLabel(level) {
     let loc = 'LOC:';
+    const z = (document.getElementById('transZone').value || '').replace(/:/g, '-');
+    const r = (document.getElementById('transRack').value || '').replace(/:/g, '-');
+    const s = (document.getElementById('transShelf').value || '').replace(/:/g, '-');
+    const b = (document.getElementById('transBin').value || '').replace(/:/g, '-');
+    
     if (level === 'rack') {
-        loc += 'RACK:Z' + document.getElementById('transZone').value + ':R' + document.getElementById('transRack').value;
+        loc += 'RACK:' + z + ':' + r;
     } else if (level === 'shelf') {
-        loc += 'SHELF:Z' + document.getElementById('transZone').value + ':R' + document.getElementById('transRack').value + ':S' + document.getElementById('transShelf').value;
+        loc += 'SHELF:' + z + ':' + r + ':' + s;
     } else if (level === 'bin') {
-        loc += 'BIN:Z' + document.getElementById('transZone').value + ':R' + document.getElementById('transRack').value + ':S' + document.getElementById('transShelf').value + ':B' + document.getElementById('transBin').value;
+        loc += 'BIN:' + z + ':' + r + ':' + s + ':' + b;
     }
     Labels.openPrintLabelModal(loc, 'shelf');
 }
