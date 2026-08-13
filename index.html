@@ -768,7 +768,7 @@ details[open] .faq-summary::before { transform: rotate(90deg); }
     .tool-actions .btn { min-width: 47%; font-size: 0.88rem; min-height: 44px; }
     input, select, textarea { font-size: 16px !important; }
     .search-bar { flex-wrap: wrap; }
-    .search-bar select { flex-basis: 100%; order: -1; }
+    .search-bar select { flex-basis: 100%; order: -1; max-width: none !important; }
     .search-bar input { font-size: 16px; padding: 12px; flex: 1; min-width: 0; }
     #qrScanBtn { min-height: 48px; flex-shrink: 0; }
     .menu-stack .btn { width: 100%; }
@@ -2376,7 +2376,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v64',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v65',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-12',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -8377,10 +8377,13 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
             qrPayload = loc;
             let parts = loc.split(':');
             let formatted = [];
-            if (parts[2]) formatted.push(parts[2]);
-            if (parts[3]) formatted.push(parts[3]);
-            if (parts[4]) formatted.push(parts[4]);
-            if (parts[5]) formatted.push(parts[5]);
+            for (let i = 2; i < parts.length; i++) {
+                let p = parts[i].trim();
+                // Пропускаем пустые элементы и точные совпадения с ключами
+                if (!p || /^(zone|rack|shelf|bin)$/i.test(p)) continue;
+                // На всякий случай подчищаем, если кто-то сохранил "Zone: Toolstore"
+                formatted.push(p.replace(/^(Zone|Rack|Shelf|Bin):\s*/i, ''));
+            }
             displayLoc = formatted.join(' | ');
             cat = 'Storage Location';
         } else if (entityType === 'tool') {
