@@ -2376,7 +2376,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v65',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v66',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-12',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -5264,10 +5264,9 @@ function setFilter(type, value) {
         let parts = value.split(':');
         let formatted = [];
         for (let i = 2; i < parts.length; i++) {
-            if (parts[i].startsWith('Z')) formatted.push('Zone ' + parts[i].substring(1));
-            if (parts[i].startsWith('R')) formatted.push('Rack ' + parts[i].substring(1));
-            if (parts[i].startsWith('S')) formatted.push('Shelf ' + parts[i].substring(1));
-            if (parts[i].startsWith('B')) formatted.push('Bin ' + parts[i].substring(1));
+            let p = parts[i].trim();
+            if (!p || /^(zone|rack|shelf|bin)$/i.test(p)) continue;
+            formatted.push(p.replace(/^(Zone|Rack|Shelf|Bin):\s*/i, ''));
         }
         labelVal = parts[1] + ' (' + formatted.join(' → ') + ')';
     }
@@ -7038,52 +7037,7 @@ const Ops = {
         init();
     },
 
-    openPrintLabelModal(entityId, entityType = 'tool') {
-        document.getElementById('ltmEntityId').value = entityId;
-        document.getElementById('ltmEntityType').value = entityType;
-        // Список носителей, сгруппированный по бренду; дефолт: локация → 5163, инструмент → 5161
-        const sel = document.getElementById('ltmStock');
-        const groups = {};
-        Object.entries(this.STOCKS).forEach(([key, s]) => {
-            (groups[s.brand] = groups[s.brand] || []).push(`<option value="${key}">${s.brand} ${s.pn}</option>`);
-        });
-        sel.innerHTML = Object.entries(groups)
-            .map(([b, opts]) => `<optgroup label="${b}">${opts.join('')}</optgroup>`).join('');
-        sel.value = entityType === 'tool' ? 'avery5161' : 'avery5163';
-        
-        const qLen = (Store.labelQueue || []).length;
-        const countSpan = document.getElementById('ltmQueueCount');
-        if (countSpan) countSpan.innerText = qLen;
 
-        const inQueue = Store.isInLabelQueue(entityId);
-        const toggleBtn = document.getElementById('modalQueueToggleBtn');
-        if (toggleBtn) {
-            toggleBtn.innerText = inQueue ? '✓ In Queue' : '+ Add to Queue';
-            toggleBtn.className = 'btn ' + (inQueue ? 'btn-warning' : 'btn-secondary');
-        }
-
-        const queueBtn = document.getElementById('modalPrintQueueBtn');
-        if (queueBtn) {
-            queueBtn.style.display = qLen > 0 ? 'inline-block' : 'none';
-            queueBtn.innerText = '🖨 ' + T('Print Queue (N)').replace('N', qLen);
-        }
-        
-        this.onStockChange();
-        openModal('labelTypeModal');
-    },
-
-    onStockChange() {
-        const s = this.STOCKS[document.getElementById('ltmStock').value];
-        document.getElementById('ltmStockInfo').innerText = s.info;
-        const sheetOpts = document.getElementById('ltmSheetOpts');
-        const isQueue = document.querySelector('input[name="ltmMode"]:checked')?.value === 'queue' && (Store.labelQueue || []).length > 0;
-        
-        sheetOpts.style.display = s.kind === 'sheet' ? 'flex' : 'none';
-        const qtyRow = document.getElementById('ltmQty').closest('.form-group');
-        if (qtyRow) {
-            qtyRow.style.display = isQueue ? 'none' : 'block';
-        }
-    },
 
     openSOPManual() {
         const tool = Store.getTool(document.getElementById('serviceToolId').value);
@@ -8061,14 +8015,18 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
                 let cells = '';
                 for (let pos = 1; pos <= perSheet; pos++) {
                     const filled = pos >= start && pos < start + qty;
-                    cells += `<div class="sheet-cell ${filled ? '' : 'empty'}">${filled ? cell : ''}</div>`;
+                    const col = (pos - 1) % stock.cols, row = Math.floor((pos - 1) / stock.cols);
+                    cells += `<div class="sheet-cell ${filled ? '' : 'empty'}" style="position:absolute; left:${stock.left + col * stock.pitchX}mm; top:${stock.top + row * stock.pitchY}mm; width:${stock.w}mm; height:${stock.h}mm; overflow:hidden;">${filled ? cell : ''}</div>`;
                 }
                 container.className = 'label-preview-box sheet-mode';
-                container.innerHTML = `<div class="sheet-page layout-${stockKey}">${cells}</div>`;
-                container.style.transform = 'scale(0.55)';
-                container.style.transformOrigin = 'top center';
-                container.style.marginBottom = `-125mm`;
-                dyn.innerHTML = '';
+                container.innerHTML = `<div class="sheet-page" style="position:relative; width:215.9mm; height:279.4mm; background:#fff; margin:0 auto;">${cells}</div>`;
+                container.style.zoom = 0.55;
+                container.style.transform = '';
+                container.style.transformOrigin = '';
+                container.style.marginBottom = '';
+                dyn.innerHTML = `@media print { @page { size: letter; margin: 0; }
+                    body.print-label-mode #printLabelContainer { zoom: 1 !important; padding: 0 !important; }
+                    .sheet-cell { outline: none !important; border: none !important; } }`;
             } else { 
                 container.className = 'label-preview-box sheet-mode';
                 container.innerHTML = `<div class="sheet-cell" style="position:relative; width:${stock.w}mm; height:${stock.h}mm; overflow:hidden; margin:0 auto;">${cell}</div>`;
@@ -8192,6 +8150,17 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
         }
         // Локация (зона/пост/адрес хранения)
         const loc = String(entityId);
+        let displayLoc = loc;
+        if (loc.startsWith('LOC:')) {
+            let parts = loc.split(':');
+            let formatted = [];
+            for (let i = 2; i < parts.length; i++) {
+                let p = parts[i].trim();
+                if (!p || /^(zone|rack|shelf|bin)$/i.test(p)) continue;
+                formatted.push(p.replace(/^(Zone|Rack|Shelf|Bin):\s*/i, ''));
+            }
+            displayLoc = formatted.join(' | ');
+        }
         switch (stockKey) {
             case 'genC': return `
                 <div style="display:flex; width:100%; height:100%; flex-direction:column; justify-content:space-between;">
@@ -8201,7 +8170,7 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
                     <div style="display:flex; justify-content:space-between; align-items:center; flex:1;">
                         <div style="font-size:11px; max-width:60%;">
                             <div><strong>Storage Address:</strong></div>
-                            <div style="margin-bottom:5px;">Toolgage → ${esc(loc)}</div>
+                            <div style="margin-bottom:5px;">Toolgage → ${esc(displayLoc)}</div>
                             <div><strong>Min/Max QTY:</strong> 5 / 20</div>
                             <div style="font-size:8px; margin-top:5px; color:#555;">(Only authorized categories allowed)</div>
                         </div>
@@ -8212,23 +8181,23 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
             case 'avery5163': return `
                 <div style="display:flex; width:100%; height:100%; gap:2mm; padding:2mm; align-items:center;">
                     <div style="flex:1; text-align:center;">
-                        <div style="font-size:16px; font-weight:bold; text-transform:uppercase;">${esc(loc)}</div>
+                        <div style="font-size:16px; font-weight:bold; text-transform:uppercase;">${esc(displayLoc)}</div>
                         <div style="font-size:9px; margin-top:2mm;">FIRST SOURCE ELECTRONICS \u00b7 5S LOCATION</div>
                     </div>
                     <canvas class="lbl-qr" style="width:24mm; height:24mm;"></canvas>
                 </div>`;
             case 'avery5161': return `
                 <div style="display:flex; width:100%; height:100%; gap:2mm; padding:1mm; align-items:center;">
-                    <div style="flex:1; font-size:12px; font-weight:bold; text-align:center;">${esc(loc)}</div>
+                    <div style="flex:1; font-size:12px; font-weight:bold; text-align:center;">${esc(displayLoc)}</div>
                     <canvas class="lbl-qr" style="width:19mm; height:19mm;"></canvas>
                 </div>`;
             case 'avery5366': return `
                 <div style="display:flex; width:100%; height:100%; gap:1.5mm; padding:0.8mm; align-items:center;">
-                    <div style="flex:1; font-size:9px; font-weight:bold;">${esc(loc)}</div>
+                    <div style="flex:1; font-size:9px; font-weight:bold;">${esc(displayLoc)}</div>
                     <canvas class="lbl-qr" style="width:13mm; height:13mm;"></canvas>
                 </div>`;
             default: return `
-                <div style="display:flex; width:100%; height:100%; align-items:center; justify-content:center; font-size:8px; font-weight:bold; text-align:center;">${esc(loc)}</div>`;
+                <div style="display:flex; width:100%; height:100%; align-items:center; justify-content:center; font-size:8px; font-weight:bold; text-align:center;">${esc(displayLoc)}</div>`;
         }
     },
 
@@ -9169,11 +9138,8 @@ const Scan = {
         this.close();
         if (idMatch) { Ops.findAndOpen(idMatch[1]); return; }
         if (locMatch) {
-            // Этикетка стеллажа: подставляем адрес в глобальный поиск
             const q = decodeURIComponent(locMatch[1]);
-            const inp = document.getElementById('globalSearch');
-            inp.value = q;
-            onSearchInput();
+            setFilter('location_qr', q);
             return;
         }
         Ops.findAndOpen(text);
