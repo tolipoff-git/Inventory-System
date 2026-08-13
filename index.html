@@ -2376,7 +2376,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v63',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v64',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-12',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -8377,11 +8377,11 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
             qrPayload = loc;
             let parts = loc.split(':');
             let formatted = [];
-            if (parts[2]) formatted.push('Zone: ' + parts[2]);
-            if (parts[3]) formatted.push('Rack: ' + parts[3]);
-            if (parts[4]) formatted.push('Shelf: ' + parts[4]);
-            if (parts[5]) formatted.push('Bin: ' + parts[5]);
-            displayLoc = formatted.join(' → ');
+            if (parts[2]) formatted.push(parts[2]);
+            if (parts[3]) formatted.push(parts[3]);
+            if (parts[4]) formatted.push(parts[4]);
+            if (parts[5]) formatted.push(parts[5]);
+            displayLoc = formatted.join(' | ');
             cat = 'Storage Location';
         } else if (entityType === 'tool') {
             const tool = Store.getTool(entityId);
