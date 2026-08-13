@@ -2374,7 +2374,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v60',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v61',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-12',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -6534,19 +6534,12 @@ function addRegistryEmp() {
 }
 
 function populateEmpSelects() {
-    const select = document.getElementById('assignEmp');
-    select.innerHTML = Store.personnel.map(e => `<option value="${Utils.esc(e.id)}">${Utils.esc(e.name)}</option>`).join('');
-    select.onchange = e => {
-        const emp = Store.getEmp(e.target.value);
-        if (emp) {
-            const wsEl = document.getElementById('assignWs');
-            wsEl.value = emp.defaultWs || emp.workstation;
-            // Перестроить зависимый список постов под зону сотрудника, затем выбрать его пост
-            wsEl.dispatchEvent(new Event('change'));
-            document.getElementById('assignPost').value = emp.defaultPost || emp.post;
-        }
-    };
-    if (Store.personnel.length) select.onchange({ target: select });
+    const list = document.getElementById('assignEmpList');
+    if (!list) return;
+    list.innerHTML = Store.personnel.map(e => {
+        const val = e.initials ? `${e.name} [${e.initials}]` : e.name;
+        return `<option value="${Utils.esc(val)}">${Utils.esc(e.id)}</option>`;
+    }).join('');
 }
 </script>
 <script>
@@ -6898,24 +6891,48 @@ const Ops = {
         openModal('assignModal');
     },
 
+    resolveEmpInput(val) {
+        if (!val) return null;
+        let parsedName = val;
+        const match = val.match(/^(.*?)\s+\[(.*?)\]$/);
+        if (match) parsedName = match[1];
+        
+        let emp = Store.getEmp(parsedName);
+        if (emp) return emp;
+        
+        const lower = parsedName.toLowerCase();
+        emp = Store.personnel.find(p => p.name.toLowerCase() === lower);
+        if (emp) return emp;
+        
+        const lowerVal = val.toLowerCase();
+        emp = Store.personnel.find(p => p.initials && p.initials.toLowerCase() === lowerVal);
+        return emp || null;
+    },
+
     onAssignEmpChange() {
         const val = document.getElementById('assignEmp').value.trim();
-        const emp = Store.getEmp(val) || Store.personnel.find(p => p.name.toLowerCase() === val.toLowerCase());
+        const emp = Ops.resolveEmpInput(val);
         if (emp) {
             const wsEl = document.getElementById('assignWs');
             wsEl.value = emp.defaultWs || emp.workstation || wsEl.value;
-            Ops.onAssignWsChange();
+            wsEl.dispatchEvent(new Event('change'));
+            document.getElementById('assignPost').value = emp.defaultPost || emp.post || document.getElementById('assignPost').value;
+            if (emp.initials) {
+                document.getElementById('assignInitials').value = emp.initials;
+            }
         }
     },
 
     submitAssign() {
         let tool = Store.getTool(document.getElementById('assignToolId').value);
         let empVal = document.getElementById('assignEmp').value.trim();
-        let emp = Store.getEmp(empVal) || Store.personnel.find(p => p.name.toLowerCase() === empVal.toLowerCase());
+        let emp = Ops.resolveEmpInput(empVal);
         if (!emp && empVal) {
             let newEmpId;
             do { newEmpId = 'EMP-' + Math.random().toString(36).substr(2, 6).toUpperCase(); } while (Store.getEmp(newEmpId));
-            emp = { id: newEmpId, name: empVal, history: [] };
+            const match = empVal.match(/^(.*?)\s+\[(.*?)\]$/);
+            const cleanName = match ? match[1] : empVal;
+            emp = { id: newEmpId, name: cleanName, history: [] };
             Store.personnel.push(emp);
         }
         const initials = document.getElementById('assignInitials').value.trim();

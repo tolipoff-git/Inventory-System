@@ -2,7 +2,7 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v60` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v61` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`).
