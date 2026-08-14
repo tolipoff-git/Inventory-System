@@ -2,15 +2,19 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v81` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v82` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v81)
+## Recent Accomplishments (v49 – v82)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Permanent vs Consumable Stock Distinction, Agent Topology Update & v81 Release
+### 0. Digital Integrity Stamp (SHA-256), Export Audit Trail, FAQ & v82 Release
+- **Cryptographic Snapshot Fingerprint (SHA-256):** Every exported Excel workbook (`exportInventoryXLSX`) computes a deterministic SHA-256 hash across all active tool IDs, names, types, quantities, statuses, and serial numbers paired with a unique export serial (`EXP-YYYYMMDDHHMMSS-XXXX`) and authenticated author identity.
+- **Official Verification Block on Summary Sheet:** Embeds a stylized `DIGITAL INTEGRITY SEAL & VERIFICATION STAMP` block on Sheet 1 detailing Export Serial, Verified Author, SHA-256 Checksum, Total Verified Units, and Security Audit Status.
+- **Immutable System Export Logging:** Automatically records an immutable `INVENTORY_EXPORT` audit log entry in `Store.log` with serial, counts, author, and checksum prefix. Any post-export attempt to subtract tools or alter database records creates an instant checksum mismatch and leaves an indelible audit trail.
+- **Knowledge Base & FAQ Documentation:** Added complete localized explanations in both Russian (`I18N.RU['FAQ_BODY']`) and English (`I18N.EN['FAQ_BODY']`) Section 5 covering anti-tamper verification and cryptographic snapshot seals.
 - **Permanent Tool Stock Logic:** Permanent tools (`type === 'Permanent'`) fix unit presence (`Qty in Stock: 1`) without artificial min/max limits (`minQty = null`, `maxQty = null`), displaying a clean dash (`—`) in Min Qty and Max Qty columns of Excel exports.
 - **Consumable Batch Thresholds:** Consumable items (`type === 'Consumable'`) manage real physical stock counts (`Qty in Stock: 15`), minimum reorder triggers (`Min Qty: 5`), and maximum capacity caps (`Max Qty: 20`).
 - **Full System Lifecycle Enforcement:** Enforced this strict distinction across `Store.migrate()`, `Ops.submitAddTool()`, `Ops.submitEditTool()`, and `Reports.exportInventoryXLSX()`.
