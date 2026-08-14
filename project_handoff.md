@@ -2,15 +2,18 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v72` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v73` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v72)
+## Recent Accomplishments (v49 – v73)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Location Pillar Clean-Up, Text Contrast Overhaul & PWA Stability (v72)
+### 0. 5S Rubric Score Explanations, Storage Label Personnel Dropdown & FAQ Overhaul (v73)
+- **5S Audit Rubric Score Explanations:** Clicking 5S Radar Chart points or history items resolves human-readable score explanations (`Ops.get5SRubricExplanation`) for every score (1–5) across all 5 pillars (`Sort`, `Set in Order`, `Shine`, `Standardize`, `Sustain`) from `S5_RUBRICS` instead of raw slash strings (e.g. `3/2/2/3/3` -> `3 - Лишнее есть, но сложено отдельно`). Highlighted pillar focus is styled dynamically.
+- **Storage Label Personnel Dropdown (`locLabelRespSelect`):** Added `<select id="locLabelRespSelect">` in `locationLabelModal` populated from `Store.personnel`. Selecting an employee auto-fills `#locLabelResponsible` and triggers live sticker preview.
+- **FAQ & Knowledge Base Overhaul (`FAQ_BODY`):** Rewrote Russian and English FAQ knowledge base from scratch, consolidating all system features into 5 clean, structured accordion sections matching true `v73` capabilities.
 - **Eliminated `| Unknown` Postfix:** Refactored `Ops.workstationAndPostOf` and `Charts.computeCulture` to check `hasPost`. Single-part locations (e.g. `Charging Station`, `Main Store`) render as clean workstation names without trailing `| Unknown`.
 - **High-Contrast Dark Theme Text & Badges:** Replaced dark-on-dark text in storage summary cards and shelf accordion headers with high-contrast explicit color tokens (`color: var(--text-main, #f8fafc)` and high-contrast badges `#ffffff` on `--danger`/`--primary`, `#000000` on `--warning`).
 - **Bulletproof PWA Auto-Update:** Disabled background polling loops (`setInterval`, `visibilitychange`), enforced single-action clean update pipeline (`unregister` -> `caches.delete` -> `window.location.reload(true)`).
