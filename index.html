@@ -949,8 +949,9 @@ select.work-only.form-control { max-width: 190px; }
 
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          const swUrl = './sw.js?v=' + (typeof CONFIG !== 'undefined' ? CONFIG.APP_VERSION : 'v67');
-          navigator.serviceWorker.register(swUrl).then(reg => {
+          const version = (window.CONFIG && window.CONFIG.APP_VERSION) ? window.CONFIG.APP_VERSION : 'v70';
+          const swUrl = './sw.js?v=' + version + '&t=' + Date.now();
+          navigator.serviceWorker.register(swUrl, { updateViaCache: 'none' }).then(reg => {
             swRegistration = reg;
             
             if (reg.waiting) {
@@ -1094,7 +1095,7 @@ select.work-only.form-control { max-width: 190px; }
         <button class="btn btn-warning" onclick="toggleLanguage()">🌐 <span id="langBtnText">RU | ENG</span></button>
 
         <div class="header-title-block">
-            <h1 class="header-title"><span data-i18n="Dashboard">Dashboard</span> <sup id="appVersionTag" style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none;"></sup></h1>
+            <h1 class="header-title"><span data-i18n="Dashboard">Dashboard</span> <sup id="appVersionTag" onclick="forceUpdatePWA()" title="Click to force reload/update PWA" style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none; cursor:pointer;"></sup></h1>
             <div class="header-subtitle" data-i18n="Tools Inventory">Tools Inventory</div>
             <div class="brand-credit"><b>Igor Tolipov</b> <i>by Design</i></div>
         </div>
@@ -1344,6 +1345,7 @@ select.work-only.form-control { max-width: 190px; }
             <button class="btn" onclick="closeModal('opsMenuModal'); openOrdersModal()" data-i18n="Purchase Orders">Purchase Orders</button>
             <button class="btn" onclick="closeModal('opsMenuModal'); openPostAuditModal()" data-i18n="5S Post Audit">5S Post Audit</button>
             <button class="btn btn-warning" onclick="closeModal('opsMenuModal'); Labels.openLocationLabelModal()" data-i18n="Print Storage Labels">🖨️ Печать этикеток мест хранения / Print Storage Labels</button>
+            <button class="btn btn-danger" onclick="closeModal('opsMenuModal'); forceUpdatePWA()">🔄 Обновить PWA / Force PWA Update</button>
         </div>
     </div>
 </div>
