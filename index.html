@@ -1004,20 +1004,21 @@ select.work-only.form-control { max-width: 190px; }
       function applyPWAUpdate() {
         const banner = document.getElementById('pwaUpdateBanner');
         if (banner) banner.remove();
+        const hardReload = () => {
+          window.location.href = window.location.pathname + '?t=' + Date.now();
+        };
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(regs => {
             Promise.all(regs.map(r => r.unregister())).then(() => {
               if ('caches' in window) {
-                caches.keys().then(names => Promise.all(names.map(n => caches.delete(n)))).then(() => {
-                  window.location.reload(true);
-                });
+                caches.keys().then(names => Promise.all(names.map(n => caches.delete(n)))).then(hardReload);
               } else {
-                window.location.reload(true);
+                hardReload();
               }
             });
-          });
+          }).catch(hardReload);
         } else {
-          window.location.reload(true);
+          hardReload();
         }
       }
 
