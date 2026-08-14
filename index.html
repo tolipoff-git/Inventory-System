@@ -1100,6 +1100,8 @@ select.work-only.form-control { max-width: 190px; }
         </div>
 
         <button class="btn" onclick="openModal('faqModal')">❓ <span data-i18n="FAQ_BTN">FAQ &amp; Kaizen System Guide</span></button>
+        <button class="btn btn-warning" onclick="openModal('addToolModal')">➕ <span data-i18n="Register New Asset">Регистрация / Register Asset</span></button>
+        <button class="btn" onclick="Ops.openOpsMenu()">⚙️ <span data-i18n="Operations">Служебные операции / Operations</span></button>
         <button class="btn btn-muted" onclick="Auth.lockSystem()" title="Lock System">🔒 Lock</button>
 
         <div class="auth-status" onclick="promptLogin()" title="Click to login / logout">
@@ -1140,7 +1142,6 @@ select.work-only.form-control { max-width: 190px; }
     </div>
 
     <div class="toolbar">
-        <button class="btn btn-warning" onclick="Labels.openLocationLabelModal()">🖨️ <span data-i18n="Print Storage Labels">Печать этикеток мест хранения / Print Storage Labels</span></button>
         <button class="btn auth-admin" onclick="doAction('Administrator', () => { openModal('systemMenuModal'); })">⚙ <span data-i18n="System Management">System Management</span></button>
         <button class="btn btn-warning" onclick="openModal('opsMenuModal')">🎛 <span data-i18n="Operations &amp; Reports">Operations &amp; Reports</span></button>
     </div>
@@ -1718,7 +1719,7 @@ select.work-only.form-control { max-width: 190px; }
                     <span data-i18n="Employee (Full Name)">Employee (Full Name)</span>
                     <a href="#" onclick="closeModal('assignModal'); openModal('registryModal'); switchRegTab('personnelTab'); return false;" style="color:var(--primary-hover); text-decoration:none; font-size:0.85rem; font-weight:normal;">+ New Person</a>
                 </label>
-                <input type="text" id="assignEmp" class="form-control" list="assignEmpList" onchange="Ops.onAssignEmpChange()"><datalist id="assignEmpList"></datalist>
+                <button class="btn btn-success btn-sm" onclick="exportData('locations')">📥 Export Locations</button>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -1788,7 +1789,6 @@ select.work-only.form-control { max-width: 190px; }
         </div>
         <div class="modal-footer spread">
             <div style="display:flex; gap:5px;">
-                <button class="btn btn-warning btn-sm" onclick="Labels.openLocationLabelModal()">🖨 Print Storage Labels</button>
             </div>
             <div style="display:flex; gap:10px;">
                 <button class="btn btn-muted" onclick="closeModal('transferModal')" data-i18n="Cancel">Cancel</button>
@@ -2143,6 +2143,19 @@ select.work-only.form-control { max-width: 190px; }
             
             <div class="grid-2" style="margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div class="form-group">
+                    <label>Structure Type:</label>
+                    <select id="locLabelType" class="form-control" onchange="Labels.renderLocationPreview()">
+                        <option value="RACK">Стеллаж (Rack)</option>
+                        <option value="WORKBENCH">Верстак / Стол (Workbench / Desk)</option>
+                        <option value="TOOLBOX">Инструментальный ящик / Тележка (Toolbox / Cart)</option>
+                        <option value="AFRAME">А-Фрейм (A-Frame)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Responsible Person:</label>
+                    <input type="text" id="locLabelResponsible" class="form-control" oninput="Labels.renderLocationPreview()">
+                </div>
+                <div class="form-group">
                     <label>Zone:</label>
                     <input type="text" id="locLabelZone" class="form-control" list="locZoneList" oninput="Labels.renderLocationPreview()">
                     <datalist id="locZoneList"></datalist>
@@ -2159,7 +2172,10 @@ select.work-only.form-control { max-width: 190px; }
                 </div>
                 <div class="form-group">
                     <label>Bin:</label>
-                    <input type="text" id="locLabelBin" class="form-control" list="locBinList" oninput="Labels.renderLocationPreview()">
+                    <div style="display:flex; gap:5px;">
+                        <input type="text" id="locLabelBin" class="form-control" list="locBinList" oninput="Labels.renderLocationPreview()">
+                        <button type="button" class="btn btn-sm btn-info" onclick="Labels.suggestNextBin()" title="Свободный номер / Next Free Bin">⚡</button>
+                    </div>
                     <datalist id="locBinList"></datalist>
                 </div>
             </div>
@@ -3727,6 +3743,24 @@ const Store = {
     users: [], workstations: [], workposts: [], personnel: [], tools: [], labelQueue: [],
     programs: [], wsProgram: {}, // wsProgram: { 'DTS': 'USS' } — зона → программа; зоны без программы (Tool Gage, цех, склад) в карте отсутствуют
     auditLog: [], procurementLog: [], audits5s: [], meta: { schemaVersion: CONFIG.SCHEMA_VERSION },
+
+    getNextFreeBin(zone, rack, shelf) {
+        if (!zone && !rack && !shelf) return '1';
+        let used = Store.tools
+            .filter(t => t.address && (t.address.zone || '') === (zone || '') && (t.address.rack || '') === (rack || '') && (t.address.shelf || '') === (shelf || '') && t.address.bin)
+            .map(t => {
+                let m = t.address.bin.match(/\d+/);
+                return m ? parseInt(m[0], 10) : null;
+            })
+            .filter(n => n !== null && n >= 1);
+        used = [...new Set(used)].sort((a, b) => a - b);
+        let next = 1;
+        for (let i = 0; i < used.length; i++) {
+            if (used[i] === next) next++;
+            else if (used[i] > next) break;
+        }
+        return next.toString();
+    },
 
     /** Экспорт всего состояния одним JSON (задел для merge-переноса между устройствами) */
     exportData() {
@@ -5353,13 +5387,16 @@ function setFilter(type, value) {
     let labelVal = value || VALUE_LABEL[type] || '';
     if (type === 'location_qr') {
         let parts = value.split(':');
+        // LOC:TYPE:Zone:Rack:Shelf:Bin:RESP
+        let tStr = parts[1] || '';
+        let typeLabels = { RACK: 'Стеллаж', WORKBENCH: 'Верстак', TOOLBOX: 'Ящик/Тележка', AFRAME: 'А-Фрейм' };
+        tStr = typeLabels[tStr] || tStr;
         let formatted = [];
-        for (let i = 2; i < parts.length; i++) {
-            let p = parts[i].trim();
-            if (!p || /^(zone|rack|shelf|bin)$/i.test(p)) continue;
-            formatted.push(p.replace(/^(Zone|Rack|Shelf|Bin):\s*/i, ''));
-        }
-        labelVal = parts[1] + ' (' + formatted.join(' → ') + ')';
+        if (parts[2]) formatted.push(parts[2]);
+        if (parts[3]) formatted.push('Rack ' + parts[3]);
+        if (parts[4]) formatted.push('Shelf ' + parts[4]);
+        if (parts[5]) formatted.push('Bin ' + parts[5]);
+        labelVal = tStr + ' (' + formatted.join(' → ') + ')';
     }
 
     const v = labelVal;
@@ -5393,7 +5430,7 @@ function applyFilters(list) {
     else if (f.type === 'maintq') out = out.filter(inMaintQueue);
     else if (f.type === 'location_qr') {
         const parts = f.value.split(':');
-        // Format: LOC:LEVEL:Zone:Rack:Shelf:Bin
+        // Format: LOC:TYPE:Zone:Rack:Shelf:Bin:RESP
         const qZ = parts[2] ? parts[2].toLowerCase() : null;
         const qR = parts[3] ? parts[3].toLowerCase() : null;
         const qS = parts[4] ? parts[4].toLowerCase() : null;
@@ -6077,6 +6114,73 @@ function renderGrid() {
     const grid = document.getElementById('toolGrid');
     if (!grid) return;
     const list = applyFilters(Store.activeTools());
+
+    if (UI.currentFilter.type === 'location_qr') {
+        if (!list.length) {
+            grid.innerHTML = `<div class="empty-state">No tools match the current location.<br><button class="btn" style="margin-top:15px;" onclick="clearFilter()">${T('Reset Filter')}</button></div>`;
+            return;
+        }
+        const parts = UI.currentFilter.value.split(':');
+        const fType = parts[1] || '';
+        const fZ = parts[2] || '';
+        const fR = parts[3] || '';
+        const fS = parts[4] || '';
+        const fB = parts[5] || '';
+        const resp = parts[6] || '';
+        
+        let typeLabels = { RACK: 'Стеллаж', WORKBENCH: 'Верстак', TOOLBOX: 'Ящик/Тележка', AFRAME: 'А-Фрейм' };
+        
+        let html = '';
+        html += `<div style="padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 20px;">`;
+        html += `<h2 style="margin:0 0 10px 0;">📍 Location Summary</h2>`;
+        html += `<div><strong>Structure Type:</strong> ${typeLabels[fType] || fType || 'Unknown'}</div>`;
+        html += `<div><strong>Location Name:</strong> Zone: ${fZ || 'N/A'}, Rack: ${fR || 'N/A'}, Shelf: ${fS || 'N/A'}, Bin: ${fB || 'N/A'}</div>`;
+        if (resp) {
+            html += `<div><strong>Responsible Person:</strong> ${Utils.esc(resp)}</div>`;
+        }
+        html += `</div>`;
+        
+        html += `<table class="kpi-table" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th>Shelf</th>
+                    <th>Bin</th>
+                    <th>Tool ID</th>
+                    <th>Name</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>`;
+            
+        list.sort((a, b) => {
+            const sA = (a.address && a.address.shelf) || '';
+            const sB = (b.address && b.address.shelf) || '';
+            if (sA !== sB) return sA.localeCompare(sB);
+            
+            const bA = (a.address && a.address.bin) || '';
+            const bB = (b.address && b.address.bin) || '';
+            
+            const nA = parseInt(bA.match(/\d+/) || [0], 10);
+            const nB = parseInt(bB.match(/\d+/) || [0], 10);
+            if (nA !== nB) return nA - nB;
+            return bA.localeCompare(bB);
+        });
+        
+        list.forEach(t => {
+            html += `
+            <tr onclick="document.getElementById('globalSearch').value='${t.id}'; onSearchInput();" style="cursor:pointer;">
+                <td>${Utils.esc((t.address && t.address.shelf) || '-')}</td>
+                <td>${Utils.esc((t.address && t.address.bin) || '-')}</td>
+                <td>${Utils.esc(t.id)}</td>
+                <td>${Utils.esc(t.name)}</td>
+                <td><span class="status-badge ${t.status}">${t.status}</span></td>
+            </tr>`;
+        });
+        
+        html += `</tbody></table>`;
+        grid.innerHTML = html;
+        return;
+    }
 
     if (!list.length) {
         grid.innerHTML = `<div class="empty-state">No tools match the current filter / search.<br><button class="btn" style="margin-top:15px;" onclick="clearFilter()">${T('Reset Filter')}</button></div>`;
@@ -7928,6 +8032,16 @@ function removeEmp(i) { Ops.removeEmp(i); }
    ============================================================================ */
 const Labels = {
 
+    suggestNextBin() {
+        const zone = document.getElementById('locLabelZone').value.trim();
+        const rack = document.getElementById('locLabelRack').value.trim();
+        const shelf = document.getElementById('locLabelShelf').value.trim();
+        const binInput = document.getElementById('locLabelBin');
+        const nextBin = Store.getNextFreeBin(zone, rack, shelf);
+        binInput.value = nextBin;
+        this.renderLocationPreview();
+    },
+
     openLocationLabelModal(initialLoc) {
         const zones = new Set();
         const racks = new Set();
@@ -7940,6 +8054,12 @@ const Labels = {
             if (t.address && t.address.shelf) shelves.add(t.address.shelf);
             if (t.address && t.address.bin) bins.add(t.address.bin);
         });
+        
+        if (Store.programs) Store.programs.forEach(p => zones.add(p.id || p.name || p));
+        if (Store.workstations) Store.workstations.forEach(ws => zones.add(ws.id || ws.name || ws));
+        if (Store.workposts) Store.workposts.forEach(wp => zones.add(wp.id || wp.name || wp));
+        Object.keys(Store.wsProgram || {}).forEach(k => zones.add(k));
+        Object.values(Store.wsProgram || {}).forEach(v => zones.add(v));
         
         const popList = (id, set) => {
             const dl = document.getElementById(id);
@@ -7966,6 +8086,7 @@ const Labels = {
         document.getElementById('locLabelRack').value = tRack ? tRack.value : '';
         document.getElementById('locLabelShelf').value = tShelf ? tShelf.value : '';
         document.getElementById('locLabelBin').value = tBin ? tBin.value : '';
+        document.getElementById('locLabelResponsible').value = '';
         
         const scopeSingle = document.querySelector('input[name="locLabelScope"][value="single"]');
         if (scopeSingle) scopeSingle.checked = true;
@@ -7978,6 +8099,8 @@ const Labels = {
         const scopeEl = document.querySelector('input[name="locLabelScope"]:checked');
         if (!scopeEl) return;
         const scope = scopeEl.value;
+        const locType = document.getElementById('locLabelType') ? document.getElementById('locLabelType').value : 'RACK';
+        const resp = document.getElementById('locLabelResponsible') ? document.getElementById('locLabelResponsible').value.trim() : '';
         const z = document.getElementById('locLabelZone').value.trim().replace(/:/g, '-');
         const r = document.getElementById('locLabelRack').value.trim().replace(/:/g, '-');
         const s = document.getElementById('locLabelShelf').value.trim().replace(/:/g, '-');
@@ -8000,23 +8123,23 @@ const Labels = {
             btnPrint.style.display = 'inline-block';
         }
         
-        let locCode = 'LOC:';
+        let locCode = `LOC:${locType}:${z}:${r}:${s}:${b}:${resp}`;
+        
+        let locParts = [];
+        if (z) locParts.push(z);
+        if (r) locParts.push(`Rack ${r}`);
+        if (s) locParts.push(`Shelf ${s}`);
+        if (b) locParts.push(`Bin ${b}`);
+        
+        let typeLabels = { RACK: 'Стеллаж', WORKBENCH: 'Верстак', TOOLBOX: 'Ящик/Тележка', AFRAME: 'А-Фрейм' };
+        let typeStr = typeLabels[locType] || locType;
+        
         let displayStr = '';
-        if (b) {
-            locCode += `BIN:${z}:${r}:${s}:${b}`;
-            displayStr = `${z} | Rack ${r} | Shelf ${s} | Bin ${b}`;
-        } else if (s) {
-            locCode += `SHELF:${z}:${r}:${s}`;
-            displayStr = `${z} | Rack ${r} | Shelf ${s}`;
-        } else if (r) {
-            locCode += `RACK:${z}:${r}`;
-            displayStr = `${z} | Rack ${r}`;
-        } else if (z) {
-            locCode += `ZONE:${z}`;
-            displayStr = `Zone ${z}`;
-        } else {
-            locCode = 'LOC:EMPTY';
+        if (locParts.length === 0) {
             displayStr = 'Empty Location';
+        } else {
+            displayStr = `<b>${typeStr}</b><br>${locParts.join(' | ')}`;
+            if (resp) displayStr += `<br><small>Resp: ${resp}</small>`;
         }
         
         previewCard.innerHTML = `
@@ -8034,6 +8157,8 @@ const Labels = {
 
     printLocationBatch(mode) {
         const scope = document.querySelector('input[name="locLabelScope"]:checked').value;
+        const locType = document.getElementById('locLabelType').value;
+        const resp = document.getElementById('locLabelResponsible').value.trim();
         const z = document.getElementById('locLabelZone').value.trim().replace(/:/g, '-');
         const r = document.getElementById('locLabelRack').value.trim().replace(/:/g, '-');
         const s = document.getElementById('locLabelShelf').value.trim().replace(/:/g, '-');
@@ -8053,26 +8178,15 @@ const Labels = {
                     const rStr = (t.address.rack || '').replace(/:/g, '-');
                     const sStr = (t.address.shelf || '').replace(/:/g, '-');
                     const bStr = (t.address.bin || '').replace(/:/g, '-');
-                    if (bStr) {
-                        locSet.add(`BIN:${zStr}:${rStr}:${sStr}:${bStr}`);
-                    } else if (sStr) {
-                        locSet.add(`SHELF:${zStr}:${rStr}:${sStr}`);
-                    } else if (rStr) {
-                        locSet.add(`RACK:${zStr}:${rStr}`);
-                    } else if (zStr) {
-                        locSet.add(`ZONE:${zStr}`);
-                    }
+                    locSet.add(`LOC:${locType}:${zStr}:${rStr}:${sStr}:${bStr}:${resp}`);
                 }
             });
-            locationsToPrint = Array.from(locSet).map(lStr => `LOC:${lStr}`);
+            locationsToPrint = Array.from(locSet);
         } else {
-            let locCode = 'LOC:';
-            if (b) locCode += `BIN:${z}:${r}:${s}:${b}`;
-            else if (s) locCode += `SHELF:${z}:${r}:${s}`;
-            else if (r) locCode += `RACK:${z}:${r}`;
-            else if (z) locCode += `ZONE:${z}`;
-            else locCode = 'LOC:';
-            locationsToPrint.push(locCode);
+            let locCode = `LOC:${locType}:${z}:${r}:${s}:${b}:${resp}`;
+            if (z || r || s || b) {
+                locationsToPrint.push(locCode);
+            }
         }
         
         if (locationsToPrint.length === 0 || (locationsToPrint.length === 1 && locationsToPrint[0] === 'LOC:')) {
