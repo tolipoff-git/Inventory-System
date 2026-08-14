@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'inv-inventory-';
-const CACHE_VERSION = 'v71-f4f92dc';
+const CACHE_VERSION = 'v71-7639615';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
 const ASSETS_TO_CACHE = [
   './',
@@ -72,9 +72,3 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Listen for skipWaiting messages from the page
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});

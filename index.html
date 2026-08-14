@@ -949,40 +949,22 @@ select.work-only.form-control { max-width: 190px; }
 
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          const version = (window.CONFIG && window.CONFIG.APP_VERSION) ? window.CONFIG.APP_VERSION : 'v70';
+          const version = (window.CONFIG && window.CONFIG.APP_VERSION) ? window.CONFIG.APP_VERSION : 'v71';
           const swUrl = './sw.js?v=' + version;
           navigator.serviceWorker.register(swUrl, { updateViaCache: 'none' }).then(reg => {
             swRegistration = reg;
-            
-            if (reg.waiting) {
-              showUpdateBanner();
-            }
-            
-            // Check for updates every 60 seconds
-            setInterval(() => reg.update(), 60000);
-
-            // …и сразу при возвращении во вкладку (PWA мог спать дольше интервала)
-            document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'visible') reg.update();
-            });
-
+            if (reg.waiting) showUpdateBanner();
             reg.onupdatefound = () => {
               swNewWorker = reg.installing;
               if (swNewWorker) {
                 swNewWorker.onstatechange = () => {
                   if (swNewWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    // New version ready — show update banner
                     showUpdateBanner();
                   }
                 };
               }
             };
           }).catch(() => {});
-
-          // Page reload is triggered explicitly by user action (applyPWAUpdate / forceUpdatePWA)
-          navigator.serviceWorker.addEventListener('controllerchange', () => {
-            // No automatic window.location.reload to prevent reload loops
-          });
         });
       }
 
@@ -1022,32 +1004,25 @@ select.work-only.form-control { max-width: 190px; }
       function applyPWAUpdate() {
         const banner = document.getElementById('pwaUpdateBanner');
         if (banner) banner.remove();
-        if (swNewWorker) {
-          swNewWorker.postMessage({ type: 'SKIP_WAITING' });
-        } else if (swRegistration && swRegistration.waiting) {
-          swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(regs => {
+            Promise.all(regs.map(r => r.unregister())).then(() => {
+              if ('caches' in window) {
+                caches.keys().then(names => Promise.all(names.map(n => caches.delete(n)))).then(() => {
+                  window.location.reload(true);
+                });
+              } else {
+                window.location.reload(true);
+              }
+            });
+          });
         } else {
-          // Fallback: hard reload
-          window.location.reload();
+          window.location.reload(true);
         }
       }
 
       function forceUpdatePWA() {
-        // Nuclear option: unregister all SWs, clear all caches, reload
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(regs => {
-            regs.forEach(r => r.unregister());
-          });
-        }
-        if ('caches' in window) {
-          caches.keys().then(keys => {
-            Promise.all(keys.map(k => caches.delete(k))).then(() => {
-              window.location.reload();
-            });
-          });
-        } else {
-          window.location.reload();
-        }
+        applyPWAUpdate();
       }
     </script>
 
