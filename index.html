@@ -1717,7 +1717,8 @@ select.work-only.form-control { max-width: 190px; }
                     <span data-i18n="Employee (Full Name)">Employee (Full Name)</span>
                     <a href="#" onclick="closeModal('assignModal'); openModal('registryModal'); switchRegTab('personnelTab'); return false;" style="color:var(--primary-hover); text-decoration:none; font-size:0.85rem; font-weight:normal;">+ New Person</a>
                 </label>
-                <input type="text" id="assignEmp" class="form-control" list="assignEmpList" oninput="Ops.onAssignEmpChange()" placeholder="Start typing name, ID, or initials..." autocomplete="off">
+                <select id="assignEmpSelect" class="form-control" onchange="Ops.onAssignEmpSelectChange(this.value)"></select>
+                <input type="text" id="assignEmp" class="form-control" list="assignEmpList" oninput="Ops.onAssignEmpChange()" placeholder="Or type name, ID, initials..." style="margin-top:6px;" autocomplete="off">
                 <datalist id="assignEmpList"></datalist>
             </div>
             <div class="form-row">
@@ -6728,11 +6729,21 @@ function addRegistryEmp() {
 
 function populateEmpSelects() {
     const list = document.getElementById('assignEmpList');
-    if (!list) return;
-    list.innerHTML = Store.personnel.map(e => {
+    const select = document.getElementById('assignEmpSelect');
+    const optionsHtml = Store.personnel.map(e => {
         const val = e.initials ? `${e.name} [${e.initials}]` : e.name;
-        return `<option value="${Utils.esc(val)}">${Utils.esc(e.id)}</option>`;
+        return `<option value="${Utils.esc(val)}">${Utils.esc(val)} (${Utils.esc(e.id)})</option>`;
     }).join('');
+
+    if (list) {
+        list.innerHTML = Store.personnel.map(e => {
+            const val = e.initials ? `${e.name} [${e.initials}]` : e.name;
+            return `<option value="${Utils.esc(val)}">${Utils.esc(e.id)}</option>`;
+        }).join('');
+    }
+    if (select) {
+        select.innerHTML = `<option value="">-- Choose Employee / Выберите сотрудника (${Store.personnel.length}) --</option>` + optionsHtml;
+    }
 }
 </script>
 <script>
@@ -7099,6 +7110,12 @@ const Ops = {
         const lowerVal = val.toLowerCase();
         emp = Store.personnel.find(p => p.initials && p.initials.toLowerCase() === lowerVal);
         return emp || null;
+    },
+
+    onAssignEmpSelectChange(val) {
+        if (!val) return;
+        document.getElementById('assignEmp').value = val;
+        this.onAssignEmpChange();
     },
 
     onAssignEmpChange() {
