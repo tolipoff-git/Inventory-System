@@ -2,15 +2,20 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v79` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v80` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v79)
+## Recent Accomplishments (v49 – v80)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Total Code Quality Audit, Defensive Architecture & v79 Release
+### 0. Excel Inventory Quantity Layout Reordering, .gitignore & v80 Release
+- **Inventory Sheet Quantity Columns Grouping:** Reordered Sheet 2 ("Инвентарь" / "Inventory") of `Reports.exportInventoryXLSX()` so that all quantity metrics (`Qty in Stock` / `Кол-во в наличии`, `Min Qty` / `Мин. остаток`, `Max Qty` / `Макс. остаток`) are grouped together immediately after Column B (`Name` / `Наименование`).
+- **Exact Cell Offset Recalibration:** Updated cell styling offsets: Status badge (Column 9), Wear percentage (Column 15), Overdue return/calibration dates (Columns 13 and 14), and autoFilter range `A1:Q`.
+- **Repository Sanitization & `.gitignore` Protection:** Cleaned all temporary and scratch files from the repository directory and established a permanent `.gitignore` rule preventing temporary scripts or test logs from entering Git.
+- **Defensive LocalStorage Wrappers:** Wrapped all direct `localStorage` and `sessionStorage` `getItem`/`setItem` operations in safe `try-catch` blocks across UI event handlers, preventing `QuotaExceededError` crashes.
+- **Total i18n Dictionary Parity:** Achieved 100% dictionary key symmetry across `I18N.EN` and `I18N.RU`.
 - **Defensive LocalStorage Wrappers:** Wrapped all direct `localStorage` and `sessionStorage` `getItem`/`setItem` operations in safe `try-catch` blocks across UI event handlers, preventing `QuotaExceededError` crashes on storage limits or restricted browser profiles.
 - **`I18n` & `ProcureCart` Namespace Declarations:** Defined explicit `I18n` module object exposing `currentLang`, `setLanguage`, `T`, and `translations`, and created global `ProcureCart` alias pointing to `Procure`.
 - **Labels Personnel Event Handler:** Implemented `Labels.onRespSelectChange(val)` to handle personnel dropdown selections in `locationLabelModal`.
