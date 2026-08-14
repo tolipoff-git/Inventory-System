@@ -2456,7 +2456,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v68',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v69',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-14',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -5499,6 +5499,8 @@ const Actions = {
     'print-label':   id => doAction('Tool Crib Manager', () => Labels.openPrintLabelModal(id)),
     'retire':        id => doAction('Administrator', () => Ops.openRetireModal(id)),
     'receive-order': id => doAction('Tool Crib Manager', () => Ops.receiveOrder(id)),
+    'receive-order-item': (id, el) => doAction('Tool Crib Manager', () => Ops.receiveOrderItem(id, el.dataset.item)),
+    'reject-order-item': (id, el) => doAction('Tool Crib Manager', () => Ops.rejectOrderItem(id, el.dataset.item)),
     'cancel-order':  id => doAction('Tool Crib Manager', () => Ops.cancelOrder(id)),
     'order-detail':  id => Ops.openOrderDetail(id),
     'order-open-tool': id => { closeModal('orderDetailModal'); closeModal('ordersModal'); Ops.openDetailModal(id); },
@@ -7872,15 +7874,138 @@ const Ops = {
         openModal('ordersModal');
     },
 
+    normalizeOrderItems(orderId) {
+        const rec = Store.procurementLog.find(l => l.orderId === orderId);
+        if (!rec) return;
+        const order = Store.tools.find(t => t.id === orderId);
+        if (rec.items === undefined) {
+            rec.items = [{
+                itemId: 'ITM-1',
+                name: rec.name || (order && order.name) || '',
+                qty: rec.qty || (order && order.qty) || 1,
+                receivedQty: (rec.status === 'received' ? (rec.qty || 1) : 0),
+                cost: rec.cost || (order && order.cost) || 0,
+                partNo: rec.partNo || (order && order.partNo) || '',
+                status: rec.status === 'received' ? 'Received' : (rec.status === 'cancelled' ? 'Cancelled' : 'Pending'),
+                targetToolId: rec.receivedInto || (order && order.targetToolId) || null,
+                receivedIntoToolId: rec.receivedInto || null
+            }];
+        }
+    },
+
+    recalcOrderStatus(orderId) {
+        const rec = Store.procurementLog.find(l => l.orderId === orderId);
+        if (!rec || !rec.items) return;
+        let allComplete = true;
+        let anyPartial = false;
+        for (const item of rec.items) {
+            if (item.status !== 'Received' && item.status !== 'Cancelled') {
+                allComplete = false;
+            }
+            if (item.receivedQty > 0 || item.status === 'Partial' || item.status === 'Received') {
+                anyPartial = true;
+            }
+        }
+        let newStatus = '';
+        if (allComplete && rec.items.length > 0) newStatus = 'Completed';
+        else if (anyPartial) newStatus = 'Partially Received';
+        else newStatus = 'Pending Delivery';
+        rec.status = newStatus;
+        const order = Store.tools.find(t => t.id === orderId);
+        if (order) order.status = newStatus;
+    },
+
+    receiveOrderItem(orderId, itemId) {
+        this.normalizeOrderItems(orderId);
+        const rec = Store.procurementLog.find(l => l.orderId === orderId);
+        if (!rec) return;
+        const item = rec.items.find(i => i.itemId === itemId);
+        if (!item) return;
+
+        let qtyToReceive = item.qty - (item.receivedQty || 0);
+        let inputQty = prompt(`Quantity being received (max ${qtyToReceive}):`, qtyToReceive);
+        if (inputQty === null) return;
+        inputQty = parseFloat(inputQty);
+        if (isNaN(inputQty) || inputQty <= 0 || inputQty > qtyToReceive) {
+            alert('Invalid quantity');
+            return;
+        }
+
+        let targetId = prompt(`Target Tool ID (optional):`, item.targetToolId || '');
+        if (targetId !== null) targetId = targetId.trim();
+
+        if (targetId) {
+            const targetTool = Store.getTool(targetId);
+            if (targetTool) {
+                targetTool.qty = (targetTool.qty || 0) + inputQty;
+                Store.touch(targetTool);
+            } else {
+                const newTool = {
+                    id: targetId,
+                    name: item.name,
+                    qty: inputQty,
+                    status: 'Active',
+                    category: 'Uncategorized',
+                    type: 'Permanent',
+                    history: [],
+                    audit_history: []
+                };
+                Store.tools.push(newTool);
+            }
+            item.receivedIntoToolId = targetId;
+        }
+
+        item.receivedQty = (item.receivedQty || 0) + inputQty;
+        if (item.receivedQty >= item.qty) item.status = 'Received';
+        else item.status = 'Partial';
+
+        Store.log('ORDER_ITEM_RECEIVE', `${orderId} -> ${itemId} qty: ${inputQty}`);
+        this.recalcOrderStatus(orderId);
+        Store.save();
+        if (document.getElementById('orderDetailModal').classList.contains('active')) {
+            this.openOrderDetail(orderId);
+        }
+        if (typeof renderAll === 'function') renderAll(); else init();
+    },
+
+    rejectOrderItem(orderId, itemId) {
+        this.normalizeOrderItems(orderId);
+        const rec = Store.procurementLog.find(l => l.orderId === orderId);
+        if (!rec) return;
+        const item = rec.items.find(i => i.itemId === itemId);
+        if (!item) return;
+
+        const reason = prompt('Cancellation/Rejection Reason:');
+        if (reason === null) return;
+
+        item.status = 'Cancelled';
+        item.rejectReason = reason;
+        item.cancelledAt = Utils.nowISO();
+
+        Store.log('ORDER_ITEM_REJECT', `${orderId} -> ${itemId} reason: ${reason}`);
+        this.recalcOrderStatus(orderId);
+        Store.save();
+        if (document.getElementById('orderDetailModal').classList.contains('active')) {
+            this.openOrderDetail(orderId);
+        }
+        if (typeof renderAll === 'function') renderAll(); else init();
+    },
+
     /* ---------- Карточка закупки: детали, история статусов, комментарии, логи ---------- */
     openOrderDetail(orderId) {
+        this.normalizeOrderItems(orderId);
         const rec = Store.procurementLog.find(l => l.orderId === orderId);
         if (!rec) { Utils.toast(T('Tool not found:') + ' ' + orderId); return; }
-        const order = Store.getTool(orderId); // живёт в tools, пока заявка открыта
+        const order = Store.getTool(orderId);
         const status = rec.status || 'open';
-        const badgeMap = { open: ['var(--warning)', T('ORDER_OPEN')],
-                           received: ['var(--success)', T('ORDER_RECEIVED')],
-                           cancelled: ['var(--danger)', T('ORDER_CANCELLED')] };
+        const badgeMap = {
+            open: ['var(--warning)', T('ORDER_OPEN')],
+            received: ['var(--success)', T('ORDER_RECEIVED')],
+            cancelled: ['var(--danger)', T('ORDER_CANCELLED')],
+            'Completed': ['var(--success)', 'Completed'],
+            'Partially Received': ['var(--primary)', 'Partially Received'],
+            'Pending Delivery': ['var(--warning)', 'Pending Delivery']
+        };
         const [bc, bl] = badgeMap[status] || badgeMap.open;
         const total = +rec.total || ((+rec.qty || 0) * (+rec.cost || 0)) || 0;
         const muted = 'color:var(--text-muted); font-size:0.85rem;';
@@ -7888,55 +8013,72 @@ const Ops = {
         document.getElementById('orderDetailTitle').innerHTML =
             `📦 ${Utils.esc(orderId)} · <span style="color:${bc}; font-size:0.9rem;">${bl}</span>`;
 
-        // Связь с инвентарём: куда оприходована заявка (или целевая карточка у открытой)
-        const linkedId = rec.receivedInto || (order && order.targetToolId) || null;
-        const linkedTool = linkedId ? Store.getTool(linkedId) : null;
-        const linkHtml = linkedTool
-            ? `${Utils.esc(linkedTool.id)} — ${Utils.esc(linkedTool.name)} <button class="btn audit-btn" data-action="order-open-tool" data-id="${Utils.esc(linkedTool.id)}">${T('OPEN_TOOL_CARD')}</button>`
-            : (linkedId ? Utils.esc(linkedId) : `<span style="${muted}">${T('ORDER_NO_LINK')}</span>`);
-
-        // Основная информация по закупке
         const row = (k, v) => `<div style="display:flex; justify-content:space-between; gap:10px; padding:4px 0; border-bottom:1px dashed var(--border);"><span style="${muted}">${k}</span><span style="text-align:right;">${v}</span></div>`;
         const info = [
             row(T('Name'), `<strong>${Utils.esc(rec.name)}</strong>`),
-            row(T('Qty'), `${rec.qty} × $${(+rec.cost || 0).toFixed(2)} = <strong>$${total.toFixed(2)}</strong>`),
             row(T('Reason'), Utils.esc(rec.reason || '—')),
             row(T('ORDER_SUPPLIER'), rec.link ? `<a href="${Utils.esc(rec.link)}" target="_blank" rel="noopener">${Utils.esc(rec.link)}</a>` : '—'),
             row(T('ORDER_REQUESTER'), Utils.esc(rec.initials || '—')),
             row(T('ORDER_LOCATION'), Utils.esc([rec.ws, rec.wp].filter(Boolean).join(' / ') || '—')),
-            row(T('Status'), `<span style="color:${bc}; font-weight:bold;">${bl}</span>`),
-            row(T('ORDER_LINKED_TOOL'), linkHtml),
+            row(T('Status'), `<span style="color:${bc}; font-weight:bold;">${bl}</span>`)
         ].join('');
 
-        // История статусов
+        let itemsHtml = `<table class="table" style="width:100%; margin-bottom:14px;">
+            <thead><tr>
+                <th>Position Name & Part No</th>
+                <th>Ordered Qty</th>
+                <th>Received Qty</th>
+                <th>Item Status</th>
+                <th>Actions</th>
+            </tr></thead><tbody>`;
+
+        if (rec.items && rec.items.length) {
+            rec.items.forEach(item => {
+                let actions = '';
+                if (item.status === 'Pending' || item.status === 'Partial') {
+                    actions = `<button class="btn btn-success btn-sm audit-btn" data-action="receive-order-item" data-id="${orderId}" data-item="${item.itemId}">📥 Receive</button>
+                               <button class="btn btn-danger btn-sm audit-btn" data-action="reject-order-item" data-id="${orderId}" data-item="${item.itemId}">❌ Reject</button>`;
+                }
+                itemsHtml += `<tr>
+                    <td>${Utils.esc(item.name)}<br><small style="${muted}">${Utils.esc(item.partNo || '')}</small></td>
+                    <td>${item.qty}</td>
+                    <td>${item.receivedQty || 0}</td>
+                    <td>${Utils.esc(item.status)}</td>
+                    <td>${actions}</td>
+                </tr>`;
+            });
+        } else {
+            itemsHtml += `<tr><td colspan="5" style="text-align:center; ${muted}">No items</td></tr>`;
+        }
+        itemsHtml += `</tbody></table>`;
+
         const tlItem = (label, date, extra = '') =>
             `<div class="history-item"><span><strong>${label}</strong>${extra}<br><span style="${muted}">${Utils.esc(date || '')}</span></span></div>`;
         let timeline = tlItem(T('ORDER_CREATED'), rec.date, ` · ${Utils.esc(rec.initials || '')}`);
         if (rec.receivedAt) timeline += tlItem(T('ORDER_RECEIVED'), rec.receivedAt, rec.receivedInto ? ` · ${T('Received into')} ${Utils.esc(rec.receivedInto)}` : '');
         if (rec.cancelledAt) timeline += tlItem(T('ORDER_CANCELLED'), rec.cancelledAt);
 
-        // Комментарии (рабочая переписка по заявке)
         const comments = rec.comments || [];
         const commentsHtml = comments.length
             ? comments.map(c => `<div class="history-item"><span>${Utils.esc(c.text)}<br><span style="${muted}">${Utils.esc(c.ts)} · ${Utils.esc(c.user)}</span></span></div>`).join('')
             : `<div style="text-align:center; color:var(--text-muted); padding:6px;">${T('NO_COMMENTS')}</div>`;
 
-        // Связанные записи системного журнала аудита
         const logs = Store.auditLog.filter(e => String(e.details).includes(orderId)).reverse();
         const logsHtml = logs.length
             ? logs.map(e => `<div class="history-item"><span><strong>${Utils.esc(e.action)}</strong> — ${Utils.esc(e.details)}<br><span style="${muted}">${Utils.esc(e.ts.replace('T', ' ').slice(0, 19))} · ${Utils.esc(e.user)}</span></span></div>`).join('')
             : `<div style="text-align:center; color:var(--text-muted); padding:6px;">—</div>`;
 
-        // Действия по открытой заявке
-        const actions = status === 'open' ? `
+        const actionsBtn = status === 'open' ? `
             <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
                 <button class="btn btn-success" data-action="receive-order" data-id="${Utils.esc(orderId)}">${T('Mark as Received')}</button>
                 <button class="btn btn-danger" data-action="cancel-order" data-id="${Utils.esc(orderId)}">${T('Cancel Order')}</button>
             </div>` : '';
 
         document.getElementById('orderDetailBody').innerHTML = `
-            ${actions}
+            ${actionsBtn}
             <div style="margin-bottom:14px;">${info}</div>
+            <h4 style="color:var(--primary); margin:0 0 8px; border-bottom:1px dashed var(--border); padding-bottom:5px;">Line Items</h4>
+            ${itemsHtml}
             <h4 style="color:var(--primary); margin:0 0 8px; border-bottom:1px dashed var(--border); padding-bottom:5px;">${T('ORDER_TIMELINE')}</h4>
             <div class="history-list" style="margin-bottom:14px;">${timeline}</div>
             <h4 style="color:var(--primary); margin:0 0 8px; border-bottom:1px dashed var(--border); padding-bottom:5px;">${T('Comments')}</h4>

@@ -2,15 +2,20 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v68` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v69` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v68)
+## Recent Accomplishments (v49 – v69)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Header Clean-Up, Dual Employee Selector & Storage Structure Redesign (v68)
+### 0. Line-Item Procurement, Partial Receipts & Header Clean-Up (v69)
+- **Line-Item Purchase Orders (`items`):** Purchase Orders now support multiple line items per order (`items: [{ itemId, name, qty, receivedQty, cost, partNo, status, targetToolId }]`).
+- **Partial Item Receipts (`receiveOrderItem`):** Each position can be received independently with partial quantities (e.g. receiving 2 out of 5 items today, remaining 3 later). Target tool inventory stock automatically syncs.
+- **Item-Level Cancellations/Rejections (`rejectOrderItem`):** Individual line items can be rejected/cancelled with documented cancellation reasons without cancelling the entire purchase order.
+- **Dynamic Master Order Status (`recalcOrderStatus`):** Master PO status automatically computes based on line item states (`Pending Delivery` -> `Partially Received` -> `Completed`).
+- **Order Detail Modal Table UI:** `orderDetailModal` displays a clean line-items table with row-level action buttons `[📥 Receive]` and `[❌ Reject]`.
 - **Dual Employee Selector UX (`assignModal`):** Added explicit clickable dropdown `<select id="assignEmpSelect">` alongside `<input id="assignEmp">`. Users can click to select employees directly from a visible list or type to search; picking an employee instantly auto-fills Workstation, Post, and Required Initials.
 - **Assign Tool UI Repair:** Removed accidental export button from `assignModal` and restored full employee selection input with `Ops.onAssignEmpChange()` auto-population.
 - **Header Clean-Up:** Removed redundant duplicate un-localized buttons (`Register New Asset` and `Operations`) from `.header-row`. Nav buttons consolidated cleanly in `.toolbar`.
