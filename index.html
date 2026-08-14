@@ -949,7 +949,8 @@ select.work-only.form-control { max-width: 190px; }
 
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').then(reg => {
+          const swUrl = './sw.js?v=' + (typeof CONFIG !== 'undefined' ? CONFIG.APP_VERSION : 'v67');
+          navigator.serviceWorker.register(swUrl).then(reg => {
             swRegistration = reg;
             
             if (reg.waiting) {
