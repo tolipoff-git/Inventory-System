@@ -2,15 +2,20 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v74` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v75` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v74)
+## Recent Accomplishments (v49 – v75)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. 5S Rubric Score Explanations (Full Verification Fix) & v74 Release
+### 0. Excel Export Refactoring, ID Prefix Legend & Day/Night Theme Tokens Fix (v75)
+- **KPI Metric Renaming:** Replaced `'Active on Floor'` with `'Доступно к выдаче / Available for issue'` on Sheet 1 ("Сводка") to accurately reflect inventory status logic (`Active` = stored in crib, ready to issue).
+- **Tool & Equipment Type Breakdowns:** Added `TOOL TYPE BREAKDOWN` (`Permanent Tooling` vs `Consumable Stock`) and `TOOL CLASS GROUP BREAKDOWN` (`MECH`, `EL`, `MEAS`, `CONS`) on Sheet 1 ("Сводка").
+- **ID Prefix Legend Table:** Generated comprehensive `СПРАВОЧНИК ПРЕФИКСОВ ID / TOOL CLASS LEGEND` table on Sheet 1 detailing all 21 tool classes (`TW`, `PD`, `VT`, `CT`, `CB`, `DC`, etc.) with Prefix, Group, Russian Name, English Name, and Category.
+- **Inventory Sheet ID Explanation Column:** Added Column 3 `Class Name (Расшифровка ID)` on Sheet 2 ("Инвентарь"), resolving each tool's prefix into a human-readable Russian/English description (e.g. `CB — Кабельный инструмент (Cable & Wire Tool)`).
+- **Day/Night Theme Tokens Compliance:** Replaced hardcoded fallback colors in `Ops.openAuditHistory()` and `renderGrid()` summary cards with system CSS theme tokens (`var(--surface)`, `var(--chip)`, `var(--text-main)`, `var(--text-muted)`), resolving dark-text-on-dark-background glitches in Light Theme mode.
 - **Full Rubric Text Integration:** Replaced all legacy `3/2/2/3/3` slash representations in `Charts.compute5S()` tooltips and `Ops.openAuditHistory(pi)` with human-readable score explanations derived from `S5_RUBRICS` via `Ops.get5SRubricExplanation(pi, val)` (e.g. `5/5 (Only what is needed — nothing extra)` or `3/5 (Лишнее есть, но сложено отдельно)`).
 - **5S Focus Highlight:** Clicking any ray on the 5S culture radar chart opens the audit history modal with dynamic pillar focus highlighting and color-coded score badges.
 - **Storage Label Personnel Dropdown (`locLabelRespSelect`):** Integrated employee dropdown selection in `locationLabelModal` with auto-filling responsible person and live label preview updates.
