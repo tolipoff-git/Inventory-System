@@ -2,15 +2,20 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v76` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v77` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v76)
+## Recent Accomplishments (v49 – v77)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Location Data Auto-Recovery, Address Synchronization & v76 Release
+### 0. Bilingual Excel Export Localization (RU / EN) & v77 Release
+- **Dynamic Language Detection:** `Reports.exportInventoryXLSX()` dynamically evaluates `const isRu = (typeof currentLang !== 'undefined' && currentLang === 'RU')` to generate 100% localized Excel files.
+- **Bilingual Sheet Names:** Sheets adapt automatically: `Сводка` / `Summary`, `Инвентарь` / `Inventory`, `Персонал` / `Personnel`, `Архив` / `Archive`.
+- **Bilingual Block Titles & KPI Metrics:** Localized all block titles ('КЛЮЧЕВЫЕ МЕТРИКИ' / 'KEY METRICS', 'ЗАГРУЗКА СТАНЦИЙ' / 'WORKSTATION LOAD', 'ОЦЕНКИ 5S-АУДИТОВ' / '5S AUDIT SCORES', 'РАСПРЕДЕЛЕНИЕ ПО ТИПАМ' / 'TOOL TYPE BREAKDOWN', 'СПРАВОЧНИК ПРЕФИКСОВ ID' / 'ID PREFIX LEGEND') and KPI labels ('Доступно к выдаче' / 'Available for Issue', 'Выдано персоналу' / 'Issued to Personnel', etc.).
+- **Bilingual Table Headers & Class Descriptions:** Localized column headers for Sheets 1–4 and dynamically formatted Column 3 `Class Name` (`cls ? (isRu ? `${cls.p} — ${cls.ru}` : `${cls.p} — ${cls.en}`) : (isRu ? 'Индивидуальный ID' : 'Custom ID')`).
+- **Location Auto-Recovery:** Automatic migration loop (`Store.migrate`) and cascading shelf key extractor (`getShelfKey`) protect all 280+ positions from location drops or reset errors.
 - **Automatic Migration Auto-Recovery (`Store.migrate`):** Added a mandatory auto-recovery loop for all 280+ inventory items. Automatically parses structured `location` strings (e.g. `Zone - Rack - Shelf - Bin`) to build missing `address` objects, and vice versa. Ensures zero position data drops or unassigned address resets.
 - **Cascading Shelf Key Extraction (`getShelfKey`):** Updated `renderGrid()` shelf accordion grouping to extract shelf keys hierarchically from `t.address.shelf` -> `_locParts(t.location)` -> `t.location` -> `Main Store`. Prevents stored tools from dropping into `Unassigned` tabs.
 - **Bi-directional Form Location Synchronization (`submitEditTool`):** Enforced double-sided location synchronization during tool editing. Updating address form fields automatically re-assembles `tool.location`, while updating `tool.location` auto-populates `tool.address`.

@@ -2431,7 +2431,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v76',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v77',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-14',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -10319,6 +10319,7 @@ const Reports = {
        Fallback: любая ошибка построения книги → CSV (с текстом причины).
        ========================================================================== */
     async exportInventoryXLSX() {
+        const isRu = (typeof currentLang !== 'undefined' && currentLang === 'RU');
         if (typeof ExcelJS === 'undefined') {
             // Библиотека вшита в index.html — undefined значит, что её блок не выполнился
             alert(T('XLSX_INIT_FAILED'));
@@ -10346,7 +10347,7 @@ const Reports = {
             };
 
             /* ================= ЛИСТ 1: СВОДКА ================= */
-            const sum = wb.addWorksheet('Сводка', { views: [{ showGridLines: false }] });
+            const sum = wb.addWorksheet(isRu ? 'Сводка' : 'Summary', { views: [{ showGridLines: false }] });
             sum.columns = [{ width: 34 }, { width: 16 }, { width: 34 }, { width: 16 }, { width: 20 }];
             sum.mergeCells('A1:E1');
             const st = sum.getCell('A1');
@@ -10362,15 +10363,15 @@ const Reports = {
             // KPI-блок
             const active = Store.activeTools();
             const kpis = [
-                ['Total Assets', active.length],
-                ['Доступно к выдаче / Available for issue', active.filter(t => t.status === 'Active').length],
-                ['Issued to Personnel', active.filter(t => t.status === 'Issued').length],
-                ['Maintenance & Cal. Queue', active.filter(t => t.status === 'Maintenance').length],
-                ['Overdue Alerts', active.filter(t => t.status === 'Overdue').length],
-                ['Backup Stock', active.filter(t => t.status === 'Backup').length],
-                ['Retired (Archive)', Store.retiredTools().length]
+                [isRu ? 'Всего активов' : 'Total Assets', active.length],
+                [isRu ? 'Доступно к выдаче' : 'Available for Issue', active.filter(t => t.status === 'Active').length],
+                [isRu ? 'Выдано персоналу' : 'Issued to Personnel', active.filter(t => t.status === 'Issued').length],
+                [isRu ? 'Очередь ТО и калибровки' : 'Maintenance & Cal. Queue', active.filter(t => t.status === 'Maintenance').length],
+                [isRu ? 'Предупреждения о просрочке' : 'Overdue Alerts', active.filter(t => t.status === 'Overdue').length],
+                [isRu ? 'Резервный фонд' : 'Backup Stock', active.filter(t => t.status === 'Backup').length],
+                [isRu ? 'Списано (Архив)' : 'Retired (Archive)', Store.retiredTools().length]
             ];
-            sum.getCell('A4').value = 'KEY METRICS';
+            sum.getCell('A4').value = isRu ? 'КЛЮЧЕВЫЕ МЕТРИКИ' : 'KEY METRICS';
             sum.getCell('A4').font = { bold: true, size: 12, color: { argb: 'FF45A29E' } };
             kpis.forEach((k, i) => {
                 const row = sum.getRow(5 + i);
@@ -10380,7 +10381,7 @@ const Reports = {
                 row.getCell(2).font = { bold: true };
                 row.getCell(2).alignment = { horizontal: 'center' };
                 row.getCell(2).border = border;
-                if (k[0] === 'Overdue Alerts' && k[1] > 0) {
+                if (k[0] === (isRu ? 'Предупреждения о просрочке' : 'Overdue Alerts') && k[1] > 0) {
                     row.getCell(2).font = { bold: true, color: { argb: 'FFFFFFFF' } };
                     row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.bad } };
                 }
@@ -10388,7 +10389,7 @@ const Reports = {
             });
 
             // Загрузка станций
-            sum.getCell('C4').value = 'WORKSTATION LOAD';
+            sum.getCell('C4').value = isRu ? 'ЗАГРУЗКА СТАНЦИЙ' : 'WORKSTATION LOAD';
             sum.getCell('C4').font = { bold: true, size: 12, color: { argb: 'FF45A29E' } };
             Store.workstations.forEach((ws, i) => {
                 const row = sum.getRow(5 + i);
@@ -10403,7 +10404,7 @@ const Reports = {
 
             // Оценки 5S
             const fiveS = Charts.compute5S();
-            sum.getCell('C12').value = '5S AUDIT SCORES';
+            sum.getCell('C12').value = isRu ? 'ОЦЕНКИ 5S-АУДИТОВ' : '5S AUDIT SCORES';
             sum.getCell('C12').font = { bold: true, size: 12, color: { argb: 'FF45A29E' } };
             fiveS.forEach((f, i) => {
                 const row = sum.getRow(13 + i);
@@ -10416,7 +10417,7 @@ const Reports = {
             });
 
             // Tool Type Breakdown
-            sum.getCell('A13').value = 'TOOL TYPE BREAKDOWN';
+            sum.getCell('A13').value = isRu ? 'РАСПРЕДЕЛЕНИЕ ПО ТИПАМ ИНСТРУМЕНТА' : 'TOOL TYPE BREAKDOWN';
             sum.getCell('A13').font = { bold: true, size: 12, color: { argb: 'FF45A29E' } };
             const typeBk = [
                 ['Permanent Tooling / Постоянный инструмент', active.filter(t => t.type === 'Permanent').length],
@@ -10434,7 +10435,7 @@ const Reports = {
             });
 
             // Tool Class Group Breakdown
-            sum.getCell('A17').value = 'TOOL CLASS GROUP BREAKDOWN';
+            sum.getCell('A17').value = isRu ? 'РАСПРЕДЕЛЕНИЕ ПО ГРУППАМ КЛАССОВ' : 'TOOL CLASS GROUP BREAKDOWN';
             sum.getCell('A17').font = { bold: true, size: 12, color: { argb: 'FF45A29E' } };
             const groupBk = [
                 ['Mechanical Assembly (MECH)', active.filter(t => { const p = (t.id||'').split('-')[0]; const c = CONFIG.TOOL_CLASSES.find(x=>x.p===p); return c && c.group === 'MECH'; }).length],
@@ -10457,7 +10458,7 @@ const Reports = {
             let rIdx = 24;
             sum.mergeCells(`A${rIdx}:E${rIdx}`);
             const legHdr = sum.getCell(`A${rIdx}`);
-            legHdr.value = 'СПРАВОЧНИК ПРЕФИКСОВ ID / TOOL CLASS LEGEND';
+            legHdr.value = isRu ? 'СПРАВОЧНИК ПРЕФИКСОВ ID' : 'ID PREFIX LEGEND';
             legHdr.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
             legHdr.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.dark } };
             legHdr.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -10465,7 +10466,7 @@ const Reports = {
             rIdx++;
 
             const legHdrRow = sum.getRow(rIdx++);
-            ['Prefix', 'Group', 'Russian Name', 'English Name', 'Category'].forEach((h, i) => {
+            (isRu ? ['Префикс', 'Группа', 'Русское название', 'Английское название', 'Категория'] : ['Prefix', 'Group', 'Russian Name', 'English Name', 'Category']).forEach((h, i) => {
                 const c = legHdrRow.getCell(i+1);
                 c.value = h;
                 c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -10483,13 +10484,15 @@ const Reports = {
             });
 
             /* ================= ЛИСТ 2: ИНВЕНТАРЬ ================= */
-            const inv = wb.addWorksheet('Инвентарь');
+            const inv = wb.addWorksheet(isRu ? 'Инвентарь' : 'Inventory');
             inv.columns = [
                 { width: 10 }, { width: 46 }, { width: 40 }, { width: 16 }, { width: 12 }, { width: 13 },
                 { width: 26 }, { width: 16 }, { width: 12 }, { width: 12 }, { width: 12 },
                 { width: 9 }, { width: 12 }, { width: 12 }, { width: 8 }, { width: 8 }
             ];
-            const head = ['ID', 'Name', 'Class Name (Расшифровка ID)', 'Category', 'Type', 'Status', 'Location', 'Holder', 'Issued', 'Return Due', 'Cal. Due', 'Wear %', 'SN', 'Spec', 'Min', 'Max'];
+            const head = isRu ? 
+                ['ID', 'Наименование', 'Расшифровка ID', 'Категория', 'Тип', 'Статус', 'Местоположение', 'Держатель', 'Дата выдачи', 'Срок возврата', 'Срок калибровки', 'Износ %', 'Заводской SN', 'Спецификация', 'Мин. остаток', 'Макс. остаток'] : 
+                ['ID', 'Name', 'Class Name (ID Legend)', 'Category', 'Type', 'Status', 'Location', 'Holder', 'Issued Date', 'Return Due', 'Cal. Due', 'Wear %', 'Serial No', 'Specification', 'Min Qty', 'Max Qty'];
             inv.addRow(head);
             styleHeader(inv.getRow(1));
             inv.getRow(1).height = 22;
@@ -10498,7 +10501,7 @@ const Reports = {
                 const wear = Store.wearOf(t);
                 const prefix = (t.id || '').split('-')[0];
                 const cls = CONFIG.TOOL_CLASSES.find(c => c.p === prefix);
-                const className = cls ? `${cls.p} — ${cls.ru} (${cls.en})` : 'Custom ID';
+                const className = cls ? (isRu ? `${cls.p} — ${cls.ru}` : `${cls.p} — ${cls.en}`) : (isRu ? 'Индивидуальный ID' : 'Custom ID');
 
                 const row = inv.addRow([
                     t.id, t.name, className, t.category, t.type, t.status, t.location,
@@ -10532,9 +10535,12 @@ const Reports = {
             inv.autoFilter = { from: 'A1', to: `P${active.length + 1}` };
 
             /* ================= ЛИСТ 3: ПЕРСОНАЛ ================= */
-            const per = wb.addWorksheet('Персонал');
+            const per = wb.addWorksheet(isRu ? 'Персонал' : 'Personnel');
             per.columns = [{ width: 10 }, { width: 24 }, { width: 10 }, { width: 10 }, { width: 20 }, { width: 20 }, { width: 12 }, { width: 12 }, { width: 12 }, { width: 12 }, { width: 10 }];
-            per.addRow(['ID', 'Name', 'Initials', 'Badge', 'Workstation', 'Post', 'Tools Held', 'Overdue', 'Max Wear %', 'Care Score', 'Grade']);
+            per.addRow(isRu ? 
+                ['ID', 'ФИО', 'Инициалы', 'Табельный №', 'Рабочая станция', 'Пост', 'Инструментов на руках', 'Просрочено', 'Макс. износ %', 'Бережливость (балл)', 'Грейд'] : 
+                ['ID', 'Full Name', 'Initials', 'Badge No', 'Workstation', 'Post', 'Tools Held', 'Overdue', 'Max Wear %', 'Care Score', 'Grade']
+            );
             styleHeader(per.getRow(1));
             Store.personnel.forEach((p, i) => {
                 const held = Store.tools.filter(t => t.assigneeId === p.id);
@@ -10558,9 +10564,12 @@ const Reports = {
             /* ================= ЛИСТ 4: АРХИВ ================= */
             const retired = Store.tools.filter(t => t.status === 'Retired' || t.status === 'retired');
             if (retired.length) {
-                const arc = wb.addWorksheet('Архив');
+                const arc = wb.addWorksheet(isRu ? 'Архив' : 'Archive');
                 arc.columns = [{ width: 10 }, { width: 42 }, { width: 14 }, { width: 14 }, { width: 20 }, { width: 10 }, { width: 12 }, { width: 44 }];
-                arc.addRow(['ID', 'Name', 'Commissioned', 'Retired At', 'Reason', 'Wear %', 'Inspector', 'Notes']);
+                arc.addRow(isRu ? 
+                    ['ID', 'Наименование', 'Введено', 'Списано', 'Причина', 'Износ %', 'Инспектор', 'Заметки'] : 
+                    ['ID', 'Name', 'Commissioned', 'Retired At', 'Reason', 'Wear %', 'Inspector', 'Notes']
+                );
                 styleHeader(arc.getRow(1));
                 retired.forEach((t, i) => {
                     const row = arc.addRow([t.id, t.name, t.commissioned_date || '', t.retiredAt || '',
