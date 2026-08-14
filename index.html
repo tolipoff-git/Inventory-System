@@ -2376,8 +2376,8 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v66',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
-    BUILD_DATE: '2026-08-12',        // дата сборки для подвала
+    APP_VERSION: 'v67',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    BUILD_DATE: '2026-08-14',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
     WEAR_RETIRE_PCT: 75,             // износ, после которого инструмент списывается
@@ -2466,7 +2466,33 @@ const Utils = {
     nowISO() { return new Date().toISOString(); },
 
     /** Системный (автогенерированный) серийник формата SN-XXXXXXXX — не заводской номер */
-    isAutoSn(sn) { return /^SN-[0-9A-Z]{8}$/.test(sn || ''); },
+    isAutoSn(sn) {
+        if (!sn) return false;
+        const parts = sn.split('-');
+        if (parts.length !== 2) return false;
+        if (!/^[0-9A-Z]{8}$/.test(parts[1])) return false;
+        return parts[0] === 'SN' || CONFIG.TOOL_CLASSES.some(c => c.p === parts[0]);
+    },
+
+    compressImageBase64(base64Str, maxSide = 800, quality = 0.62) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                let w = img.width, h = img.height;
+                if (w > maxSide || h > maxSide) {
+                    if (w > h) { h = Math.round((h * maxSide) / w); w = maxSide; }
+                    else { w = Math.round((w * maxSide) / h); h = maxSide; }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = reject;
+            img.src = base64Str;
+        });
+    },
 
     /** Разница в днях между датой и «сейчас» (отрицательная = просрочено) */
     daysUntil(v) {
@@ -3843,7 +3869,7 @@ const Store = {
         this.auditLog     = read(this.KEYS.audit, []);
         this.procurementLog = read(this.KEYS.procurement, []);
         this.audits5s     = read('inv_audits5s', []);
-        this.labelQueue   = JSON.parse(localStorage.getItem('inv_labelQueue') || '[]');
+        try { this.labelQueue = JSON.parse(localStorage.getItem('inv_labelQueue') || '[]'); } catch(e) { this.labelQueue = []; }
         this.meta         = read(this.KEYS.meta, { schemaVersion: 1 });
         this.migrate();
     },
@@ -4337,6 +4363,7 @@ const Store = {
 
     /** Восстановление из JSON-файла с валидацией схемы и подтверждением */
     restoreBackup(event) {
+        if (!Auth.has('Administrator')) { alert(T('ACCESS_DENIED') || 'Access Denied'); return; }
         const file = event.target.files[0];
         if (!file) return;
         const reader = new FileReader();
@@ -4943,7 +4970,7 @@ function restoreBackup(e) { Store.restoreBackup(e); }
    ставится в очередь и выполняется после успешного логина.
    ============================================================================ */
 const Auth = {
-    current: JSON.parse(localStorage.getItem('currentUser') || '{"username":"operator","role":"Operator"}'),
+    current: (() => { try { return JSON.parse(localStorage.getItem('currentUser') || '{"username":"operator","role":"Operator"}'); } catch(e) { return {"username":"operator","role":"Operator"}; } })(),
     pendingAction: null,   // действие, ожидающее логина
 
     /** Проверка: у текущего пользователя роль не ниже требуемой */
@@ -5169,7 +5196,7 @@ const UI = {
         const collapsed = !card.classList.contains('collapsed');
         card.classList.toggle('collapsed', collapsed);
         this.cardState[card.dataset.cardKey] = collapsed ? 1 : 0;
-        localStorage.setItem('inv_cards', JSON.stringify(this.cardState));
+        try { localStorage.setItem('inv_cards', JSON.stringify(this.cardState)); } catch(e) {}
     },
 
     // Применение сохранённого состояния к статичным карточкам (графики в main)
@@ -6844,11 +6871,10 @@ const Ops = {
         
         // Адрес: незаполненные поля сохраняют прежнее значение (защита от потери),
         // полностью пустая форма — осознанное удаление адреса
-        const prevAddr = tool.address || {};
         if (z || r || s || b) {
             tool.address = {
-                zone: z || prevAddr.zone || '', rack: r || prevAddr.rack || '',
-                shelf: s || prevAddr.shelf || '', bin: b || prevAddr.bin || ''
+                zone: z || '', rack: r || '',
+                shelf: s || '', bin: b || ''
             };
         } else delete tool.address;
         
@@ -7488,7 +7514,7 @@ const Ops = {
         const order = Store.getTool(orderId);
         if (!order || order.status !== 'Pending Delivery') return;
         
-        const target = order.targetToolId ? Store.getTool(order.targetToolId) : Store.tools.find(t => t.name === order.name && t.status !== 'Pending Delivery' && t.status !== 'Retired');
+        const target = order.targetToolId ? Store.getTool(order.targetToolId) : null;
         
         let receivedInto;
         if (target) {

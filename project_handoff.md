@@ -2,13 +2,22 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v66` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v67` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`).
 
-## Recent Accomplishments (v49 – v66)
+## Recent Accomplishments (v49 – v67)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
+
+### 0. Architecture & Security Refactoring (v67)
+- **Startup Protection:** Protected `inv_labelQueue` and `currentUser` JSON.parse with safe try-catch fallbacks to prevent startup white-screen crashes.
+- **RBAC Gate on Backup Restore:** Restricted `Store.restoreBackup()` strictly to `Administrator` role to prevent unauthorized privilege escalation.
+- **Procurement Order Linking Fix:** Enforced strict `targetToolId` matching in `receivedInto` (removed loose fuzzy name matching fallback).
+- **Address Persistence Fix:** Ensured empty location fields in `submitEditTool()` properly reset or clear address structures instead of inheriting stale rack/shelf/bin data.
+- **UI State Quota Protection:** Wrapped `localStorage.setItem('inv_cards', ...)` in `toggleCard()` with try-catch to prevent `QuotaExceededError` crashes.
+- **Auto-SN Dynamic Prefixes:** Updated `Utils.isAutoSn()` to support dynamic category prefixes (`CONFIG.TOOL_CLASSES`) alongside `'SN'`.
+- **Base64 Photo Canvas Compression:** Added `Utils.compressImageBase64()` helper to downscale uploaded images and protect LocalStorage quotas.
 
 ### 1. Procurement & Orders Registry (v58–v59)
 - **Procurement Hub (Dashboard):** Added a dedicated hub on the dashboard showing order summaries by status, total amounts, and recent procurement events with direct links to the order cards.
