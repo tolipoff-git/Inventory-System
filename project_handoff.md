@@ -10,14 +10,16 @@
 ## Recent Accomplishments (v49 – v68)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Header Clean-Up & Storage Structure Redesign (v68)
+### 0. Header Clean-Up, Dual Employee Selector & Storage Structure Redesign (v68)
+- **Dual Employee Selector UX (`assignModal`):** Added explicit clickable dropdown `<select id="assignEmpSelect">` alongside `<input id="assignEmp">`. Users can click to select employees directly from a visible list or type to search; picking an employee instantly auto-fills Workstation, Post, and Required Initials.
+- **Assign Tool UI Repair:** Removed accidental export button from `assignModal` and restored full employee selection input with `Ops.onAssignEmpChange()` auto-population.
 - **Header Clean-Up:** Removed redundant duplicate un-localized buttons (`Register New Asset` and `Operations`) from `.header-row`. Nav buttons consolidated cleanly in `.toolbar`.
 - **Dedicated Storage Location Labels Modal:** Added `[🖨️ Печать этикеток мест хранения]` inside Operations menu (`opsMenuModal`). Introduced `locationLabelModal` with Single/Batch printing, dynamic address auto-completion from `Store.tools`, paper stock choice, and live QRious canvas sticker preview.
 - **Storage Structure Types:** Added selection for Rack (Стеллаж), Workbench / Desk (Верстак), Toolbox / Cart (Инструментальный ящик), A-Frame (А-Фрейм).
 - **Auto-Increment Free Bin Helper:** Implemented `Store.getNextFreeBin(zone, rack, shelf)` to auto-suggest the next available free bin number and prevent duplicate bin entries on the same shelf.
 - **QR Summary Storage View:** Scanning location QRs opens a summary storage view header with responsible person assignment and a table of stored tools sorted by Shelf and Bin.
 - **PWA SW Auto-Binding:** `index.html` dynamically registers `./sw.js?v=` + `CONFIG.APP_VERSION`. Changing `APP_VERSION` immediately triggers SW update detection and update banner prompt in browsers.
-- **Automated SW Build Pipeline (`build.sh`):** Embedded `build.sh` script automatically extracts `CONFIG.APP_VERSION` and appends Git short commit hash (`v67-db2f113`), writing to `sw.js`.
+- **Automated SW Build Pipeline (`build.sh`):** Embedded `build.sh` script automatically extracts `CONFIG.APP_VERSION` and appends Git short commit hash (`v68-b6b67f8`), writing to `sw.js`.
 - **CDN Cache-Control (`_headers`):** Added Cloudflare Pages `_headers` file enforcing `Cache-Control: max-age=0, no-cache, no-store, must-revalidate` for `/sw.js`.
 - **Startup Protection:** Protected `inv_labelQueue` and `currentUser` `JSON.parse` with safe try-catch fallbacks to prevent startup white-screen crashes on corrupted localStorage.
 - **RBAC Gate on Backup Restore:** Restricted `Store.restoreBackup()` strictly to `Administrator` role to prevent unauthorized privilege escalation.
@@ -26,7 +28,6 @@ The application has undergone massive functional and architectural expansion. Th
 - **UI State Quota Protection:** Wrapped `localStorage.setItem('inv_cards', ...)` in `toggleCard()` with try-catch to prevent `QuotaExceededError` crashes.
 - **Auto-SN Dynamic Prefixes:** Updated `Utils.isAutoSn()` to support dynamic category prefixes (`CONFIG.TOOL_CLASSES`) alongside `'SN'`.
 - **Base64 Photo Canvas Compression:** Added `Utils.compressImageBase64()` helper to downscale uploaded images and protect LocalStorage quotas.
-- **Dedicated Storage Location Labels Modal:** Added prominent `[🖨️ Печать этикеток мест хранения]` buttons in main toolbar, ops menu, and transfer modal. Introduced dedicated `locationLabelModal` with Single/Batch printing, dynamic address auto-completion from `Store.tools`, paper stock choice, and live QRious canvas sticker preview.
 
 ### 1. Procurement & Orders Registry (v58–v59)
 - **Procurement Hub (Dashboard):** Dedicated hub on the dashboard showing order summaries by status, total amounts, and recent procurement events with direct links to order cards.
@@ -65,8 +66,10 @@ The application has undergone massive functional and architectural expansion. Th
 1. **Initial Code Scan (Flash Agent):** Identified potential XSS, unhandled JSON.parse, NULL dereferences, and QuotaExceeded risk.
 2. **Deep Architectural Audit (Pro Agent):** Discovered Privilege Escalation in `restoreBackup()`, data destruction in `receivedInto()`, address ghosting in `submitEditTool()`, and Auto-SN prefix mismatches.
 3. **Independent QA Verification (Pro QA Agent):** Confirmed real bugs (startup crash, auth bypass, data merge, address persistence, quota error, auto-SN) while filtering out false positives (XSS in `renderSticker` was false positive as `renderCell` already escapes inputs).
-4. **Refactoring & Execution:** Architect produced 7-step plan -> Coder executed fixes -> QA Engineer ran `node --check` and validated zero syntax regressions.
+4. **Refactoring & Execution:** Architect produced multi-step plan -> Coder executed fixes -> QA Engineer ran `node --check` and validated zero syntax regressions.
 5. **SW Versioning Auto-Bind:** Added `sw.js?v=` query param in `index.html`, `build.sh` Git commit hash injection, and `_headers` CDN Cache-Control.
+6. **Location Storage Redesign:** Added Storage Types (Rack, Workbench, Toolbox, A-Frame), Auto-free bin helper `getNextFreeBin`, QR summary storage view, and ops menu location print button.
+7. **Dual Employee Selector UX:** Restored employee selection in `assignModal`, added clickable `<select id="assignEmpSelect">` with auto-filling workstation, post, and initials.
 
 ## Maintenance & Deployment Guidelines
 - **Updating App Version:** Simply change `APP_VERSION` in `CONFIG.APP_VERSION` (in `index.html`).
