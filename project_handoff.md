@@ -2,15 +2,22 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v70` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v71` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v70)
+## Recent Accomplishments (v49 – v71)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Full 100% Russian Localization Overhaul & Risk Diagram Tooltips (v70)
+### 0. Smart Location Storage Summary, Collapsible Shelf Accordions & Auto-Reload Fix (v71)
+- **Opaque KPI Summary Card:** Replaced translucent `rgba(0,0,0,0.2)` card with a solid opaque container (`background: var(--bg-card, #1e293b); border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.3); border-radius: 10px; padding: 20px; margin-bottom: 20px;`).
+- **Smart Storage Intelligence Summary (Умное суммирование):** Computes executive metrics across stored items on the structure:
+  - Equipment share: `80% Permanent Tooling / 20% Consumables`
+  - Action alerts: `⚠️ N items require Maintenance / Service / Calibration`, `🔴 M items Low Stock / High Wear`, `⏰ X items Overdue`.
+- **Collapsible Accordion Shelf Tabs (Вкладки Полок `Shelf 1`, `Shelf 2`, etc.):** Groups stored tools by shelf into collapsible accordion tabs (`📂 Полка / Shelf X (N items) [▼/▲]`).
+- **Master Accordion Controls:** Added `[📂 Развернуть все / Expand All]` and `[📁 Свернуть все / Collapse All]` calling `Ops.toggleAllShelfTabs()`.
+- **PWA Auto-Reload Bug Fix:** Disabled automatic `window.location.reload()` on `controllerchange` to permanently resolve infinite reloading/flashing loops. Users now reload explicitly via the Update Banner or by clicking the `#appVersionTag` (`v71`).
 - **100% Russian Coverage:** Audited and resolved all un-localized English strings across HTML elements, modals, options, placeholders, dynamic tables, and charts when RU mode is active.
 - **Dictionary Expansion (`I18N.RU`):** Added 30+ missing dictionary keys covering `locationLabelModal`, `assignModal`, `orderDetailModal`, `postAuditModal`, and risk tooltips.
 - **Dynamic HTML Option Translation (`applyLanguage`):** Enhanced `applyLanguage()` to query and translate `option[data-i18n]` tags dynamically.

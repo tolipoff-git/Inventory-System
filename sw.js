@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'inv-inventory-';
-const CACHE_VERSION = 'v70-8c0eed7';
+const CACHE_VERSION = 'v71-f4f92dc';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
 const ASSETS_TO_CACHE = [
   './',
@@ -17,9 +17,8 @@ const ASSETS_TO_CACHE = [
   './icon-512.png'
 ];
 
-// Install: cache core assets, wait for SKIP_WAITING to activate
+// Install: cache core assets
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(ASSETS_TO_CACHE))
