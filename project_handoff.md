@@ -2,15 +2,22 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v78` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v79` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v78)
+## Recent Accomplishments (v49 – v79)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Total i18n Dictionary Parity, Excel Stock Quantity Column & v78 Release
+### 0. Total Code Quality Audit, Defensive Architecture & v79 Release
+- **Defensive LocalStorage Wrappers:** Wrapped all direct `localStorage` and `sessionStorage` `getItem`/`setItem` operations in safe `try-catch` blocks across UI event handlers, preventing `QuotaExceededError` crashes on storage limits or restricted browser profiles.
+- **`I18n` & `ProcureCart` Namespace Declarations:** Defined explicit `I18n` module object exposing `currentLang`, `setLanguage`, `T`, and `translations`, and created global `ProcureCart` alias pointing to `Procure`.
+- **Labels Personnel Event Handler:** Implemented `Labels.onRespSelectChange(val)` to handle personnel dropdown selections in `locationLabelModal`.
+- **Resilient Modal Resolution:** Enhanced `openModal(id)` and `closeModal(id)` to safely validate DOM elements and auto-resolve legacy `reportModal` IDs to `report5sModal`.
+- **Global `exportREQ003XLSX` Alias:** Added `Reports.exportREQ003XLSX()` and global `exportREQ003XLSX()` functions calling `ProcureCart.exportXLSX()`.
+- **Total i18n Dictionary Parity:** Achieved 100% dictionary key symmetry across `I18N.EN` and `I18N.RU` (24 new keys added).
+- **Bilingual Excel Export & Qty Column:** Added Column 6 `Кол-во в наличии / Qty in Stock` to Sheet 2 of `exportInventoryXLSX()` with dynamic bilingual sheet names, block titles, KPI metrics, and table headers.
 - **Excel Stock Quantity Column Addition (`Qty in Stock`):** Added Column 6 `Кол-во в наличии / Qty in Stock` to Sheet 2 ("Инвентарь" / "Inventory") in `Reports.exportInventoryXLSX()`, displaying real physical stock quantities (`parseInt(t.qty) || 1`) alongside `Min Qty` and `Max Qty`. Updated column formatting offsets (status col 7, wear col 13, dates col 11/12, autoFilter range `A1:Q`).
 - **Complete i18n Audit & Dictionary Parity:** Conducted a comprehensive codebase audit via subagent searcher, identifying 24 missing translation keys in `I18N.EN` and `I18N.RU`. Added all 24 missing keys covering storage location labels, partial receipts, personnel assignments, risk factor drivers, and Excel export columns.
 - **Bilingual Excel Export:** `Reports.exportInventoryXLSX()` dynamically evaluates `currentLang` to translate Sheet Names (`Сводка` / `Summary`, `Инвентарь` / `Inventory`, etc.), block titles, KPI metrics, table headers, and ID class legend descriptions.

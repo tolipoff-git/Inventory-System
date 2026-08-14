@@ -2431,7 +2431,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v78',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v79',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-14',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -2741,7 +2741,7 @@ const Utils = {
    Словари ENG/RU. Статика переводится через data-i18n атрибуты,
    динамика — через вызов T('ключ') в коде. Неизвестный ключ возвращается как есть.
    ============================================================================ */
-let currentLang = localStorage.getItem('inv_lang') || 'ENG';
+let currentLang = 'ENG'; try { currentLang = localStorage.getItem('inv_lang') || 'ENG'; } catch(e) {}
 
 const translations = {
     'ENG': {
@@ -3687,6 +3687,14 @@ const translations = {
 /** Перевод ключа; неизвестный ключ возвращается без изменений */
 function T(key) { return (translations[currentLang] && translations[currentLang][key]) || key; }
 
+const setLanguage = toggleLanguage;
+const I18n = {
+    get currentLang() { return currentLang; },
+    setLanguage,
+    T,
+    translations
+};
+
 /** Применение языка ко всей статике через data-i18n атрибуты + перерисовка динамики */
 function applyLanguage() {
     document.getElementById('langBtnText').innerText = currentLang === 'RU' ? 'RU | ENG' : 'ENG | RU';
@@ -3739,7 +3747,7 @@ function initFaqAccordion() {
 
 function toggleLanguage() {
     currentLang = currentLang === 'RU' ? 'ENG' : 'RU';
-    localStorage.setItem('inv_lang', currentLang);
+    try { localStorage.setItem('inv_lang', currentLang); } catch(e) { console.error('Storage quota', e); }
     applyLanguage();
 }
 
@@ -3756,16 +3764,16 @@ const Mode = {
     /** Применение при старте: URL-параметр важнее сохранённого выбора */
     apply() {
         const urlMode = new URLSearchParams(location.search).get('mode');
-        const work = urlMode ? urlMode === 'work' : localStorage.getItem(this.KEY) === 'work';
+        const work = urlMode ? urlMode === 'work' : (() => { try { return localStorage.getItem(this.KEY) === 'work'; } catch(e) { return false; } })();
         document.body.classList.toggle('mode-work', work);
-        if (urlMode) localStorage.setItem(this.KEY, work ? 'work' : 'full');
+        if (urlMode) { try { localStorage.setItem(this.KEY, work ? 'work' : 'full'); } catch(e) { console.error('Storage quota', e); } }
         this._paintBtn();
     },
 
     toggle() {
         const work = !this.isWork();
         document.body.classList.toggle('mode-work', work);
-        localStorage.setItem(this.KEY, work ? 'work' : 'full');
+        try { localStorage.setItem(this.KEY, work ? 'work' : 'full'); } catch(e) { console.error('Storage quota', e); }
         this._paintBtn();
         if (!work) Charts.update(); // вернулись в дашборд — отрисовать свежие графики
     },
@@ -3988,7 +3996,7 @@ const Store = {
     /** Загрузка из localStorage с fallback на seed-данные */
     load() {
         try {
-            const raw = localStorage.getItem('inv_inventory_db');
+            let raw = null; try { raw = localStorage.getItem('inv_inventory_db'); } catch(e) {}
             if (raw) {
                 const db = JSON.parse(raw);
                 this.users = db.users || Seed.users();
@@ -4012,7 +4020,7 @@ const Store = {
 
         const read = (key, fallback) => {
             try {
-                const raw = localStorage.getItem(key);
+                let raw = null; try { raw = localStorage.getItem(key); } catch(e) {}
                 return raw ? JSON.parse(raw) : fallback;
             } catch { return fallback; }
         };
@@ -4055,7 +4063,7 @@ const Store = {
                 alert(T('DB_SIZE_WARN'));
                 sessionStorage.setItem('inv_quota_warn', 'true');
             }
-            localStorage.setItem('inv_inventory_db', raw);
+            try { localStorage.setItem('inv_inventory_db', raw); } catch(e) { console.error('Storage quota', e); }
         } catch (e) {
             alert(T('DB_QUOTA_EXCEEDED'));
         }
@@ -5158,7 +5166,7 @@ const Auth = {
     },
 
     /** Сохранить сессию */
-    persist() { localStorage.setItem('currentUser', JSON.stringify(this.current)); },
+    persist() { try { localStorage.setItem('currentUser', JSON.stringify(this.current)); } catch(e) { console.error('Storage quota', e); } },
 
     /** Попытка логина: хэшируем ввод и сравниваем с хранимым хэшем */
     async login(username, password) {
@@ -5387,8 +5395,18 @@ const UI = {
 };
 
 /* --- Модалки --- */
-function openModal(id) { document.getElementById(id).classList.add('active'); }
-function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function openModal(id) {
+    let el = document.getElementById(id);
+    if (!el && id === 'reportModal') el = document.getElementById('report5sModal');
+    if (!el) { console.warn('Modal not found:', id); return; }
+    el.classList.add('active');
+}
+function closeModal(id) {
+    let el = document.getElementById(id);
+    if (!el && id === 'reportModal') el = document.getElementById('report5sModal');
+    if (!el) return;
+    el.classList.remove('active');
+}
 
 // Закрытие по клику на затемнённый фон
 document.addEventListener('mousedown', e => {
@@ -8360,6 +8378,13 @@ function removeEmp(i) { Ops.removeEmp(i); }
    ============================================================================ */
 const Labels = {
 
+    onRespSelectChange(val) {
+        if (!val) return;
+        const input = document.getElementById('locLabelResponsible');
+        if (input) input.value = val;
+        this.renderLocationPreview();
+    },
+
     onZoneSelectChange(val) {
         if (!val) return;
         document.getElementById('locLabelZone').value = val;
@@ -9552,6 +9577,8 @@ const Procure = {
     }
 };
 
+const ProcureCart = Procure;
+
 function openProcureModal(id) { Procure.open(id); }
 function calcProcureTotal() { Procure.calcTotal(); }
 function submitProcurement() { Procure.submit(); }
@@ -10096,6 +10123,8 @@ const Kaizen = {
    фирменные цвета, закреплённые шапки, автофильтры, условная раскраска.
    ============================================================================ */
 const Reports = {
+
+    exportREQ003XLSX() { ProcureCart.exportXLSX(); },
 
     /* ---------- Общие данные по списаниям (экранный отчёт + печать) ---------- */
     retireStats() {
@@ -10671,6 +10700,7 @@ const Reports = {
 function generate5SReport() { Reports.generate5S(); }
 function print5SReport() { Reports.print5S(); }
 function exportInventoryXLSX() { Reports.exportInventoryXLSX(); }
+function exportREQ003XLSX() { ProcureCart.exportXLSX(); }
 function openOrdersModal() { Ops.openOrders(); }
 function openPostAuditModal() { doAction('Tool Crib Manager', () => Ops.openPostAudit()); }
 function submitPostAudit() { Ops.submitPostAudit(); }
@@ -10678,12 +10708,12 @@ function submitPostAudit() { Ops.submitPostAudit(); }
 <script>
 const Theme = {
     init() {
-        const saved = localStorage.getItem('inv_theme') || 'dark';
+        let saved = 'dark'; try { saved = localStorage.getItem('inv_theme') || 'dark'; } catch(e) {}
         this.set(saved);
     },
     set(theme) {
         document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('inv_theme', theme);
+        try { localStorage.setItem('inv_theme', theme); } catch(e) { console.error('Storage quota', e); }
         const btn = document.getElementById('themeToggleBtn');
         if (btn) btn.innerText = theme === 'light' ? '🌙 Dark' : '☀️ Light';
     },
