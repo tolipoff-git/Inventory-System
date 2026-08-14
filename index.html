@@ -2431,7 +2431,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v73',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v74',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-14',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -5772,9 +5772,11 @@ const Charts = {
                 const best = ranked[0], worst = ranked[ranked.length - 1];
                 const avg = posts.reduce((s, a) => s + (a.scores[rid] || 0), 0) / posts.length;
                 const fmt = a => `${a.ws} | ${a.post}`;
+                const bestExp = Ops.get5SRubricExplanation(pi, best.scores[rid]);
+                const worstExp = Ops.get5SRubricExplanation(pi, worst.scores[rid]);
                 const desc = posts.length > 1
-                    ? `${T('AUDIT_BEST')}: ${best.scores[rid]} — ${fmt(best)} · ${T('AUDIT_WORST')}: ${worst.scores[rid]} — ${fmt(worst)}`
-                    : `${fmt(best)} — ${T('AUDIT_SCORE')}: ${best.scores[rid]}/5`;
+                    ? `${T('AUDIT_BEST')}: ${best.scores[rid]}/5 (${bestExp}) — ${fmt(best)}<br>${T('AUDIT_WORST')}: ${worst.scores[rid]}/5 (${worstExp}) — ${fmt(worst)}`
+                    : `${fmt(best)} — ${T('AUDIT_SCORE')}: ${best.scores[rid]}/5 (${bestExp})`;
                 return { pillar: T(p), score: Math.max(1, Math.min(5, Math.round(avg))), desc, onClick: () => Ops.openAuditHistory(pi) };
             });
         }
@@ -6828,6 +6830,15 @@ const Ops = {
     careBadge(emp) {
         const c = this.careOf(emp);
         return `<span title="${Utils.esc(c.comment)}" style="display:inline-block; min-width:52px; text-align:center; padding:2px 8px; border-radius:4px; font-weight:bold; font-size:0.8rem; color:${c.color}; border:1px solid ${c.color}; background:rgba(0,0,0,0.3); cursor:help;">${c.grade} · ${c.score}</span>`;
+    },
+
+    get5SRubricExplanation(pillarIndex, scoreVal) {
+        if (!scoreVal || scoreVal < 1 || scoreVal > 5) return 'N/A';
+        const r = S5_RUBRICS[pillarIndex];
+        if (!r) return 'N/A';
+        const lang = (typeof currentLang !== 'undefined' && currentLang) ? currentLang : 'RU';
+        const list = (lang === 'RU' || lang === 'ru') ? r.ru : r.en;
+        return list[scoreVal - 1] || 'N/A';
     },
 
     /** Рабочая станция инструмента: по держателю, иначе по тексту локации */
@@ -8174,33 +8185,49 @@ const Ops = {
             Store.workposts.some(p => p.name === a.post && p.ws === a.ws));
         const body = document.getElementById('auditHistoryBody');
         if (!audits.length) {
-            body.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding:10px;">${T('NO_AUDITS')}</div>`;
+            body.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding:20px;">${T('NO_AUDITS')}</div>`;
             openModal('auditHistoryModal');
             return;
         }
-        const rIds = S5_RUBRICS.map(r => r.id);
-        const legend = S5_RUBRICS.map(r => T(r.key)).join(' / ');
         const byPost = {};
         audits.forEach(a => { const k = `${a.ws} | ${a.post}`; (byPost[k] = byPost[k] || []).push(a); });
-        const scoreLine = a => rIds.map((rid, i) => {
-            const hl = pi === i;
-            return `<span style="${hl ? 'color:var(--primary-hover); font-weight:bold;' : 'color:var(--text-muted);'}">${a.scores[rid] ?? '—'}</span>`;
-        }).join('/');
+
         body.innerHTML =
-            (pi !== null ? `<div style="margin-bottom:6px; font-weight:bold; color:var(--primary-hover);">${T(S5_RUBRICS[pi].key)}</div>` : '') +
-            `<div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:12px;">${legend}</div>` +
+            (pi !== null && S5_RUBRICS[pi] ? `<div style="margin-bottom:12px; font-weight:bold; font-size:1rem; color:var(--primary-hover);">📍 ${T('Pillar Focus:')} ${T(S5_RUBRICS[pi].key)}</div>` : '') +
             Object.entries(byPost).map(([k, list]) => {
                 const sorted = [...list].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+                const rIds = S5_RUBRICS.map(r => r.id);
                 const avgOf = a => (rIds.reduce((s, rid) => s + (a.scores[rid] || 0), 0) / rIds.length).toFixed(1);
+
                 const hist = sorted.map(a => `
-                    <div class="history-item">
-                        <span>${scoreLine(a)}<br>
-                            <span style="color:var(--text-muted); font-size:0.85rem;">${Utils.esc(a.date)} · ${Utils.esc(a.auditor)}</span>
-                        </span>
-                        <span style="font-weight:bold; white-space:nowrap;">Ø ${avgOf(a)}</span>
+                    <div class="audit-history-item-card" style="background:var(--card-bg, #1e293b); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:14px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px;">
+                            <div>
+                                <strong style="color:var(--text-main, #f8fafc); font-size:0.95rem;">${Utils.esc(a.date)}</strong>
+                                <span style="color:var(--text-muted, #94a3b8); font-size:0.85rem; margin-left:8px;">👤 ${Utils.esc(a.auditor)}</span>
+                            </div>
+                            <span style="background:var(--primary); color:#ffffff; padding:3px 10px; border-radius:12px; font-weight:bold; font-size:0.85rem;">Ø ${avgOf(a)} / 5</span>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:8px;">
+                            ${S5_RUBRICS.map((r, i) => {
+                                const val = a.scores[r.id] || 0;
+                                const explanation = Ops.get5SRubricExplanation(i, val);
+                                const isHl = pi === i;
+                                const color = val >= 4 ? 'var(--success, #4caf50)' : (val === 3 ? 'var(--warning, #ffa500)' : 'var(--danger, #ff4d4d)');
+                                return `
+                                <div style="padding:6px 10px; border-radius:6px; background:${isHl ? 'rgba(69,162,158,0.2)' : 'rgba(0,0,0,0.15)'}; ${isHl ? 'border-left:4px solid var(--primary-hover);' : 'border-left:4px solid transparent'};">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+                                        <strong style="color:${isHl ? 'var(--primary-hover)' : 'var(--text-main, #f8fafc)'}; font-size:0.9rem;">${T(r.key)}</strong>
+                                        <span style="color:${color}; font-weight:bold; font-size:0.85rem; background:rgba(0,0,0,0.3); padding:1px 6px; border-radius:4px;">${val}/5</span>
+                                    </div>
+                                    <div style="color:var(--text-muted, #94a3b8); font-size:0.82rem; line-height:1.3;">${Utils.esc(explanation)}</div>
+                                </div>`;
+                            }).join('')}
+                        </div>
                     </div>`).join('');
-                return `<h4 style="color:var(--primary); margin:0 0 8px; border-bottom:1px dashed var(--border); padding-bottom:5px;">📍 ${Utils.esc(k)}</h4>
-                    <div class="history-list" style="margin-bottom:14px;">${hist}</div>`;
+
+                return `<h4 style="color:var(--primary-hover); margin:12px 0 8px; border-bottom:1px dashed var(--border); padding-bottom:5px; font-size:1.05rem;">📍 ${Utils.esc(k)}</h4>
+                    <div class="history-list" style="margin-bottom:16px;">${hist}</div>`;
             }).join('');
         openModal('auditHistoryModal');
     },

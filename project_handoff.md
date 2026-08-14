@@ -2,15 +2,19 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v73` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v74` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v73)
+## Recent Accomplishments (v49 – v74)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. 5S Rubric Score Explanations, Storage Label Personnel Dropdown & FAQ Overhaul (v73)
+### 0. 5S Rubric Score Explanations (Full Verification Fix) & v74 Release
+- **Full Rubric Text Integration:** Replaced all legacy `3/2/2/3/3` slash representations in `Charts.compute5S()` tooltips and `Ops.openAuditHistory(pi)` with human-readable score explanations derived from `S5_RUBRICS` via `Ops.get5SRubricExplanation(pi, val)` (e.g. `5/5 (Only what is needed — nothing extra)` or `3/5 (Лишнее есть, но сложено отдельно)`).
+- **5S Focus Highlight:** Clicking any ray on the 5S culture radar chart opens the audit history modal with dynamic pillar focus highlighting and color-coded score badges.
+- **Storage Label Personnel Dropdown (`locLabelRespSelect`):** Integrated employee dropdown selection in `locationLabelModal` with auto-filling responsible person and live label preview updates.
+- **FAQ & Knowledge Base Overhaul:** Rewrote FAQ knowledge base into 5 consolidated, structured accordion sections matching true `v74` capabilities.
 - **5S Audit Rubric Score Explanations:** Clicking 5S Radar Chart points or history items resolves human-readable score explanations (`Ops.get5SRubricExplanation`) for every score (1–5) across all 5 pillars (`Sort`, `Set in Order`, `Shine`, `Standardize`, `Sustain`) from `S5_RUBRICS` instead of raw slash strings (e.g. `3/2/2/3/3` -> `3 - Лишнее есть, но сложено отдельно`). Highlighted pillar focus is styled dynamically.
 - **Storage Label Personnel Dropdown (`locLabelRespSelect`):** Added `<select id="locLabelRespSelect">` in `locationLabelModal` populated from `Store.personnel`. Selecting an employee auto-fills `#locLabelResponsible` and triggers live sticker preview.
 - **FAQ & Knowledge Base Overhaul (`FAQ_BODY`):** Rewrote Russian and English FAQ knowledge base from scratch, consolidating all system features into 5 clean, structured accordion sections matching true `v73` capabilities.
