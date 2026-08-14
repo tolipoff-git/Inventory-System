@@ -2157,6 +2157,7 @@ select.work-only.form-control { max-width: 190px; }
                 </div>
                 <div class="form-group">
                     <label>Zone:</label>
+                    <select id="locLabelZoneSelect" class="form-control" onchange="Labels.onZoneSelectChange(this.value)" style="margin-bottom:5px;"></select>
                     <input type="text" id="locLabelZone" class="form-control" list="locZoneList" oninput="Labels.renderLocationPreview()">
                     <datalist id="locZoneList"></datalist>
                 </div>
@@ -5823,7 +5824,7 @@ const Charts = {
             const [nx, ny] = pt(i, (r / max) * d.score).split(',');
             const node = this._el('circle', { cx: nx, cy: ny, r: 4.5, fill: d.color || 'var(--primary)', class: 'svg-node' });
             const scoreTxt = d.rated === false ? T('Not rated') : `${T('Score:')} ${d.score}/${max}`;
-            node.onmousemove = e => showTooltip(e, `<strong>${Utils.esc(d.pillar)}</strong><br>${scoreTxt}<br>${Utils.esc(d.desc)}`);
+            node.onmousemove = e => showTooltip(e, d.tooltipHtml || `<strong>${Utils.esc(d.pillar)}</strong><br>${scoreTxt}<br>${Utils.esc(d.desc)}`);
             node.onmouseleave = hideTooltip;
             if (d.onClick) { node.style.cursor = 'pointer'; node.onclick = d.onClick; }
             svg.appendChild(node);
@@ -5840,66 +5841,99 @@ const Charts = {
     computeCulture() {
         const active = Store.activeTools();
         const groups = {};
-        Store.workstations.forEach(ws => groups[ws] = []);
-        const unassigned = [];
+        
         active.forEach(t => {
-            const ws = Ops.workstationOf(t);
-            (groups[ws] || unassigned).push(t);
+            const loc = Ops.workstationAndPostOf(t);
+            const key = `${loc.ws} | ${loc.post}`;
+            if (!groups[key]) groups[key] = { ws: loc.ws, post: loc.post, tools: [] };
+            groups[key].tools.push(t);
         });
 
-        const scoreOf = tools => {
-            // Станция без инструмента не оценивается: серый луч, вне гонки ★/▼
-            if (!tools.length) return { score: 0, rated: false, desc: T('No tools on this station yet — not rated.') };
+        const data = Object.values(groups).map(g => {
+            const tools = g.tools;
             const overdue = tools.filter(t => t.status === 'Overdue').length;
             const maint = tools.filter(t => t.status === 'Maintenance').length;
-            const wear = Math.round(tools.reduce((a, t) => a + Store.wearOf(t), 0) / tools.length);
+            const wear = Math.round(tools.reduce((a, t) => a + Store.wearOf(t), 0) / tools.length) || 0;
             const score = Math.max(5, Math.min(100, Math.round(100 - overdue * 20 - maint * 10 - wear * 0.4)));
-            const desc = T('CULTURE_DESC').replace('{n}', tools.length).replace('{o}', overdue).replace('{m}', maint).replace('{w}', wear);
-            return { score, rated: true, desc };
-        };
 
-        const ranked = Store.workstations
-            .map(ws => ({ name: ws, tools: groups[ws], isGroup: false }))
-            .sort((a, b) => b.tools.length - a.tools.length);
-        const top = ranked.slice(0, 4);
-        const otherTools = ranked.slice(4).flatMap(g => g.tools).concat(unassigned);
-        if (otherTools.length > 0) {
-            top.push({ name: T('Other Locations'), isGroup: true, tools: otherTools });
-        }
+            const progs = [...new Set(tools.map(t => t.program || Store.wsProgram[g.ws] || 'N/A'))].filter(p => p !== 'N/A');
+            const program = progs.length ? progs.join(', ') : 'N/A';
 
-        const data = top.map(g => ({ pillar: g.name, isGroup: g.isGroup, ...scoreOf(g.tools) }));
+            const persons = [...new Set(tools.map(t => {
+                if (t.assigneeId) {
+                    const emp = Store.getEmp(t.assigneeId);
+                    return emp ? emp.name : t.assigneeId;
+                }
+                return null;
+            }).filter(Boolean))];
+            const persona = persons.length ? persons.join(', ') : 'Unassigned / Team';
+
+            const reasons = score >= 80 
+                ? `★ High Reliability: 0 Overdue, low maintenance, low average wear (${wear}%). Assigned: ${persona}`
+                : `▼ Rating Drivers / Risk Factors: Overdue items (${overdue}), Maintenance items (${maint}), Wear penalty (${wear}%). Assigned: ${persona}`;
+
+            const pillar = `${g.ws} | ${g.post}`;
+            const tooltipHtml = `<div style="padding:6px; font-size:0.82rem; line-height:1.4;"><strong style="color:var(--primary-hover);">${Utils.esc(pillar)}</strong><br><strong>Program:</strong> ${Utils.esc(program)}<br><strong>Persona / Responsible:</strong> ${Utils.esc(persona)}<br><div style="margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.15);">${Utils.esc(reasons)}</div></div>`;
+
+            return {
+                pillar,
+                score,
+                rated: true,
+                desc: reasons,
+                ws: g.ws,
+                post: g.post,
+                program,
+                persona,
+                reasons,
+                tooltipHtml,
+                onClick: () => setFilter('location', pillar)
+            };
+        });
+
         const rated = data.filter(d => d.rated);
         const best = rated.length ? rated.reduce((a, b) => (b.score > a.score ? b : a)) : null;
         const worst = rated.length ? rated.reduce((a, b) => (b.score < a.score ? b : a)) : null;
         data.forEach(d => {
-            if (!d.rated) { d.color = 'var(--text-muted)'; return; }
             if (d === best && best.score !== worst.score) { d.color = 'var(--success)'; d.mark = '★'; }
             else if (d === worst && best.score !== worst.score) { d.color = 'var(--danger)'; d.mark = '▼'; }
-            if (!d.isGroup) d.onClick = () => setFilter('workstation', d.pillar);
         });
+
         return data;
     },
 
     /* --- Очередь ТО + износ расходников (под радаром культуры станций) --- */
     riskPanel() {
         // Очередь обслуживания
-        const maintCards = Store.activeTools().filter(t => t.status === 'Maintenance').map(t => `
-            <div style="background:rgba(0,0,0,0.3); border:1px solid var(--warning); border-radius:4px; padding:10px; margin-bottom:8px;">
+        const maintCards = Store.activeTools().filter(t => t.status === 'Maintenance').map(t => {
+            const loc = Ops.workstationAndPostOf(t);
+            const progs = t.program || Store.wsProgram[loc.ws] || 'N/A';
+            const emp = t.assigneeId ? Store.getEmp(t.assigneeId) : null;
+            const persona = emp ? emp.name : (t.assigneeId || 'Unassigned / Team');
+            const reason = t.history.length ? t.history[t.history.length - 1] : T('Routine Service');
+            const tooltipHtml = `<div style="padding:6px; font-size:0.82rem; line-height:1.4;"><strong style="color:var(--primary-hover);">${Utils.esc(loc.ws)} | ${Utils.esc(loc.post)}</strong><br><strong>Program:</strong> ${Utils.esc(progs)}<br><strong>Persona / Responsible:</strong> ${Utils.esc(persona)}<br><div style="margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.15);">${Utils.esc(reason)}</div></div>`;
+            return `
+            <div data-tip="${Utils.esc(tooltipHtml)}" style="background:rgba(0,0,0,0.3); border:1px solid var(--warning); border-radius:4px; padding:10px; margin-bottom:8px;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:6px; gap:8px;">
                     <strong style="color:var(--text-main); font-size:0.9rem;">${Utils.esc(t.id)} — ${Utils.esc(t.name)}</strong>
                     <span style="font-size:0.8rem; background:var(--warning); color:#000; padding:2px 7px; border-radius:3px; white-space:nowrap; align-self:flex-start;">${Utils.esc(t.category)}</span>
                 </div>
                 <div style="font-size:0.88rem; margin-bottom:8px; color:var(--text-main);">
-                    ${T('Reason:')} ${Utils.esc(t.history.length ? t.history[t.history.length - 1] : T('Routine Service'))}
+                    ${T('Reason:')} ${Utils.esc(reason)}
                 </div>
                 <button class="btn btn-success" style="font-size:0.85rem; padding:7px; width:100%;" data-action="complete-maint" data-id="${Utils.esc(t.id)}">${T('[Complete Maintenance]')}</button>
-            </div>`).join('') || `<div style="color:var(--text-muted); font-size:0.9rem; padding:10px;">${T('No tools currently in maintenance.')}</div>`;
+            </div>`;
+        }).join('') || `<div style="color:var(--text-muted); font-size:0.9rem; padding:10px;">${T('No tools currently in maintenance.')}</div>`;
 
         // Износ расходников
         const wearRows = Store.activeTools().filter(t => t.type === 'Consumable').map(t => {
             const wear = Store.wearOf(t);
             const color = wear > CONFIG.WEAR_RETIRE_PCT ? 'var(--danger)' : wear > CONFIG.WEAR_WARN_PCT ? 'var(--warning)' : 'var(--success)';
-            return `<div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-bottom:6px; border-bottom:1px dashed var(--border); padding-bottom:4px;">
+            const loc = Ops.workstationAndPostOf(t);
+            const progs = t.program || Store.wsProgram[loc.ws] || 'N/A';
+            const emp = t.assigneeId ? Store.getEmp(t.assigneeId) : null;
+            const persona = emp ? emp.name : (t.assigneeId || 'Unassigned / Team');
+            const tooltipHtml = `<div style="padding:6px; font-size:0.82rem; line-height:1.4;"><strong style="color:var(--primary-hover);">${Utils.esc(loc.ws)} | ${Utils.esc(loc.post)}</strong><br><strong>Program:</strong> ${Utils.esc(progs)}<br><strong>Persona / Responsible:</strong> ${Utils.esc(persona)}<br><div style="margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.15);">${T('Wear:')} ${wear}%</div></div>`;
+            return `<div data-tip="${Utils.esc(tooltipHtml)}" style="display:flex; justify-content:space-between; font-size:0.9rem; margin-bottom:6px; border-bottom:1px dashed var(--border); padding-bottom:4px;">
                 <span style="color:var(--text-main);">${Utils.esc(t.id)} — ${Utils.esc(t.name.split(' ')[0])}…</span>
                 <strong style="color:${color}">${wear}% ${T('Wear')}</strong>
             </div>`;
@@ -6796,6 +6830,21 @@ const Ops = {
             if (emp) return emp.workstation;
         }
         return Store.workstations.find(w => tool.location && tool.location.includes(w)) || 'Unknown';
+    },
+
+    /** Рабочая станция и пост инструмента */
+    workstationAndPostOf(tool) {
+        if (tool.assigneeId) {
+            const emp = Store.getEmp(tool.assigneeId);
+            if (emp) return { ws: emp.workstation || emp.defaultWs || 'Unknown', post: emp.post || emp.defaultPost || 'Unknown' };
+        }
+        const L = Store._locParts(tool.location);
+        if (L && L.parts.length >= 2) {
+            return { ws: L.parts[0] || 'Unknown', post: L.parts.slice(1).join(L.sep) || 'Unknown' };
+        } else if (L && L.parts.length === 1) {
+            return { ws: L.parts[0] || 'Unknown', post: 'Unknown' };
+        }
+        return { ws: 'Unknown', post: 'Unknown' };
     },
 
     /** Поиск по скану/вводу: ID инструмента, внешний штрихкод наклейки (5S00xxx),
@@ -8190,6 +8239,12 @@ function removeEmp(i) { Ops.removeEmp(i); }
    ============================================================================ */
 const Labels = {
 
+    onZoneSelectChange(val) {
+        if (!val) return;
+        document.getElementById('locLabelZone').value = val;
+        this.renderLocationPreview();
+    },
+
     suggestNextBin() {
         const zone = document.getElementById('locLabelZone').value.trim();
         const rack = document.getElementById('locLabelRack').value.trim();
@@ -8234,6 +8289,11 @@ const Labels = {
         popList('locRackList', racks);
         popList('locShelfList', shelves);
         popList('locBinList', bins);
+
+        const zoneSelect = document.getElementById('locLabelZoneSelect');
+        if (zoneSelect) {
+            zoneSelect.innerHTML = '<option value="">-- Choose Zone / Выберите зону --</option>' + Array.from(zones).sort().map(z => `<option value="${Utils.esc(z)}">${Utils.esc(z)}</option>`).join('');
+        }
 
         const tZone = document.getElementById('transZone');
         const tRack = document.getElementById('transRack');
@@ -8283,27 +8343,33 @@ const Labels = {
         
         let locCode = `LOC:${locType}:${z}:${r}:${s}:${b}:${resp}`;
         
+        const cleanPrefix = (val, prefix) => {
+            if (!val) return '';
+            const regex = new RegExp('^' + prefix + '\\s*', 'i');
+            return prefix + ' ' + val.replace(regex, '');
+        };
+        
         let locParts = [];
-        if (z) locParts.push(z);
-        if (r) locParts.push(`Rack ${r}`);
-        if (s) locParts.push(`Shelf ${s}`);
-        if (b) locParts.push(`Bin ${b}`);
+        if (z) locParts.push(Utils.esc(z));
+        if (r) locParts.push(Utils.esc(cleanPrefix(r, 'Rack')));
+        if (s) locParts.push(Utils.esc(cleanPrefix(s, 'Shelf')));
+        if (b) locParts.push(Utils.esc(cleanPrefix(b, 'Bin')));
         
         let typeLabels = { RACK: 'Стеллаж', WORKBENCH: 'Верстак', TOOLBOX: 'Ящик/Тележка', AFRAME: 'А-Фрейм' };
-        let typeStr = typeLabels[locType] || locType;
+        let typeStr = Utils.esc(typeLabels[locType] || locType);
         
         let displayStr = '';
         if (locParts.length === 0) {
             displayStr = 'Empty Location';
         } else {
             displayStr = `<b>${typeStr}</b><br>${locParts.join(' | ')}`;
-            if (resp) displayStr += `<br><small>Resp: ${resp}</small>`;
+            if (resp) displayStr += `<br><small>Resp: ${Utils.esc(resp)}</small>`;
         }
         
         previewCard.innerHTML = `
             <div style="display:flex; align-items:center; gap:15px; font-family:sans-serif; width:100%; justify-content:center; padding:12px; background:rgba(0,0,0,0.15); border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
                 <canvas id="locPreviewCanvas" width="90" height="90" style="width:90px; height:90px; flex-shrink:0; background:#fff; border-radius:4px; padding:4px;"></canvas>
-                <div style="font-size:16px; font-weight:bold; text-align:left; color:var(--text-main, #fff); word-break:break-word;">${Utils.esc(displayStr)}</div>
+                <div style="font-size:16px; font-weight:bold; text-align:left; color:var(--text-main, #fff); word-break:break-word;">${displayStr}</div>
             </div>
         `;
         
