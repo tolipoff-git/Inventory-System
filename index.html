@@ -2136,14 +2136,14 @@ select.work-only.form-control { max-width: 190px; }
             <div class="form-group" style="margin-bottom: 15px;">
                 <label><b>Scope:</b></label>
                 <div style="display:flex; gap:15px;">
-                    <label><input type="radio" name="locLabelScope" value="single" checked onchange="Labels.renderLocationPreview()"> Single Location</label>
-                    <label><input type="radio" name="locLabelScope" value="batch" onchange="Labels.renderLocationPreview()"> Batch Generation (Whole Rack/Shelf)</label>
+                    <label><input type="radio" name="locLabelScope" value="single" checked onchange="Labels.renderLocationPreview()"> <span data-i18n="Single Location">Single Location</span></label>
+                    <label><input type="radio" name="locLabelScope" value="batch" onchange="Labels.renderLocationPreview()"> <span data-i18n="Batch Generation (Whole Rack/Shelf)">Batch Generation (Whole Rack/Shelf)</span></label>
                 </div>
             </div>
             
             <div class="grid-2" style="margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div class="form-group">
-                    <label>Structure Type:</label>
+                    <label data-i18n="Structure Type:">Structure Type:</label>
                     <select id="locLabelType" class="form-control" onchange="Labels.renderLocationPreview()">
                         <option value="RACK">Стеллаж (Rack)</option>
                         <option value="WORKBENCH">Верстак / Стол (Workbench / Desk)</option>
@@ -2152,7 +2152,7 @@ select.work-only.form-control { max-width: 190px; }
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Responsible Person:</label>
+                    <label data-i18n="Responsible Person:">Responsible Person:</label>
                     <input type="text" id="locLabelResponsible" class="form-control" oninput="Labels.renderLocationPreview()">
                 </div>
                 <div class="form-group">
@@ -2182,15 +2182,15 @@ select.work-only.form-control { max-width: 190px; }
             </div>
 
             <div class="form-group" style="margin-bottom: 15px;">
-                <label>Paper Stock:</label>
+                <label data-i18n="Paper Stock:">Paper Stock:</label>
                 <select id="locLabelStock" class="form-control" onchange="Labels.renderLocationPreview()">
                     <option value="avery5161">Avery 5161/5961 (1"x4")</option>
-                    <option value="brady119">Continuous Tape (Brady 119)</option>
-                    <option value="genC">Bin Tag (100x50mm)</option>
+                    <option value="brady119" data-i18n="Continuous Tape (Brady 119)">Continuous Tape (Brady 119)</option>
+                    <option value="genC" data-i18n="Bin Tag (100x50mm)">Bin Tag (100x50mm)</option>
                 </select>
             </div>
 
-            <label><b>Live Preview:</b></label>
+            <label><b data-i18n="Live Preview:">Live Preview:</b></label>
             <div id="locPreviewCard" style="display: flex; justify-content: center; align-items: center; background: #fff; padding: 10px; border: 1px solid #ccc; border-radius: 4px; min-height: 100px; color: #000;">
                 <!-- Preview rendered here -->
             </div>
@@ -2457,7 +2457,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v69',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v70',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-14',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -2771,6 +2771,12 @@ let currentLang = localStorage.getItem('inv_lang') || 'ENG';
 
 const translations = {
     'ENG': {
+        'ACCESS_DENIED': 'Access Denied',
+        'Wear:': 'Wear:',
+        'Receive': 'Receive',
+        'Reject': 'Reject',
+        'Print Storage Labels': 'Print Storage Labels',
+        'Add to Queue': 'Add to Queue',
         'Tool Class': 'Tool Class',
         'Inventory Number (ID)': 'Inventory Number (ID)',
         'ID_HINT': 'Auto: next free number in the selected class. Editable.',
@@ -3199,6 +3205,12 @@ const translations = {
         'MOVE_STATION': 'MOVE_STATION'
     },
     'RU': {
+        'ACCESS_DENIED': 'Доступ запрещен',
+        'Wear:': 'Износ:',
+        'Receive': 'Принять',
+        'Reject': 'Отказ',
+        'Print Storage Labels': 'Печать этикеток мест хранения',
+        'Add to Queue': 'Добавить в очередь',
         'Tool Class': 'Класс инструмента',
         'Inventory Number (ID)': 'Инвентарный номер (ID)',
         'ID_HINT': 'Авто: следующий свободный номер в выбранном классе. Можно править.',
@@ -3398,6 +3410,29 @@ const translations = {
         'ORDER_LINKED_TOOL': 'Связанный инструмент',
         'ORDER_NO_LINK': 'Пока не привязан',
         'ORDER_SUPPLIER': 'Ссылка на поставщика',
+        'Single Location': 'Одиночное место',
+        'Batch Generation (Whole Rack/Shelf)': 'Пакетная печать (стеллаж / полка)',
+        'Structure Type:': 'Тип конструкции:',
+        'Responsible Person:': 'Ответственное лицо:',
+        'Paper Stock:': 'Формат бумаги / ленты:',
+        'Live Preview:': 'Предпросмотр этикетки:',
+        'Continuous Tape (Brady 119)': 'Непрерывная лента (Brady 119)',
+        'Bin Tag (100x50mm)': 'Бирка ячейки (100x50 мм)',
+        'Tool is currently assigned to:': 'Инструмент числится за:',
+        'Reassigning will automatically transfer ownership.': 'Переназначение автоматически передаст ответственность.',
+        'Position Name / Part No': 'Наименование / Артикул',
+        'Ordered Qty': 'Заказано',
+        'Received Qty': 'Получено',
+        'Item Status': 'Статус позиции',
+        'Actions': 'Действия',
+        'Or type name, ID, initials...': 'Или введите имя, ID, инициалы...',
+        'Program:': 'Программа:',
+        'Persona / Responsible:': 'Ответственное лицо:',
+        'Rating Drivers / Risk Factors:': 'Факторы риска / снижения рейтинга:',
+        'High Reliability:': 'Высокая надежность:',
+        'Batch mode: Preview not available.': 'Пакетный режим: предпросмотр недоступен.',
+        'Will generate labels for all unique bins in selected Rack/Shelf.': 'Будут сформированы этикетки для всех ячеек выбранного стеллажа/полки.',
+        'No history.': 'История отсутствует.',
         'ORDER_REQUESTER': 'Заявитель',
         'ORDER_LOCATION': 'Точка поставки',
         'OPEN_TOOL_CARD': 'Открыть карточку инструмента',
@@ -3641,6 +3676,11 @@ function applyLanguage() {
     // Плейсхолдеры: data-i18n-ph="ключ"
     document.querySelectorAll('[data-i18n-ph]').forEach(el => {
         el.placeholder = T(el.dataset.i18nPh);
+    });
+
+    // Опции селектов: data-i18n
+    document.querySelectorAll('option[data-i18n]').forEach(el => {
+        el.innerText = T(el.dataset.i18n);
     });
 
     // Тело FAQ подставляется целиком, затем заново вешаем обработчик аккордеона
@@ -5869,11 +5909,11 @@ const Charts = {
             const persona = persons.length ? persons.join(', ') : 'Unassigned / Team';
 
             const reasons = score >= 80 
-                ? `★ High Reliability: 0 Overdue, low maintenance, low average wear (${wear}%). Assigned: ${persona}`
-                : `▼ Rating Drivers / Risk Factors: Overdue items (${overdue}), Maintenance items (${maint}), Wear penalty (${wear}%). Assigned: ${persona}`;
+                ? `★ ${T('High Reliability:')} 0 Overdue, low maintenance, low average wear (${wear}%). Assigned: ${persona}`
+                : `▼ ${T('Rating Drivers / Risk Factors:')} Overdue items (${overdue}), Maintenance items (${maint}), Wear penalty (${wear}%). Assigned: ${persona}`;
 
             const pillar = `${g.ws} | ${g.post}`;
-            const tooltipHtml = `<div style="padding:6px; font-size:0.82rem; line-height:1.4;"><strong style="color:var(--primary-hover);">${Utils.esc(pillar)}</strong><br><strong>Program:</strong> ${Utils.esc(program)}<br><strong>Persona / Responsible:</strong> ${Utils.esc(persona)}<br><div style="margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.15);">${Utils.esc(reasons)}</div></div>`;
+            const tooltipHtml = `<div style="padding:6px; font-size:0.82rem; line-height:1.4;"><strong style="color:var(--primary-hover);">${Utils.esc(pillar)}</strong><br><strong>${T('Program:')}</strong> ${Utils.esc(program)}<br><strong>${T('Persona / Responsible:')}</strong> ${Utils.esc(persona)}<br><div style="margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.15);">${Utils.esc(reasons)}</div></div>`;
 
             return {
                 pillar,
@@ -5910,7 +5950,7 @@ const Charts = {
             const emp = t.assigneeId ? Store.getEmp(t.assigneeId) : null;
             const persona = emp ? emp.name : (t.assigneeId || 'Unassigned / Team');
             const reason = t.history.length ? t.history[t.history.length - 1] : T('Routine Service');
-            const tooltipHtml = `<div style="padding:6px; font-size:0.82rem; line-height:1.4;"><strong style="color:var(--primary-hover);">${Utils.esc(loc.ws)} | ${Utils.esc(loc.post)}</strong><br><strong>Program:</strong> ${Utils.esc(progs)}<br><strong>Persona / Responsible:</strong> ${Utils.esc(persona)}<br><div style="margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.15);">${Utils.esc(reason)}</div></div>`;
+            const tooltipHtml = `<div style="padding:6px; font-size:0.82rem; line-height:1.4;"><strong style="color:var(--primary-hover);">${Utils.esc(loc.ws)} | ${Utils.esc(loc.post)}</strong><br><strong>${T('Program:')}</strong> ${Utils.esc(progs)}<br><strong>${T('Persona / Responsible:')}</strong> ${Utils.esc(persona)}<br><div style="margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.15);">${Utils.esc(reason)}</div></div>`;
             return `
             <div data-tip="${Utils.esc(tooltipHtml)}" style="background:rgba(0,0,0,0.3); border:1px solid var(--warning); border-radius:4px; padding:10px; margin-bottom:8px;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:6px; gap:8px;">
@@ -5932,7 +5972,7 @@ const Charts = {
             const progs = t.program || Store.wsProgram[loc.ws] || 'N/A';
             const emp = t.assigneeId ? Store.getEmp(t.assigneeId) : null;
             const persona = emp ? emp.name : (t.assigneeId || 'Unassigned / Team');
-            const tooltipHtml = `<div style="padding:6px; font-size:0.82rem; line-height:1.4;"><strong style="color:var(--primary-hover);">${Utils.esc(loc.ws)} | ${Utils.esc(loc.post)}</strong><br><strong>Program:</strong> ${Utils.esc(progs)}<br><strong>Persona / Responsible:</strong> ${Utils.esc(persona)}<br><div style="margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.15);">${T('Wear:')} ${wear}%</div></div>`;
+            const tooltipHtml = `<div style="padding:6px; font-size:0.82rem; line-height:1.4;"><strong style="color:var(--primary-hover);">${Utils.esc(loc.ws)} | ${Utils.esc(loc.post)}</strong><br><strong>${T('Program:')}</strong> ${Utils.esc(progs)}<br><strong>${T('Persona / Responsible:')}</strong> ${Utils.esc(persona)}<br><div style="margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.15);">${T('Wear:')} ${wear}%</div></div>`;
             return `<div data-tip="${Utils.esc(tooltipHtml)}" style="display:flex; justify-content:space-between; font-size:0.9rem; margin-bottom:6px; border-bottom:1px dashed var(--border); padding-bottom:4px;">
                 <span style="color:var(--text-main);">${Utils.esc(t.id)} — ${Utils.esc(t.name.split(' ')[0])}…</span>
                 <strong style="color:${color}">${wear}% ${T('Wear')}</strong>
@@ -8074,25 +8114,25 @@ const Ops = {
 
         let itemsHtml = `<table class="table" style="width:100%; margin-bottom:14px;">
             <thead><tr>
-                <th>Position Name & Part No</th>
-                <th>Ordered Qty</th>
-                <th>Received Qty</th>
-                <th>Item Status</th>
-                <th>Actions</th>
+                <th>${T('Position Name / Part No')}</th>
+                <th>${T('Ordered Qty')}</th>
+                <th>${T('Received Qty')}</th>
+                <th>${T('Item Status')}</th>
+                <th>${T('Actions')}</th>
             </tr></thead><tbody>`;
 
         if (rec.items && rec.items.length) {
             rec.items.forEach(item => {
                 let actions = '';
                 if (item.status === 'Pending' || item.status === 'Partial') {
-                    actions = `<button class="btn btn-success btn-sm audit-btn" data-action="receive-order-item" data-id="${orderId}" data-item="${item.itemId}">📥 Receive</button>
-                               <button class="btn btn-danger btn-sm audit-btn" data-action="reject-order-item" data-id="${orderId}" data-item="${item.itemId}">❌ Reject</button>`;
+                    actions = `<button class="btn btn-success btn-sm audit-btn" data-action="receive-order-item" data-id="${orderId}" data-item="${item.itemId}">📥 ${T('Receive')}</button>
+                               <button class="btn btn-danger btn-sm audit-btn" data-action="reject-order-item" data-id="${orderId}" data-item="${item.itemId}">❌ ${T('Reject')}</button>`;
                 }
                 itemsHtml += `<tr>
                     <td>${Utils.esc(item.name)}<br><small style="${muted}">${Utils.esc(item.partNo || '')}</small></td>
                     <td>${item.qty}</td>
                     <td>${item.receivedQty || 0}</td>
-                    <td>${Utils.esc(item.status)}</td>
+                    <td>${Utils.esc(T(item.status))}</td>
                     <td>${actions}</td>
                 </tr>`;
             });
