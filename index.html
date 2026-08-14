@@ -1717,7 +1717,8 @@ select.work-only.form-control { max-width: 190px; }
                     <span data-i18n="Employee (Full Name)">Employee (Full Name)</span>
                     <a href="#" onclick="closeModal('assignModal'); openModal('registryModal'); switchRegTab('personnelTab'); return false;" style="color:var(--primary-hover); text-decoration:none; font-size:0.85rem; font-weight:normal;">+ New Person</a>
                 </label>
-                <button class="btn btn-success btn-sm" onclick="exportData('locations')">📥 Export Locations</button>
+                <input type="text" id="assignEmp" class="form-control" list="assignEmpList" oninput="Ops.onAssignEmpChange()" placeholder="Start typing name, ID, or initials..." autocomplete="off">
+                <datalist id="assignEmpList"></datalist>
             </div>
             <div class="form-row">
                 <div class="form-group">
