@@ -2431,7 +2431,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v75',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v76',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-14',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -4057,6 +4057,24 @@ const Store = {
             if (t.qty === undefined) t.qty = 1;
             if (t.barcode === undefined) t.barcode = ''; // внешний штрихкод с физической наклейки (5S00xxx), если ≠ ID
             if (t.article === undefined) t.article = ''; // артикул/парт-номер (у расходников вместо SN)
+            // Если есть объект address, но пустой/неполный location — пересобираем location
+            if (t.address && (!t.location || t.location === 'Unassigned')) {
+                const parts = [t.address.zone, t.address.rack, t.address.shelf, t.address.bin].filter(Boolean);
+                if (parts.length) t.location = parts.join(' - ');
+            }
+            // Если есть строка location, но не заполнен address — восстанавливаем address
+            if (t.location && (!t.address || (!t.address.rack && !t.address.shelf))) {
+                const L = this._locParts(t.location);
+                if (L && L.parts.length >= 2) {
+                    t.address = {
+                        zone: L.parts[0] || '',
+                        rack: L.parts[1] || '',
+                        shelf: L.parts[2] || '',
+                        bin: L.parts[3] || ''
+                    };
+                }
+            }
+            if (!t.location) t.location = 'Main Store';
         });
         // Схема v3: посты — объекты {name, ws} с родительской зоной.
         // Старые плоские строки → объекты без зоны (ws=null, группа «Без зоны»).
@@ -6261,9 +6279,16 @@ function renderGrid() {
 
         const shelfGroups = {};
         list.forEach(t => {
-            const s = (t.address && t.address.shelf) ? t.address.shelf : 'Unassigned';
-            if(!shelfGroups[s]) shelfGroups[s] = [];
-            shelfGroups[s].push(t);
+            const getShelfKey = t => {
+                if (t.address && t.address.shelf) return t.address.shelf;
+                const L = Store._locParts(t.location);
+                if (L && L.parts.length >= 3) return L.parts[2];
+                if (L && L.parts.length === 2) return L.parts[1];
+                return t.location || 'Main Store';
+            };
+            const sKey = getShelfKey(t);
+            if(!shelfGroups[sKey]) shelfGroups[sKey] = [];
+            shelfGroups[sKey].push(t);
         });
 
         let idx = 0;
@@ -7123,7 +7148,21 @@ const Ops = {
                 zone: z || '', rack: r || '',
                 shelf: s || '', bin: b || ''
             };
-        } else delete tool.address;
+            tool.location = [z, r, s, b].filter(Boolean).join(' - ');
+        } else {
+            delete tool.address;
+            if (tool.location) {
+                const L = Store._locParts(tool.location);
+                if (L && L.parts.length >= 2) {
+                    tool.address = {
+                        zone: L.parts[0] || '',
+                        rack: L.parts[1] || '',
+                        shelf: L.parts[2] || '',
+                        bin: L.parts[3] || ''
+                    };
+                }
+            }
+        }
         
         const days = parseInt(document.getElementById('editToolInterval').value) || 0;
         if (days) tool.calDue = new Date(Date.now() + days * CONFIG.DAY_MS).toISOString();

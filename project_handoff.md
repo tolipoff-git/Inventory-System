@@ -2,15 +2,20 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v75` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v76` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v75)
+## Recent Accomplishments (v49 – v76)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Excel Export Refactoring, ID Prefix Legend & Day/Night Theme Tokens Fix (v75)
+### 0. Location Data Auto-Recovery, Address Synchronization & v76 Release
+- **Automatic Migration Auto-Recovery (`Store.migrate`):** Added a mandatory auto-recovery loop for all 280+ inventory items. Automatically parses structured `location` strings (e.g. `Zone - Rack - Shelf - Bin`) to build missing `address` objects, and vice versa. Ensures zero position data drops or unassigned address resets.
+- **Cascading Shelf Key Extraction (`getShelfKey`):** Updated `renderGrid()` shelf accordion grouping to extract shelf keys hierarchically from `t.address.shelf` -> `_locParts(t.location)` -> `t.location` -> `Main Store`. Prevents stored tools from dropping into `Unassigned` tabs.
+- **Bi-directional Form Location Synchronization (`submitEditTool`):** Enforced double-sided location synchronization during tool editing. Updating address form fields automatically re-assembles `tool.location`, while updating `tool.location` auto-populates `tool.address`.
+- **Excel Export Refactoring & ID Prefix Legend:** Renamed `'Active on Floor'` to `'Доступно к выдаче / Available for issue'`, added tool type/group breakdowns, generated `СПРАВОЧНИК ПРЕФИКСОВ ID` table on Sheet 1, and added Column 3 `Class Name (Расшифровка ID)` on Sheet 2.
+- **Day/Night Theme Tokens Compliance:** Fixed text contrast glitches in Light Theme (Day Mode) by removing non-existent `--card-bg` fallbacks and enforcing `:root` theme tokens.
 - **KPI Metric Renaming:** Replaced `'Active on Floor'` with `'Доступно к выдаче / Available for issue'` on Sheet 1 ("Сводка") to accurately reflect inventory status logic (`Active` = stored in crib, ready to issue).
 - **Tool & Equipment Type Breakdowns:** Added `TOOL TYPE BREAKDOWN` (`Permanent Tooling` vs `Consumable Stock`) and `TOOL CLASS GROUP BREAKDOWN` (`MECH`, `EL`, `MEAS`, `CONS`) on Sheet 1 ("Сводка").
 - **ID Prefix Legend Table:** Generated comprehensive `СПРАВОЧНИК ПРЕФИКСОВ ID / TOOL CLASS LEGEND` table on Sheet 1 detailing all 21 tool classes (`TW`, `PD`, `VT`, `CT`, `CB`, `DC`, etc.) with Prefix, Group, Russian Name, English Name, and Category.
