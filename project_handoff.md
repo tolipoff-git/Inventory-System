@@ -21,6 +21,7 @@ The application has undergone massive functional and architectural expansion. Th
 - **UI State Quota Protection:** Wrapped `localStorage.setItem('inv_cards', ...)` in `toggleCard()` with try-catch to prevent `QuotaExceededError` crashes.
 - **Auto-SN Dynamic Prefixes:** Updated `Utils.isAutoSn()` to support dynamic category prefixes (`CONFIG.TOOL_CLASSES`) alongside `'SN'`.
 - **Base64 Photo Canvas Compression:** Added `Utils.compressImageBase64()` helper to downscale uploaded images and protect LocalStorage quotas.
+- **Dedicated Storage Location Labels Modal:** Added prominent `[🖨️ Печать этикеток мест хранения]` buttons in main toolbar, ops menu, and transfer modal. Introduced dedicated `locationLabelModal` with Single/Batch printing, dynamic address auto-completion from `Store.tools`, paper stock choice, and live QRious canvas sticker preview.
 
 ### 1. Procurement & Orders Registry (v58–v59)
 - **Procurement Hub (Dashboard):** Dedicated hub on the dashboard showing order summaries by status, total amounts, and recent procurement events with direct links to order cards.

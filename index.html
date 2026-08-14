@@ -1140,6 +1140,7 @@ select.work-only.form-control { max-width: 190px; }
     </div>
 
     <div class="toolbar">
+        <button class="btn btn-warning" onclick="Labels.openLocationLabelModal()">🖨️ <span data-i18n="Print Storage Labels">Печать этикеток мест хранения / Print Storage Labels</span></button>
         <button class="btn auth-admin" onclick="doAction('Administrator', () => { openModal('systemMenuModal'); })">⚙ <span data-i18n="System Management">System Management</span></button>
         <button class="btn btn-warning" onclick="openModal('opsMenuModal')">🎛 <span data-i18n="Operations &amp; Reports">Operations &amp; Reports</span></button>
     </div>
@@ -1343,6 +1344,7 @@ select.work-only.form-control { max-width: 190px; }
             <button class="btn btn-warning" onclick="closeModal('opsMenuModal'); openProcureModal()" data-i18n="Procure / Order Tool">Procure / Order Tool</button>
             <button class="btn" onclick="closeModal('opsMenuModal'); openOrdersModal()" data-i18n="Purchase Orders">Purchase Orders</button>
             <button class="btn" onclick="closeModal('opsMenuModal'); openPostAuditModal()" data-i18n="5S Post Audit">5S Post Audit</button>
+            <button class="btn btn-warning" onclick="closeModal('opsMenuModal'); Labels.openLocationLabelModal()" data-i18n="Print Storage Labels">🖨️ Печать этикеток мест хранения / Print Storage Labels</button>
         </div>
     </div>
 </div>
@@ -1786,9 +1788,7 @@ select.work-only.form-control { max-width: 190px; }
         </div>
         <div class="modal-footer spread">
             <div style="display:flex; gap:5px;">
-                <button class="btn btn-warning btn-sm" onclick="printLocationLabel('rack')">🖨 Rack</button>
-                <button class="btn btn-warning btn-sm" onclick="printLocationLabel('shelf')">🖨 Shelf</button>
-                <button class="btn btn-warning btn-sm" onclick="printLocationLabel('bin')">🖨 Bin</button>
+                <button class="btn btn-warning btn-sm" onclick="Labels.openLocationLabelModal()">🖨 Print Storage Labels</button>
             </div>
             <div style="display:flex; gap:10px;">
                 <button class="btn btn-muted" onclick="closeModal('transferModal')" data-i18n="Cancel">Cancel</button>
@@ -2122,6 +2122,69 @@ select.work-only.form-control { max-width: 190px; }
             <button class="btn btn-muted" onclick="closeModal('printLabelModal')" data-i18n="Cancel">Cancel</button>
             <button class="btn" id="bradyCsvBtn" style="display:none;" onclick="Labels.exportBradyCSV()">⬇ <span data-i18n="Brady CSV (all tools)">Brady CSV (all tools)</span></button>
             <button class="btn btn-warning" onclick="Utils.printLabel()">🖨 <span data-i18n="Print">Print</span></button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="locationLabelModal">
+    <div class="modal" style="max-width:600px;">
+        <div class="modal-header">
+            <h3 class="modal-title">🖨️ <span data-i18n="Print Storage Labels">Print Storage Labels</span></h3>
+            <button class="close-btn" onclick="closeModal('locationLabelModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label><b>Scope:</b></label>
+                <div style="display:flex; gap:15px;">
+                    <label><input type="radio" name="locLabelScope" value="single" checked onchange="Labels.renderLocationPreview()"> Single Location</label>
+                    <label><input type="radio" name="locLabelScope" value="batch" onchange="Labels.renderLocationPreview()"> Batch Generation (Whole Rack/Shelf)</label>
+                </div>
+            </div>
+            
+            <div class="grid-2" style="margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-group">
+                    <label>Zone:</label>
+                    <input type="text" id="locLabelZone" class="form-control" list="locZoneList" oninput="Labels.renderLocationPreview()">
+                    <datalist id="locZoneList"></datalist>
+                </div>
+                <div class="form-group">
+                    <label>Rack:</label>
+                    <input type="text" id="locLabelRack" class="form-control" list="locRackList" oninput="Labels.renderLocationPreview()">
+                    <datalist id="locRackList"></datalist>
+                </div>
+                <div class="form-group">
+                    <label>Shelf:</label>
+                    <input type="text" id="locLabelShelf" class="form-control" list="locShelfList" oninput="Labels.renderLocationPreview()">
+                    <datalist id="locShelfList"></datalist>
+                </div>
+                <div class="form-group">
+                    <label>Bin:</label>
+                    <input type="text" id="locLabelBin" class="form-control" list="locBinList" oninput="Labels.renderLocationPreview()">
+                    <datalist id="locBinList"></datalist>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>Paper Stock:</label>
+                <select id="locLabelStock" class="form-control" onchange="Labels.renderLocationPreview()">
+                    <option value="avery5161">Avery 5161/5961 (1"x4")</option>
+                    <option value="brady119">Continuous Tape (Brady 119)</option>
+                    <option value="genC">Bin Tag (100x50mm)</option>
+                </select>
+            </div>
+
+            <label><b>Live Preview:</b></label>
+            <div id="locPreviewCard" style="display: flex; justify-content: center; align-items: center; background: #fff; padding: 10px; border: 1px solid #ccc; border-radius: 4px; min-height: 100px; color: #000;">
+                <!-- Preview rendered here -->
+            </div>
+        </div>
+        <div class="modal-footer spread">
+            <button class="btn btn-muted" onclick="closeModal('locationLabelModal')" data-i18n="Close">Close</button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-warning" id="btnLocBatch" onclick="Labels.printLocationBatch('batch')" style="display:none;">⚡ Пакетная печать / Print Batch</button>
+                <button class="btn btn-success" id="btnLocQueue" onclick="Labels.printLocationBatch('queue')">➕ <span data-i18n="Add to Queue">Add to Queue</span></button>
+                <button class="btn" id="btnLocPrint" onclick="Labels.printLocationBatch('direct')">🖨 <span data-i18n="Print">Print</span></button>
+            </div>
         </div>
     </div>
 </div>
@@ -7865,6 +7928,183 @@ function removeEmp(i) { Ops.removeEmp(i); }
    ============================================================================ */
 const Labels = {
 
+    openLocationLabelModal(initialLoc) {
+        const zones = new Set();
+        const racks = new Set();
+        const shelves = new Set();
+        const bins = new Set();
+        
+        Store.tools.forEach(t => {
+            if (t.address && t.address.zone) zones.add(t.address.zone);
+            if (t.address && t.address.rack) racks.add(t.address.rack);
+            if (t.address && t.address.shelf) shelves.add(t.address.shelf);
+            if (t.address && t.address.bin) bins.add(t.address.bin);
+        });
+        
+        const popList = (id, set) => {
+            const dl = document.getElementById(id);
+            if (!dl) return;
+            dl.innerHTML = '';
+            Array.from(set).sort().forEach(val => {
+                const opt = document.createElement('option');
+                opt.value = val;
+                dl.appendChild(opt);
+            });
+        };
+        
+        popList('locZoneList', zones);
+        popList('locRackList', racks);
+        popList('locShelfList', shelves);
+        popList('locBinList', bins);
+
+        const tZone = document.getElementById('transZone');
+        const tRack = document.getElementById('transRack');
+        const tShelf = document.getElementById('transShelf');
+        const tBin = document.getElementById('transBin');
+
+        document.getElementById('locLabelZone').value = tZone ? tZone.value : '';
+        document.getElementById('locLabelRack').value = tRack ? tRack.value : '';
+        document.getElementById('locLabelShelf').value = tShelf ? tShelf.value : '';
+        document.getElementById('locLabelBin').value = tBin ? tBin.value : '';
+        
+        const scopeSingle = document.querySelector('input[name="locLabelScope"][value="single"]');
+        if (scopeSingle) scopeSingle.checked = true;
+        
+        openModal('locationLabelModal');
+        this.renderLocationPreview();
+    },
+
+    renderLocationPreview() {
+        const scopeEl = document.querySelector('input[name="locLabelScope"]:checked');
+        if (!scopeEl) return;
+        const scope = scopeEl.value;
+        const z = document.getElementById('locLabelZone').value.trim().replace(/:/g, '-');
+        const r = document.getElementById('locLabelRack').value.trim().replace(/:/g, '-');
+        const s = document.getElementById('locLabelShelf').value.trim().replace(/:/g, '-');
+        const b = document.getElementById('locLabelBin').value.trim().replace(/:/g, '-');
+        
+        const previewCard = document.getElementById('locPreviewCard');
+        const btnBatch = document.getElementById('btnLocBatch');
+        const btnQueue = document.getElementById('btnLocQueue');
+        const btnPrint = document.getElementById('btnLocPrint');
+        
+        if (scope === 'batch') {
+            previewCard.innerHTML = `<div style="padding: 20px; text-align: center;"><i>Batch mode: Preview not available.<br>Will generate labels for all unique bins in selected Rack/Shelf.</i></div>`;
+            btnBatch.style.display = 'inline-block';
+            btnQueue.style.display = 'none';
+            btnPrint.style.display = 'none';
+            return;
+        } else {
+            btnBatch.style.display = 'none';
+            btnQueue.style.display = 'inline-block';
+            btnPrint.style.display = 'inline-block';
+        }
+        
+        let locCode = 'LOC:';
+        let displayStr = '';
+        if (b) {
+            locCode += `BIN:${z}:${r}:${s}:${b}`;
+            displayStr = `${z} | Rack ${r} | Shelf ${s} | Bin ${b}`;
+        } else if (s) {
+            locCode += `SHELF:${z}:${r}:${s}`;
+            displayStr = `${z} | Rack ${r} | Shelf ${s}`;
+        } else if (r) {
+            locCode += `RACK:${z}:${r}`;
+            displayStr = `${z} | Rack ${r}`;
+        } else if (z) {
+            locCode += `ZONE:${z}`;
+            displayStr = `Zone ${z}`;
+        } else {
+            locCode = 'LOC:EMPTY';
+            displayStr = 'Empty Location';
+        }
+        
+        previewCard.innerHTML = `
+            <div style="display:flex; align-items:center; gap:15px; font-family:sans-serif; width:100%; justify-content:center; padding:12px; background:rgba(0,0,0,0.15); border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
+                <canvas id="locPreviewCanvas" width="90" height="90" style="width:90px; height:90px; flex-shrink:0; background:#fff; border-radius:4px; padding:4px;"></canvas>
+                <div style="font-size:16px; font-weight:bold; text-align:left; color:var(--text-main, #fff); word-break:break-word;">${Utils.esc(displayStr)}</div>
+            </div>
+        `;
+        
+        const cv = document.getElementById('locPreviewCanvas');
+        if (cv && typeof QRious !== 'undefined') {
+            new QRious({ element: cv, value: locCode, size: 180, level: 'M' });
+        }
+    },
+
+    printLocationBatch(mode) {
+        const scope = document.querySelector('input[name="locLabelScope"]:checked').value;
+        const z = document.getElementById('locLabelZone').value.trim().replace(/:/g, '-');
+        const r = document.getElementById('locLabelRack').value.trim().replace(/:/g, '-');
+        const s = document.getElementById('locLabelShelf').value.trim().replace(/:/g, '-');
+        const b = document.getElementById('locLabelBin').value.trim().replace(/:/g, '-');
+        
+        let locationsToPrint = [];
+        
+        if (scope === 'batch') {
+            const locSet = new Set();
+            Store.tools.forEach(t => {
+                if (!t.address) return;
+                const matchZ = !z || t.address.zone === z;
+                const matchR = !r || t.address.rack === r;
+                const matchS = !s || t.address.shelf === s;
+                if (matchZ && matchR && matchS) {
+                    const zStr = (t.address.zone || '').replace(/:/g, '-');
+                    const rStr = (t.address.rack || '').replace(/:/g, '-');
+                    const sStr = (t.address.shelf || '').replace(/:/g, '-');
+                    const bStr = (t.address.bin || '').replace(/:/g, '-');
+                    if (bStr) {
+                        locSet.add(`BIN:${zStr}:${rStr}:${sStr}:${bStr}`);
+                    } else if (sStr) {
+                        locSet.add(`SHELF:${zStr}:${rStr}:${sStr}`);
+                    } else if (rStr) {
+                        locSet.add(`RACK:${zStr}:${rStr}`);
+                    } else if (zStr) {
+                        locSet.add(`ZONE:${zStr}`);
+                    }
+                }
+            });
+            locationsToPrint = Array.from(locSet).map(lStr => `LOC:${lStr}`);
+        } else {
+            let locCode = 'LOC:';
+            if (b) locCode += `BIN:${z}:${r}:${s}:${b}`;
+            else if (s) locCode += `SHELF:${z}:${r}:${s}`;
+            else if (r) locCode += `RACK:${z}:${r}`;
+            else if (z) locCode += `ZONE:${z}`;
+            else locCode = 'LOC:';
+            locationsToPrint.push(locCode);
+        }
+        
+        if (locationsToPrint.length === 0 || (locationsToPrint.length === 1 && locationsToPrint[0] === 'LOC:')) {
+            alert('No locations found or selected.');
+            return;
+        }
+        
+        if (mode === 'queue' || scope === 'batch') {
+            locationsToPrint.forEach(loc => {
+                if (!Store.isInLabelQueue(loc)) {
+                    Store.toggleLabelQueue(loc);
+                }
+            });
+            alert(`Added ${locationsToPrint.length} location label(s) to Queue.`);
+            closeModal('locationLabelModal');
+            
+            const queueBtn = document.getElementById('modalPrintQueueBtn');
+            if (queueBtn) {
+                queueBtn.innerHTML = `🖨 <span data-i18n="Print Queue (N)">Print Queue (${(Store.labelQueue || []).length})</span>`;
+                queueBtn.style.display = (Store.labelQueue || []).length > 0 ? 'inline-block' : 'none';
+            }
+        } else if (mode === 'direct') {
+            closeModal('locationLabelModal');
+            this.openPrintLabelModal(locationsToPrint[0], 'location');
+            const ltmStock = document.getElementById('ltmStock');
+            if (ltmStock) {
+                ltmStock.value = document.getElementById('locLabelStock').value;
+                this.onStockChange();
+            }
+        }
+    },
+
     /* --- Каталог расходки: размеры этикетки, сетка листа, зона печати ---
        sheet — листы US Letter (Avery, печать из браузера, стартовая позиция);
        roll  — рулоны Brady (превью в размер зоны печати + CSV для Brady Workstation);
@@ -8433,20 +8673,7 @@ html = pages.map((p, pi) => `<div class="sheet-page" style="position:relative; w
 
 function selectLabelType(t) { Labels.selectLabelType(t); }
 function printLocationLabel(level) {
-    let loc = 'LOC:';
-    const z = (document.getElementById('transZone').value || '').replace(/:/g, '-');
-    const r = (document.getElementById('transRack').value || '').replace(/:/g, '-');
-    const s = (document.getElementById('transShelf').value || '').replace(/:/g, '-');
-    const b = (document.getElementById('transBin').value || '').replace(/:/g, '-');
-    
-    if (level === 'rack') {
-        loc += 'RACK:' + z + ':' + r;
-    } else if (level === 'shelf') {
-        loc += 'SHELF:' + z + ':' + r + ':' + s;
-    } else if (level === 'bin') {
-        loc += 'BIN:' + z + ':' + r + ':' + s + ':' + b;
-    }
-    Labels.openPrintLabelModal(loc, 'shelf');
+    Labels.openLocationLabelModal();
 }
 </script>
 <script>
