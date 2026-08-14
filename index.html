@@ -2431,7 +2431,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v77',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v78',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-14',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -3176,7 +3176,31 @@ const translations = {
         'RENAME_POST': 'RENAME_POST',
         'MOVE_POST': 'MOVE_POST',
         'RENAME_PROGRAM': 'RENAME_PROGRAM',
-        'MOVE_STATION': 'MOVE_STATION'
+        'MOVE_STATION': 'MOVE_STATION',
+        'Single Location': 'Single Location',
+        'Batch Generation (Whole Rack/Shelf)': 'Batch Generation (Whole Rack/Shelf)',
+        'Structure Type:': 'Structure Type:',
+        'Responsible Person:': 'Responsible Person:',
+        'Paper Stock:': 'Paper Stock:',
+        'Live Preview:': 'Live Preview:',
+        'Continuous Tape (Brady 119)': 'Continuous Tape (Brady 119)',
+        'Bin Tag (100x50mm)': 'Bin Tag (100x50mm)',
+        'Tool is currently assigned to:': 'Tool is currently assigned to:',
+        'Reassigning will automatically transfer ownership.': 'Reassigning will automatically transfer ownership.',
+        'Position Name / Part No': 'Position Name / Part No',
+        'Ordered Qty': 'Ordered Qty',
+        'Received Qty': 'Received Qty',
+        'Item Status': 'Item Status',
+        'Or type name, ID, initials...': 'Or type name, ID, initials...',
+        'Program:': 'Program:',
+        'Persona / Responsible:': 'Persona / Responsible:',
+        'Rating Drivers / Risk Factors:': 'Rating Drivers / Risk Factors:',
+        'High Reliability:': 'High Reliability:',
+        'Batch mode: Preview not available.': 'Batch mode: Preview not available.',
+        'Will generate labels for all unique bins in selected Rack/Shelf.': 'Will generate labels for all unique bins in selected Rack/Shelf.',
+        'No history.': 'No history.',
+        'Qty in Stock': 'Qty in Stock',
+        'Кол-во в наличии': 'Qty in Stock'
     },
     'RU': {
         'ACCESS_DENIED': 'Доступ запрещен',
@@ -3632,7 +3656,31 @@ const translations = {
         'RENAME_POST': 'Переименовать пост',
         'MOVE_POST': 'Перенести пост в другую зону',
         'RENAME_PROGRAM': 'Переименовать программу',
-        'MOVE_STATION': 'Перенести станцию в программу'
+        'MOVE_STATION': 'Перенести станцию в программу',
+        'Single Location': 'Одиночное место хранения',
+        'Batch Generation (Whole Rack/Shelf)': 'Пакетная генерация (весь стеллаж/полка)',
+        'Structure Type:': 'Тип конструкции:',
+        'Responsible Person:': 'Ответственное лицо:',
+        'Paper Stock:': 'Формат бумаги/носителя:',
+        'Live Preview:': 'Интерактивный предпросмотр:',
+        'Continuous Tape (Brady 119)': 'Непрерывная лента (Brady 119)',
+        'Bin Tag (100x50mm)': 'Бирка ячейки (100x50 мм)',
+        'Tool is currently assigned to:': 'Инструмент закреплен за:',
+        'Reassigning will automatically transfer ownership.': 'Переназначение автоматически передаст ответственность.',
+        'Position Name / Part No': 'Наименование / Парт-номер',
+        'Ordered Qty': 'Заказано (шт)',
+        'Received Qty': 'Принято (шт)',
+        'Item Status': 'Статус позиции',
+        'Or type name, ID, initials...': 'Или введите имя, ID, инициалы...',
+        'Program:': 'Программа:',
+        'Persona / Responsible:': 'Персона / Ответственный:',
+        'Rating Drivers / Risk Factors:': 'Драйверы рейтинга / Факторы риска:',
+        'High Reliability:': 'Высокая надежность:',
+        'Batch mode: Preview not available.': 'Пакетный режим: предпросмотр недоступен.',
+        'Will generate labels for all unique bins in selected Rack/Shelf.': 'Сгенерирует этикетки для всех уникальных ячеек на выбранном стеллаже/полке.',
+        'No history.': 'История отсутствует.',
+        'Qty in Stock': 'Кол-во в наличии',
+        'Кол-во в наличии': 'Кол-во в наличии'
     }
 };
 
@@ -10486,13 +10534,13 @@ const Reports = {
             /* ================= ЛИСТ 2: ИНВЕНТАРЬ ================= */
             const inv = wb.addWorksheet(isRu ? 'Инвентарь' : 'Inventory');
             inv.columns = [
-                { width: 10 }, { width: 46 }, { width: 40 }, { width: 16 }, { width: 12 }, { width: 13 },
+                { width: 10 }, { width: 46 }, { width: 40 }, { width: 16 }, { width: 12 }, { width: 12 }, { width: 13 },
                 { width: 26 }, { width: 16 }, { width: 12 }, { width: 12 }, { width: 12 },
                 { width: 9 }, { width: 12 }, { width: 12 }, { width: 8 }, { width: 8 }
             ];
             const head = isRu ? 
-                ['ID', 'Наименование', 'Расшифровка ID', 'Категория', 'Тип', 'Статус', 'Местоположение', 'Держатель', 'Дата выдачи', 'Срок возврата', 'Срок калибровки', 'Износ %', 'Заводской SN', 'Спецификация', 'Мин. остаток', 'Макс. остаток'] : 
-                ['ID', 'Name', 'Class Name (ID Legend)', 'Category', 'Type', 'Status', 'Location', 'Holder', 'Issued Date', 'Return Due', 'Cal. Due', 'Wear %', 'Serial No', 'Specification', 'Min Qty', 'Max Qty'];
+                ['ID', 'Наименование', 'Расшифровка ID', 'Категория', 'Тип', 'Кол-во в наличии', 'Статус', 'Местоположение', 'Держатель', 'Дата выдачи', 'Срок возврата', 'Срок калибровки', 'Износ %', 'Заводской SN', 'Спецификация', 'Мин. остаток', 'Макс. остаток'] : 
+                ['ID', 'Name', 'Class Name (ID Legend)', 'Category', 'Type', 'Qty in Stock', 'Status', 'Location', 'Holder', 'Issued Date', 'Return Due', 'Cal. Due', 'Wear %', 'Serial No', 'Specification', 'Min Qty', 'Max Qty'];
             inv.addRow(head);
             styleHeader(inv.getRow(1));
             inv.getRow(1).height = 22;
@@ -10504,7 +10552,7 @@ const Reports = {
                 const className = cls ? (isRu ? `${cls.p} — ${cls.ru}` : `${cls.p} — ${cls.en}`) : (isRu ? 'Индивидуальный ID' : 'Custom ID');
 
                 const row = inv.addRow([
-                    t.id, t.name, className, t.category, t.type, t.status, t.location,
+                    t.id, t.name, className, t.category, t.type, parseInt(t.qty) || 1, t.status, t.location,
                     t.assigneeId ? Store.empName(t.assigneeId) : '',
                     t.assignedAt ? Utils.fmtDate(t.assignedAt) : '',
                     t.dueReturn ? Utils.fmtDate(t.dueReturn) : '',
@@ -10515,24 +10563,24 @@ const Reports = {
                 // Зебра
                 if (i % 2) row.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.zebra } });
                 // Раскраска статуса
-                const sc = row.getCell(6);
+                const sc = row.getCell(7);
                 sc.font = { bold: true, color: { argb: 'FFFFFFFF' } };
                 sc.alignment = { horizontal: 'center' };
                 sc.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: statusFill[t.status] || 'FF999999' } };
                 // Износ: жёлтый/красный
-                const wc = row.getCell(12);
+                const wc = row.getCell(13);
                 wc.alignment = { horizontal: 'center' };
                 if (wear > CONFIG.WEAR_RETIRE_PCT) { wc.font = { bold: true, color: { argb: 'FFFFFFFF' } }; wc.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.bad } }; }
                 else if (wear > CONFIG.WEAR_WARN_PCT) { wc.font = { bold: true }; wc.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE9A8' } }; }
                 // Просроченные даты подсвечиваем красным текстом
-                [10, 11].forEach(col => {
+                [11, 12].forEach(col => {
                     const cell = row.getCell(col);
-                    const v = col === 10 ? t.dueReturn : t.calDue;
+                    const v = col === 11 ? t.dueReturn : t.calDue;
                     if (v && Utils.d(v) < Date.now()) cell.font = { bold: true, color: { argb: C.bad } };
                 });
             });
             inv.views = [{ state: 'frozen', ySplit: 1 }];
-            inv.autoFilter = { from: 'A1', to: `P${active.length + 1}` };
+            inv.autoFilter = { from: 'A1', to: `Q${active.length + 1}` };
 
             /* ================= ЛИСТ 3: ПЕРСОНАЛ ================= */
             const per = wb.addWorksheet(isRu ? 'Персонал' : 'Personnel');

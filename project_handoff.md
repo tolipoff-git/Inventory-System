@@ -2,15 +2,18 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v77` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v78` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v77)
+## Recent Accomplishments (v49 – v78)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Bilingual Excel Export Localization (RU / EN) & v77 Release
+### 0. Total i18n Dictionary Parity, Excel Stock Quantity Column & v78 Release
+- **Excel Stock Quantity Column Addition (`Qty in Stock`):** Added Column 6 `Кол-во в наличии / Qty in Stock` to Sheet 2 ("Инвентарь" / "Inventory") in `Reports.exportInventoryXLSX()`, displaying real physical stock quantities (`parseInt(t.qty) || 1`) alongside `Min Qty` and `Max Qty`. Updated column formatting offsets (status col 7, wear col 13, dates col 11/12, autoFilter range `A1:Q`).
+- **Complete i18n Audit & Dictionary Parity:** Conducted a comprehensive codebase audit via subagent searcher, identifying 24 missing translation keys in `I18N.EN` and `I18N.RU`. Added all 24 missing keys covering storage location labels, partial receipts, personnel assignments, risk factor drivers, and Excel export columns.
+- **Bilingual Excel Export:** `Reports.exportInventoryXLSX()` dynamically evaluates `currentLang` to translate Sheet Names (`Сводка` / `Summary`, `Инвентарь` / `Inventory`, etc.), block titles, KPI metrics, table headers, and ID class legend descriptions.
 - **Dynamic Language Detection:** `Reports.exportInventoryXLSX()` dynamically evaluates `const isRu = (typeof currentLang !== 'undefined' && currentLang === 'RU')` to generate 100% localized Excel files.
 - **Bilingual Sheet Names:** Sheets adapt automatically: `Сводка` / `Summary`, `Инвентарь` / `Inventory`, `Персонал` / `Personnel`, `Архив` / `Archive`.
 - **Bilingual Block Titles & KPI Metrics:** Localized all block titles ('КЛЮЧЕВЫЕ МЕТРИКИ' / 'KEY METRICS', 'ЗАГРУЗКА СТАНЦИЙ' / 'WORKSTATION LOAD', 'ОЦЕНКИ 5S-АУДИТОВ' / '5S AUDIT SCORES', 'РАСПРЕДЕЛЕНИЕ ПО ТИПАМ' / 'TOOL TYPE BREAKDOWN', 'СПРАВОЧНИК ПРЕФИКСОВ ID' / 'ID PREFIX LEGEND') and KPI labels ('Доступно к выдаче' / 'Available for Issue', 'Выдано персоналу' / 'Issued to Personnel', etc.).
