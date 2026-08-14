@@ -2,15 +2,19 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v80` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v81` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v80)
+## Recent Accomplishments (v49 – v81)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Excel Inventory Quantity Layout Reordering, .gitignore & v80 Release
+### 0. Permanent vs Consumable Stock Distinction, Agent Topology Update & v81 Release
+- **Permanent Tool Stock Logic:** Permanent tools (`type === 'Permanent'`) fix unit presence (`Qty in Stock: 1`) without artificial min/max limits (`minQty = null`, `maxQty = null`), displaying a clean dash (`—`) in Min Qty and Max Qty columns of Excel exports.
+- **Consumable Batch Thresholds:** Consumable items (`type === 'Consumable'`) manage real physical stock counts (`Qty in Stock: 15`), minimum reorder triggers (`Min Qty: 5`), and maximum capacity caps (`Max Qty: 20`).
+- **Full System Lifecycle Enforcement:** Enforced this strict distinction across `Store.migrate()`, `Ops.submitAddTool()`, `Ops.submitEditTool()`, and `Reports.exportInventoryXLSX()`.
+- **DEMIURGOS Agent Model & Thinking Effort Strategy:** Updated `~/.gemini/rules/architecture.md` and all 10 agent manifests in `~/.gemini/config/plugins/demiurgos/agents/*.md` to utilize the new Gemini 3.1 Pro (High effort) and Gemini 3.7 Flash lineup with tuned thinking effort levels.
 - **Inventory Sheet Quantity Columns Grouping:** Reordered Sheet 2 ("Инвентарь" / "Inventory") of `Reports.exportInventoryXLSX()` so that all quantity metrics (`Qty in Stock` / `Кол-во в наличии`, `Min Qty` / `Мин. остаток`, `Max Qty` / `Макс. остаток`) are grouped together immediately after Column B (`Name` / `Наименование`).
 - **Exact Cell Offset Recalibration:** Updated cell styling offsets: Status badge (Column 9), Wear percentage (Column 15), Overdue return/calibration dates (Columns 13 and 14), and autoFilter range `A1:Q`.
 - **Repository Sanitization & `.gitignore` Protection:** Cleaned all temporary and scratch files from the repository directory and established a permanent `.gitignore` rule preventing temporary scripts or test logs from entering Git.

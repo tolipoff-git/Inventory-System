@@ -2431,7 +2431,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v80',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v81',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-14',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -4108,9 +4108,15 @@ const Store = {
                 const rnd = Math.random().toString(36).substring(2, 10).toUpperCase();
                 t.sn = (t.id.includes('-') ? t.id.split('-')[0] : 'SN') + '-' + rnd;
             }
-            if (t.minQty === undefined) t.minQty = 0;
-            if (t.maxQty === undefined) t.maxQty = 0;
-            if (t.qty === undefined) t.qty = 1;
+            if (t.type === 'Permanent') {
+                if (t.qty === undefined || t.qty === null) t.qty = 1;
+                t.minQty = null;
+                t.maxQty = null;
+            } else {
+                if (!t.qty || t.qty < 0) t.qty = 15;
+                if (!t.minQty) t.minQty = 5;
+                if (!t.maxQty) t.maxQty = Math.max(t.qty, 20);
+            }
             if (t.barcode === undefined) t.barcode = ''; // внешний штрихкод с физической наклейки (5S00xxx), если ≠ ID
             if (t.article === undefined) t.article = ''; // артикул/парт-номер (у расходников вместо SN)
             // Если есть объект address, но пустой/неполный location — пересобираем location
@@ -7079,6 +7085,11 @@ const Ops = {
 
         const days = parseInt(document.getElementById('addToolInterval').value) || 0;
         const type = document.getElementById('addToolType').value;
+        const minVal = parseInt(document.getElementById('addToolMinQty').value);
+        const maxVal = parseInt(document.getElementById('addToolMaxQty').value);
+        const minQty = type === 'Consumable' ? (!isNaN(minVal) && minVal > 0 ? minVal : 5) : null;
+        const maxQty = type === 'Consumable' ? (!isNaN(maxVal) && maxVal > 0 ? maxVal : 20) : null;
+        const qty = type === 'Permanent' ? 1 : (parseInt(document.getElementById('addToolQty').value) || 1);
         const z = document.getElementById('addToolZone') ? document.getElementById('addToolZone').value : '';
         const r = document.getElementById('addToolRack') ? document.getElementById('addToolRack').value : '';
         const s = document.getElementById('addToolShelf') ? document.getElementById('addToolShelf').value : '';
@@ -7092,18 +7103,23 @@ const Ops = {
             category: document.getElementById('addToolCat').value.trim() || 'Uncategorized',
             location: document.getElementById('addToolLoc').value || 'Pending',
             status: 'Active',
-            qty: parseInt(document.getElementById('addToolQty').value) || 1,
+            qty,
             spec: document.getElementById('addToolSpec').value.trim() || 'N/A',
             assigneeId: null, assignedAt: null, dueReturn: null,
             calDue: days ? new Date(Date.now() + days * CONFIG.DAY_MS).toISOString() : null,
             history: [], audit_history: [],
             commissioned_date: Utils.nowISO().split('T')[0],
-            minQty: type === 'Consumable' ? (parseInt(document.getElementById('addToolMinQty').value) || 0) : 0,
-            maxQty: type === 'Consumable' ? (parseInt(document.getElementById('addToolMaxQty').value) || 0) : 0,
+            minQty,
+            maxQty,
             barcode: document.getElementById('addToolBarcode').value.trim().toUpperCase(), // внешняя наклейка 5S00xxx
             sn: document.getElementById('addToolSN').value.trim().toUpperCase(), // серийный номер
             article: document.getElementById('addToolArticle').value.trim() // артикул (у расходников вместо SN)
         };
+        if (type === 'Permanent') {
+            tool.minQty = null;
+            tool.maxQty = null;
+            tool.qty = 1;
+        }
         if (!tool.sn) tool.sn = (tool.id.includes('-') ? tool.id.split('-')[0] : 'SN') + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
         if (address) tool.address = address;
         // Стейдженые фото прикрепляются к новому инструменту сразу при создании
@@ -7196,7 +7212,17 @@ const Ops = {
         
         tool.name = document.getElementById('editToolName').value.trim() || 'Tool';
         tool.type = type;
-        tool.qty = Math.max(1, parseInt(document.getElementById('editToolQty').value) || 1);
+        if (type === 'Permanent') {
+            tool.minQty = null;
+            tool.maxQty = null;
+            tool.qty = 1;
+        } else {
+            const minVal = parseInt(document.getElementById('editToolMinQty').value);
+            const maxVal = parseInt(document.getElementById('editToolMaxQty').value);
+            tool.minQty = !isNaN(minVal) && minVal > 0 ? minVal : 5;
+            tool.maxQty = !isNaN(maxVal) && maxVal > 0 ? maxVal : 20;
+            tool.qty = Math.max(1, parseInt(document.getElementById('editToolQty').value) || 1);
+        }
         tool.barcode = document.getElementById('editToolBarcode').value.trim().toUpperCase();
         
         const newSn = document.getElementById('editToolSN').value.trim().toUpperCase();
@@ -7232,14 +7258,6 @@ const Ops = {
         
         const days = parseInt(document.getElementById('editToolInterval').value) || 0;
         if (days) tool.calDue = new Date(Date.now() + days * CONFIG.DAY_MS).toISOString();
-        
-        if (type === 'Consumable') {
-            tool.minQty = parseInt(document.getElementById('editToolMinQty').value) || 0;
-            tool.maxQty = parseInt(document.getElementById('editToolMaxQty').value) || 0;
-        } else {
-            tool.minQty = 0;
-            tool.maxQty = 0;
-        }
         
         Store.touch(tool);
         Store.log('TOOL_EDIT', tool.id);
@@ -10579,13 +10597,15 @@ const Reports = {
                 const prefix = (t.id || '').split('-')[0];
                 const cls = CONFIG.TOOL_CLASSES.find(c => c.p === prefix);
                 const className = cls ? (isRu ? `${cls.p} — ${cls.ru}` : `${cls.p} — ${cls.en}`) : (isRu ? 'Индивидуальный ID' : 'Custom ID');
+                const minDisplay = t.type === 'Consumable' ? (t.minQty || 5) : '—';
+                const maxDisplay = t.type === 'Consumable' ? (t.maxQty || 20) : '—';
 
                 const row = inv.addRow([
                     t.id,
                     t.name,
                     parseInt(t.qty) || 1,
-                    t.minQty || '',
-                    t.maxQty || '',
+                    minDisplay,
+                    maxDisplay,
                     className,
                     t.category,
                     t.type,
