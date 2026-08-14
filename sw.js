@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'inv-inventory-';
-const CACHE_VERSION = 'v71-7639615';
+const CACHE_VERSION = 'v72-f8695da';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
 const ASSETS_TO_CACHE = [
   './',

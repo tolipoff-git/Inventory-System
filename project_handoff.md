@@ -2,15 +2,18 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v71` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v72` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v71)
+## Recent Accomplishments (v49 – v72)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Smart Location Storage Summary, Collapsible Shelf Accordions & Auto-Reload Fix (v71)
+### 0. Location Pillar Clean-Up, Text Contrast Overhaul & PWA Stability (v72)
+- **Eliminated `| Unknown` Postfix:** Refactored `Ops.workstationAndPostOf` and `Charts.computeCulture` to check `hasPost`. Single-part locations (e.g. `Charging Station`, `Main Store`) render as clean workstation names without trailing `| Unknown`.
+- **High-Contrast Dark Theme Text & Badges:** Replaced dark-on-dark text in storage summary cards and shelf accordion headers with high-contrast explicit color tokens (`color: var(--text-main, #f8fafc)` and high-contrast badges `#ffffff` on `--danger`/`--primary`, `#000000` on `--warning`).
+- **Bulletproof PWA Auto-Update:** Disabled background polling loops (`setInterval`, `visibilitychange`), enforced single-action clean update pipeline (`unregister` -> `caches.delete` -> `window.location.reload(true)`).
 - **Opaque KPI Summary Card:** Replaced translucent `rgba(0,0,0,0.2)` card with a solid opaque container (`background: var(--bg-card, #1e293b); border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.3); border-radius: 10px; padding: 20px; margin-bottom: 20px;`).
 - **Smart Storage Intelligence Summary (Умное суммирование):** Computes executive metrics across stored items on the structure:
   - Equipment share: `80% Permanent Tooling / 20% Consumables`
