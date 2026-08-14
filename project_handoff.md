@@ -2,15 +2,21 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v82` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v83` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v82)
+## Recent Accomplishments (v49 – v83)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Digital Integrity Stamp (SHA-256), Export Audit Trail, FAQ & v82 Release
+### 0. Differentiated Stock Verification Breakdown, SKU vs Pieces Clarity & v83 Release
+- **Detailed Physical Stock Breakdown Matrix:** Sheet 1 ("Сводка" / "Summary") Digital Verification Stamp block now explicitly breaks down inventory counts into 4 transparent metrics:
+  - *Total Unique Catalog Items (SKU) / Уникальных позиций в каталоге (SKU):* e.g. `280 поз.`
+  - *Permanent Tooling Stock / Штучный постоянный инструмент:* e.g. `240 шт. (уник. активов)`
+  - *Consumable Items in Stock / Расходные материалы на складе:* e.g. `954 шт. (в ячейках/упаковках)`
+  - *Grand Total Physical Stock (Pieces) / Итого физических единиц на складе:* e.g. `1 194 шт. суммарно`
+- **Granular Export Audit Logging:** `Store.log('INVENTORY_EXPORT', ...)` logs SKU count, permanent piece count, consumable piece count, and grand total units alongside author and SHA-256 hash prefix.
 - **Cryptographic Snapshot Fingerprint (SHA-256):** Every exported Excel workbook (`exportInventoryXLSX`) computes a deterministic SHA-256 hash across all active tool IDs, names, types, quantities, statuses, and serial numbers paired with a unique export serial (`EXP-YYYYMMDDHHMMSS-XXXX`) and authenticated author identity.
 - **Official Verification Block on Summary Sheet:** Embeds a stylized `DIGITAL INTEGRITY SEAL & VERIFICATION STAMP` block on Sheet 1 detailing Export Serial, Verified Author, SHA-256 Checksum, Total Verified Units, and Security Audit Status.
 - **Immutable System Export Logging:** Automatically records an immutable `INVENTORY_EXPORT` audit log entry in `Store.log` with serial, counts, author, and checksum prefix. Any post-export attempt to subtract tools or alter database records creates an instant checksum mismatch and leaves an indelible audit trail.
