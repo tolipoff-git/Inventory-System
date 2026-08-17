@@ -1982,15 +1982,29 @@ select.work-only.form-control { max-width: 190px; }
 
 <!-- Журнал аудита системы -->
 <div class="modal-overlay" id="auditLogModal">
-    <div class="modal wide">
+    <div class="modal wide" style="max-width:980px;">
         <div class="modal-header">
             <h3 class="modal-title" data-i18n="System Audit Log">System Audit Log</h3>
             <button class="close-btn" onclick="closeModal('auditLogModal')">&times;</button>
         </div>
         <div class="modal-body">
-            <div class="table-scroll" style="max-height:50vh;">
+            <!-- SHA-256 Verifier & Search Bar -->
+            <div style="background:rgba(0,0,0,0.25); border:1px solid var(--border); border-radius:6px; padding:12px; margin-bottom:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <strong style="color:var(--primary-hover); font-size:0.95rem;">🔐 <span data-i18n="Verify / Compare SHA-256 Signature">Verify / Compare SHA-256 Signature</span></strong>
+                    <span style="font-size:0.8rem; color:var(--text-muted);"><span data-i18n="Total Entries:">Total Entries:</span> <b id="auditLogCount" style="color:var(--text-light);">0</b></span>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="text" id="verifyShaInput" data-i18n-ph="Search audit log or paste SHA-256..." placeholder="Search audit log or paste SHA-256 / Serial..." style="flex:1; font-family:monospace; font-size:0.85rem;" oninput="Ops.onAuditLogSearch(this.value)">
+                    <button class="btn btn-primary" onclick="Ops.verifyAuditHash()" data-i18n="Verify">Verify</button>
+                    <button class="btn btn-muted" onclick="Ops.clearAuditSearch()" data-i18n="Clear">Clear</button>
+                </div>
+                <div id="verifyShaResult" style="margin-top:8px; font-size:0.85rem; display:none; padding:8px 10px; border-radius:4px;"></div>
+            </div>
+
+            <div class="table-scroll" style="max-height:52vh;">
                 <table>
-                    <thead><tr><th data-i18n="Timestamp">Timestamp</th><th data-i18n="User">User</th><th data-i18n="Action">Action</th><th data-i18n="Details">Details</th></tr></thead>
+                    <thead><tr><th style="width:160px;" data-i18n="Timestamp">Timestamp</th><th style="width:140px;" data-i18n="User">User</th><th style="width:160px;" data-i18n="Action">Action</th><th data-i18n="Details">Details</th></tr></thead>
                     <tbody id="auditLogList"></tbody>
                 </table>
             </div>
@@ -2570,6 +2584,37 @@ const Utils = {
             || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     },
 
+    /** Копирование текста в буфер обмена с уведомлением */
+    copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                const preview = text.length > 32 ? text.slice(0, 16) + '…' + text.slice(-8) : text;
+                this.toast(`📋 <b>${this.esc(preview)}</b> ${T('COPIED')}`);
+            }).catch(() => {
+                this._copyFallback(text);
+            });
+        } else {
+            this._copyFallback(text);
+        }
+    },
+
+    _copyFallback(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            const preview = text.length > 32 ? text.slice(0, 16) + '…' + text.slice(-8) : text;
+            this.toast(`📋 <b>${this.esc(preview)}</b> ${T('COPIED')}`);
+        } catch (e) {
+            prompt('Copy text:', text);
+        }
+        ta.remove();
+    },
+
     /** Toast-уведомление: всплывающая плашка снизу экрана, сама гаснет */
     toast(msgHtml, ms = 5000) {
         let el = document.getElementById('toast');
@@ -3136,6 +3181,17 @@ const translations = {
         'Supplier Purchase Link:': 'Supplier Purchase Link:',
         'System Audit Log': 'System Audit Log',
         'Tamper Protection Lock': 'Tamper Protection Lock',
+        'Verify / Compare SHA-256 Signature': 'Verify / Compare SHA-256 Signature',
+        'Search audit log or paste SHA-256...': 'Search audit log or paste SHA-256 / Serial...',
+        'Total Entries:': 'Total Entries:',
+        'Verify': 'Verify',
+        'Clear': 'Clear',
+        'Copy': 'Copy',
+        'COPIED': 'copied to clipboard',
+        'SIGNATURE_MATCH': 'Signature verified! Exact match found in system audit log.',
+        'SIGNATURE_MISMATCH': 'Signature mismatch: No matching export record found in audit log.',
+        'PLEASE_ENTER_HASH': 'Please enter a SHA-256 hash or Serial to verify.',
+        'No matching log entries found.': 'No matching log entries found.',
         'System Registries': 'System Registries',
         'TT_KPI_ACTIVE': 'Active: {n} — ready for issue',
         'TT_KPI_ISSUED': 'Issued: {n} — in use by personnel',
@@ -3627,6 +3683,17 @@ const translations = {
         'Supplier Purchase Link:': 'Ссылка у поставщика:',
         'System Audit Log': 'Системный журнал аудита',
         'Tamper Protection Lock': 'Защита книги от изменений',
+        'Verify / Compare SHA-256 Signature': 'Верификация и сверка подписи SHA-256',
+        'Search audit log or paste SHA-256...': 'Поиск по журналу или вставьте SHA-256 / Serial...',
+        'Total Entries:': 'Всего записей:',
+        'Verify': 'Проверить',
+        'Clear': 'Очистить',
+        'Copy': 'Копировать',
+        'COPIED': 'скопировано в буфер обмена',
+        'SIGNATURE_MATCH': 'Подпись подтверждена! Найдено точное совпадение в системном журнале.',
+        'SIGNATURE_MISMATCH': 'Подпись не найдена: в системном журнале отсутствует запись с таким хэшем.',
+        'PLEASE_ENTER_HASH': 'Введите SHA-256 хэш или серийный номер для проверки.',
+        'No matching log entries found.': 'Записей в журнале не найдено.',
         'System Registries': 'Справочники системы',
         'TT_KPI_ACTIVE': 'Активные: {n} — готовы к выдаче',
         'TT_KPI_ISSUED': 'Выданные: {n} — на руках у персонала',
@@ -7915,24 +7982,101 @@ const Ops = {
 
     /* ---------- Журнал аудита ---------- */
     openAuditLogModal() {
-        const rows = [...Store.auditLog].reverse().map(e => {
-            let detHtml = Utils.esc(e.details);
-            if (e.action === 'INVENTORY_EXPORT' && e.details.includes('SHA-256:')) {
-                const parts = e.details.split(' | SHA-256: ');
-                const metaPart = Utils.esc(parts[0] || '');
-                const hashPart = Utils.esc(parts[1] || '');
-                detHtml = `<div>${metaPart}</div><div style="margin-top:6px; background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:4px; padding:6px 8px; font-family:monospace; font-size:0.82rem; word-break:break-all; user-select:all;"><span style="color:var(--primary-hover); font-weight:bold;">SHA-256:</span> ${hashPart}</div>`;
+        const searchInput = document.getElementById('verifyShaInput');
+        if (searchInput) searchInput.value = '';
+        const resEl = document.getElementById('verifyShaResult');
+        if (resEl) { resEl.style.display = 'none'; resEl.innerHTML = ''; }
+        this.renderAuditLogList('');
+        openModal('auditLogModal');
+    },
+
+    onAuditLogSearch(query) {
+        this.renderAuditLogList(query);
+    },
+
+    clearAuditSearch() {
+        const searchInput = document.getElementById('verifyShaInput');
+        if (searchInput) searchInput.value = '';
+        const resEl = document.getElementById('verifyShaResult');
+        if (resEl) { resEl.style.display = 'none'; resEl.innerHTML = ''; }
+        this.renderAuditLogList('');
+    },
+
+    renderAuditLogList(filterText = '') {
+        const listEl = document.getElementById('auditLogList');
+        const countEl = document.getElementById('auditLogCount');
+        if (!listEl) return;
+
+        let logs = [...Store.auditLog].reverse();
+        if (countEl) countEl.innerText = logs.length;
+
+        const q = String(filterText || '').trim().toLowerCase();
+        if (q) {
+            logs = logs.filter(e => 
+                (e.ts && e.ts.toLowerCase().includes(q)) ||
+                (e.user && e.user.toLowerCase().includes(q)) ||
+                (e.role && e.role.toLowerCase().includes(q)) ||
+                (e.action && e.action.toLowerCase().includes(q)) ||
+                (e.details && e.details.toLowerCase().includes(q))
+            );
+        }
+
+        const rows = logs.map(e => {
+            let detHtml = Utils.esc(e.details || '');
+            if (e.details && e.details.includes('SHA-256:')) {
+                const shaIdx = e.details.indexOf('SHA-256: ');
+                const metaPart = Utils.esc(e.details.slice(0, shaIdx).trim().replace(/\|\s*$/, ''));
+                const hashPart = e.details.slice(shaIdx + 9).trim();
+                const cleanHash = hashPart.replace(/\.\.\.$/, '');
+                
+                detHtml = `<div>${metaPart}</div>
+                <div style="margin-top:6px; background:rgba(0,0,0,0.35); border:1px solid var(--border); border-radius:4px; padding:6px 8px; display:flex; justify-content:space-between; align-items:center; gap:8px; font-family:monospace; font-size:0.82rem; word-break:break-all;">
+                    <div style="flex:1; user-select:all;"><span style="color:var(--primary-hover); font-weight:bold;">SHA-256:</span> ${Utils.esc(hashPart)}</div>
+                    <button class="btn btn-sm" style="padding:2px 8px; font-size:0.75rem; white-space:nowrap;" onclick="Utils.copyText('${Utils.esc(cleanHash)}')">📋 ${T('Copy')}</button>
+                </div>`;
             }
             return `<tr>
-                <td style="white-space:nowrap;">${Utils.esc(e.ts.replace('T', ' ').slice(0, 19))}</td>
-                <td>${Utils.esc(e.user)}<br><span style="color:var(--text-muted); font-size:0.82rem;">${Utils.esc(e.role)}</span></td>
-                <td><strong style="color:${e.action === 'INVENTORY_EXPORT' ? 'var(--primary-hover)' : 'inherit'}">${Utils.esc(e.action)}</strong></td>
+                <td style="white-space:nowrap; font-size:0.85rem;">${Utils.esc(e.ts ? e.ts.replace('T', ' ').slice(0, 19) : '')}</td>
+                <td>${Utils.esc(e.user || '')}<br><span style="color:var(--text-muted); font-size:0.8rem;">${Utils.esc(e.role || '')}</span></td>
+                <td><strong style="color:${e.action === 'INVENTORY_EXPORT' ? 'var(--primary-hover)' : 'inherit'}; font-size:0.85rem;">${Utils.esc(e.action || '')}</strong></td>
                 <td>${detHtml}</td>
             </tr>`;
         }).join('');
-        document.getElementById('auditLogList').innerHTML = rows ||
-            '<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Audit log is empty.</td></tr>';
-        openModal('auditLogModal');
+
+        listEl.innerHTML = rows || `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:16px;">${T(q ? 'No matching log entries found.' : 'Audit log is empty.')}</td></tr>`;
+    },
+
+    verifyAuditHash() {
+        const input = document.getElementById('verifyShaInput');
+        const resEl = document.getElementById('verifyShaResult');
+        if (!input || !resEl) return;
+        const val = String(input.value || '').trim();
+        if (!val) {
+            resEl.style.display = 'block';
+            resEl.style.background = 'rgba(255,160,0,0.15)';
+            resEl.style.border = '1px solid var(--warning)';
+            resEl.style.color = 'var(--warning)';
+            resEl.innerHTML = `⚠️ ${T('PLEASE_ENTER_HASH')}`;
+            return;
+        }
+
+        const clean = val.toLowerCase();
+        const match = Store.auditLog.find(e => (e.details && e.details.toLowerCase().includes(clean)) || (e.action && e.action.toLowerCase().includes(clean)));
+
+        resEl.style.display = 'block';
+        if (match) {
+            resEl.style.background = 'rgba(0,184,148,0.15)';
+            resEl.style.border = '1px solid var(--success)';
+            resEl.style.color = 'var(--success)';
+            resEl.innerHTML = `✅ <b>${T('SIGNATURE_MATCH')}</b><br>
+            <div style="margin-top:4px; font-size:0.8rem; color:var(--text);">${Utils.esc(match.ts.replace('T', ' ').slice(0, 19))} | ${Utils.esc(match.user)} (${Utils.esc(match.role)}) &rarr; <b>${Utils.esc(match.action)}</b><br>${Utils.esc(match.details)}</div>`;
+        } else {
+            resEl.style.background = 'rgba(208,0,60,0.15)';
+            resEl.style.border = '1px solid var(--danger)';
+            resEl.style.color = 'var(--danger)';
+            resEl.innerHTML = `❌ <b>${T('SIGNATURE_MISMATCH')}</b> ("${Utils.esc(val)}")`;
+        }
+        this.renderAuditLogList(val);
     },
 
     receiveOrder(orderId) {
