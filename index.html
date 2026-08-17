@@ -1317,7 +1317,7 @@ select.work-only.form-control { max-width: 190px; }
             <button class="btn" onclick="closeModal('opsMenuModal'); openOrdersModal()" data-i18n="Purchase Orders">Purchase Orders</button>
             <button class="btn" onclick="closeModal('opsMenuModal'); openPostAuditModal()" data-i18n="5S Post Audit">5S Post Audit</button>
             <button class="btn btn-warning" onclick="closeModal('opsMenuModal'); Labels.openLocationLabelModal()" data-i18n="Print Storage Labels">🖨️ Печать этикеток мест хранения / Print Storage Labels</button>
-            <button class="btn btn-danger" onclick="closeModal('opsMenuModal'); forceUpdatePWA()">🔄 Обновить PWA / Force PWA Update</button>
+            <button class="btn btn-danger" onclick="closeModal('opsMenuModal'); forceUpdatePWA()">🔄 <span data-i18n="Update PWA">Update PWA</span></button>
         </div>
     </div>
 </div>
@@ -2119,10 +2119,10 @@ select.work-only.form-control { max-width: 190px; }
                 <div class="form-group">
                     <label data-i18n="Structure Type:">Structure Type:</label>
                     <select id="locLabelType" class="form-control" onchange="Labels.renderLocationPreview()">
-                        <option value="RACK">Стеллаж (Rack)</option>
-                        <option value="WORKBENCH">Верстак / Стол (Workbench / Desk)</option>
-                        <option value="TOOLBOX">Инструментальный ящик / Тележка (Toolbox / Cart)</option>
-                        <option value="AFRAME">А-Фрейм (A-Frame)</option>
+                        <option value="RACK" data-i18n="Rack">Rack</option>
+                        <option value="WORKBENCH" data-i18n="Workbench">Workbench / Desk</option>
+                        <option value="TOOLBOX" data-i18n="Toolbox">Toolbox / Cart</option>
+                        <option value="AFRAME" data-i18n="A-Frame">A-Frame</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -2172,7 +2172,7 @@ select.work-only.form-control { max-width: 190px; }
         <div class="modal-footer spread">
             <button class="btn btn-muted" onclick="closeModal('locationLabelModal')" data-i18n="Close">Close</button>
             <div style="display:flex; gap:10px;">
-                <button class="btn btn-warning" id="btnLocBatch" onclick="Labels.printLocationBatch('batch')" style="display:none;">⚡ Пакетная печать / Print Batch</button>
+                <button class="btn btn-warning" id="btnLocBatch" onclick="Labels.printLocationBatch('batch')" style="display:none;">⚡ <span data-i18n="Batch Print">Batch Print</span></button>
                 <button class="btn btn-success" id="btnLocQueue" onclick="Labels.printLocationBatch('queue')">➕ <span data-i18n="Add to Queue">Add to Queue</span></button>
                 <button class="btn" id="btnLocPrint" onclick="Labels.printLocationBatch('direct')">🖨 <span data-i18n="Print">Print</span></button>
             </div>
@@ -2431,8 +2431,8 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v83',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
-    BUILD_DATE: '2026-08-14',        // дата сборки для подвала
+    APP_VERSION: 'v84',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    BUILD_DATE: '2026-08-17',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
     WEAR_RETIRE_PCT: 75,             // износ, после которого инструмент списывается
@@ -2896,7 +2896,6 @@ const translations = {
         'Unit $': 'Unit $',
         'Unit Cost ($):': 'Unit Cost ($):',
         'Username / Login': 'Username / Login',
-        'ключ': 'ключ',
         'unknown date': 'unknown date',
         'DB_SIZE_WARN': '⚠ Database size is approaching the 5MB limit. Please export a JSON backup soon.',
         'DB_QUOTA_EXCEEDED': '⚠ LocalStorage quota exceeded! Export a JSON backup now, then clear old data.',
@@ -3200,7 +3199,17 @@ const translations = {
         'Will generate labels for all unique bins in selected Rack/Shelf.': 'Will generate labels for all unique bins in selected Rack/Shelf.',
         'No history.': 'No history.',
         'Qty in Stock': 'Qty in Stock',
-        'Кол-во в наличии': 'Qty in Stock'
+        'Кол-во в наличии': 'Qty in Stock',
+        'Workbench': 'Workbench / Desk',
+        'Toolbox': 'Toolbox / Cart',
+        'A-Frame': 'A-Frame',
+        'Batch Print': 'Batch Print',
+        'Choose Employee': 'Choose Employee',
+        'Choose Zone': 'Choose Zone',
+        'Expand All': 'Expand All',
+        'Collapse All': 'Collapse All',
+        'Update PWA': 'Update PWA',
+        'Print Location Labels': 'Print Location Labels'
     },
     'RU': {
         'ACCESS_DENIED': 'Доступ запрещен',
@@ -3353,7 +3362,6 @@ const translations = {
         'Unit $': 'Цена $',
         'Unit Cost ($):': 'Цена за ед. ($):',
         'Username / Login': 'Имя пользователя / Логин',
-        'ключ': 'ключ',
         'unknown date': 'неизвестная дата',
         'DB_SIZE_WARN': '⚠ База приближается к лимиту 5МБ. Рекомендуется экспортировать JSON-бэкап.',
         'DB_QUOTA_EXCEEDED': '⚠ Хранилище переполнено! Срочно экспортируйте JSON-бэкап и очистите старые данные.',
@@ -3680,7 +3688,17 @@ const translations = {
         'Will generate labels for all unique bins in selected Rack/Shelf.': 'Сгенерирует этикетки для всех уникальных ячеек на выбранном стеллаже/полке.',
         'No history.': 'История отсутствует.',
         'Qty in Stock': 'Кол-во в наличии',
-        'Кол-во в наличии': 'Кол-во в наличии'
+        'Кол-во в наличии': 'Кол-во в наличии',
+        'Workbench': 'Верстак / Стол',
+        'Toolbox': 'Инструментальный ящик / Тележка',
+        'A-Frame': 'А-Фрейм',
+        'Batch Print': 'Пакетная печать',
+        'Choose Employee': 'Выберите сотрудника',
+        'Choose Zone': 'Выберите зону',
+        'Expand All': 'Развернуть все',
+        'Collapse All': 'Свернуть все',
+        'Update PWA': 'Обновить PWA',
+        'Print Location Labels': 'Печать этикеток мест хранения'
     }
 };
 
@@ -5494,7 +5512,7 @@ function setFilter(type, value) {
         let parts = value.split(':');
         // LOC:TYPE:Zone:Rack:Shelf:Bin:RESP
         let tStr = parts[1] || '';
-        let typeLabels = { RACK: 'Стеллаж', WORKBENCH: 'Верстак', TOOLBOX: 'Ящик/Тележка', AFRAME: 'А-Фрейм' };
+        let typeLabels = { RACK: T('Rack'), WORKBENCH: T('Workbench'), TOOLBOX: T('Toolbox'), AFRAME: T('A-Frame') };
         tStr = typeLabels[tStr] || tStr;
         let formatted = [];
         if (parts[2]) formatted.push(parts[2]);
@@ -6328,7 +6346,7 @@ function renderGrid() {
         const lowStockCount = list.filter(t => (parseInt(t.qty) || 1) <= 2 || Store.wearOf(t) > 70).length;
         const overdueCount = list.filter(t => t.status === 'Overdue').length;
 
-        let typeLabels = { RACK: 'Стеллаж', WORKBENCH: 'Верстак', TOOLBOX: 'Ящик/Тележка', AFRAME: 'А-Фрейм' };
+        let typeLabels = { RACK: T('Rack'), WORKBENCH: T('Workbench'), TOOLBOX: T('Toolbox'), AFRAME: T('A-Frame') };
         
         let html = '';
         html += `<div style="background: var(--surface); border: 1px solid var(--border); color: var(--text-main); box-shadow: 0 4px 20px rgba(0,0,0,0.4); border-radius: 10px; padding: 20px; margin-bottom: 20px; grid-column: 1 / -1;">`;
@@ -6345,8 +6363,8 @@ function renderGrid() {
         html += `</div></div>`;
 
         html += `<div style="grid-column: 1 / -1; display:flex; gap:10px; margin-bottom:15px;">`;
-        html += `<button class="btn btn-muted" onclick="Ops.toggleAllShelfTabs(true)">📂 Развернуть все / Expand All</button>`;
-        html += `<button class="btn btn-muted" onclick="Ops.toggleAllShelfTabs(false)">📁 Свернуть все / Collapse All</button>`;
+        html += `<button class="btn btn-muted" onclick="Ops.toggleAllShelfTabs(true)">📂 ${T('Expand All')}</button>`;
+        html += `<button class="btn btn-muted" onclick="Ops.toggleAllShelfTabs(false)">📁 ${T('Collapse All')}</button>`;
         html += `</div>`;
 
         const shelfGroups = {};
@@ -6367,7 +6385,7 @@ function renderGrid() {
         for (let sKey in shelfGroups) {
             html += `<div class="shelf-accordion-card" style="grid-column: 1 / -1; margin-bottom:14px; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--surface);">`;
             html += `<div onclick="Ops.toggleShelfTab('shelf_box_${idx}')" style="display:flex; justify-content:space-between; align-items:center; padding:14px 18px; background:var(--chip); color:var(--text-main); cursor:pointer; font-weight:bold; font-size:1rem;">`;
-            html += `<span style="display:flex; align-items:center; gap:8px;">📂 Полка / Shelf ${Utils.esc(sKey)} <span style="background:var(--primary); color:#ffffff; padding:2px 10px; border-radius:12px; font-size:0.8rem; font-weight:bold;">${shelfGroups[sKey].length} ${T('items')}</span></span>`;
+            html += `<span style="display:flex; align-items:center; gap:8px;">📂 ${T('Shelf')} ${Utils.esc(sKey)} <span style="background:var(--primary); color:#ffffff; padding:2px 10px; border-radius:12px; font-size:0.8rem; font-weight:bold;">${shelfGroups[sKey].length} ${T('items')}</span></span>`;
             html += `<span id="shelf_icon_shelf_box_${idx}" style="color:var(--text-muted);">▼</span>`;
             html += `</div>`;
             html += `<div id="shelf_box_${idx}" class="shelf-body grid" style="display:none; padding:16px; gap:16px;">`;
@@ -6862,7 +6880,7 @@ function populateEmpSelects() {
         }).join('');
     }
     if (select) {
-        select.innerHTML = `<option value="">-- Choose Employee / Выберите сотрудника (${Store.personnel.length}) --</option>` + optionsHtml;
+        select.innerHTML = `<option value="">-- ${T('Choose Employee')} (${Store.personnel.length}) --</option>` + optionsHtml;
     }
 }
 </script>
@@ -8456,7 +8474,7 @@ const Labels = {
 
         const zoneSelect = document.getElementById('locLabelZoneSelect');
         if (zoneSelect) {
-            zoneSelect.innerHTML = '<option value="">-- Choose Zone / Выберите зону --</option>' + Array.from(zones).sort().map(z => `<option value="${Utils.esc(z)}">${Utils.esc(z)}</option>`).join('');
+            zoneSelect.innerHTML = `<option value="">-- ${T('Choose Zone')} --</option>` + Array.from(zones).sort().map(z => `<option value="${Utils.esc(z)}">${Utils.esc(z)}</option>`).join('');
         }
 
         const tZone = document.getElementById('transZone');
@@ -8519,7 +8537,7 @@ const Labels = {
         if (s) locParts.push(Utils.esc(cleanPrefix(s, 'Shelf')));
         if (b) locParts.push(Utils.esc(cleanPrefix(b, 'Bin')));
         
-        let typeLabels = { RACK: 'Стеллаж', WORKBENCH: 'Верстак', TOOLBOX: 'Ящик/Тележка', AFRAME: 'А-Фрейм' };
+        let typeLabels = { RACK: T('Rack'), WORKBENCH: T('Workbench'), TOOLBOX: T('Toolbox'), AFRAME: T('A-Frame') };
         let typeStr = Utils.esc(typeLabels[locType] || locType);
         
         let displayStr = '';
@@ -10528,8 +10546,8 @@ const Reports = {
             sum.getCell('A13').value = isRu ? 'РАСПРЕДЕЛЕНИЕ ПО ТИПАМ ИНСТРУМЕНТА' : 'TOOL TYPE BREAKDOWN';
             sum.getCell('A13').font = { bold: true, size: 12, color: { argb: 'FF45A29E' } };
             const typeBk = [
-                ['Permanent Tooling / Постоянный инструмент', active.filter(t => t.type === 'Permanent').length],
-                ['Consumable Stock / Расходные материалы', active.filter(t => t.type === 'Consumable').length]
+                [isRu ? 'Постоянный инструмент' : 'Permanent Tooling', active.filter(t => t.type === 'Permanent').length],
+                [isRu ? 'Расходные материалы' : 'Consumable Stock', active.filter(t => t.type === 'Consumable').length]
             ];
             typeBk.forEach((k, i) => {
                 const row = sum.getRow(14 + i);
@@ -10574,7 +10592,7 @@ const Reports = {
             rIdx++;
 
             const legHdrRow = sum.getRow(rIdx++);
-            (isRu ? ['Префикс', 'Группа', 'Русское название', 'Английское название', 'Категория'] : ['Prefix', 'Group', 'Russian Name', 'English Name', 'Category']).forEach((h, i) => {
+            (isRu ? ['Префикс', 'Группа', 'Название', 'Категория'] : ['Prefix', 'Group', 'Name', 'Category']).forEach((h, i) => {
                 const c = legHdrRow.getCell(i+1);
                 c.value = h;
                 c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -10583,7 +10601,7 @@ const Reports = {
             });
             CONFIG.TOOL_CLASSES.forEach((cls, i) => {
                 const row = sum.getRow(rIdx++);
-                [cls.p, cls.group, cls.ru, cls.en, cls.cat].forEach((val, colIdx) => {
+                [cls.p, cls.group, isRu ? cls.ru : cls.en, cls.cat].forEach((val, colIdx) => {
                     const c = row.getCell(colIdx + 1);
                     c.value = val;
                     c.border = border;
@@ -10610,7 +10628,7 @@ const Reports = {
                 [isRu ? 'Штучный постоянный инструмент' : 'Permanent Tooling Stock', `${permQty} ${isRu ? 'шт. (уник. активов)' : 'units (individual assets)'}`],
                 [isRu ? 'Расходные материалы на складе' : 'Consumable Items in Stock', `${consQty} ${isRu ? 'шт. (в ячейках/упаковках)' : 'units (batch items in bins)'}`],
                 [isRu ? 'Итого физических единиц на складе' : 'Grand Total Physical Stock (Pieces)', `${totalQty} ${isRu ? 'шт. суммарно' : 'total units'}`],
-                [isRu ? 'Статус аудита' : 'Audit Security Status', 'ОФИЦИАЛЬНО ЗАВЕРЕН / VERIFIED & LOGGED']
+                [isRu ? 'Статус аудита' : 'Audit Security Status', isRu ? 'ОФИЦИАЛЬНО ЗАВЕРЕН' : 'OFFICIALLY VERIFIED & LOGGED']
             ];
             stampRows.forEach(([lbl, val], sIdx) => {
                 sum.mergeCells(`B${rIdx}:E${rIdx}`);
@@ -10749,9 +10767,9 @@ const Reports = {
             }
 
             /* ================= ЛИСТ 5: ЖУРНАЛ ================= */
-            const logSheet = wb.addWorksheet('Журнал');
+            const logSheet = wb.addWorksheet(isRu ? 'Журнал' : 'Audit Log');
             logSheet.columns = [{ width: 20 }, { width: 14 }, { width: 18 }, { width: 18 }, { width: 50 }];
-            logSheet.addRow(['Timestamp', 'User', 'Role', 'Action', 'Details']);
+            logSheet.addRow(isRu ? ['Дата/Время', 'Пользователь', 'Роль', 'Действие', 'Детали'] : ['Timestamp', 'User', 'Role', 'Action', 'Details']);
             styleHeader(logSheet.getRow(1));
             [...Store.auditLog].reverse().forEach((e, i) => {
                 const row = logSheet.addRow([e.ts.replace('T', ' ').slice(0, 19), e.user, e.role, e.action, e.details]);

@@ -2,15 +2,19 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v83` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v84` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v83)
+## Recent Accomplishments (v49 – v84)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Differentiated Stock Verification Breakdown, SKU vs Pieces Clarity & v83 Release
+### 0. Complete Elimination of English Version Cyrillic Leaks, 100% i18n Parity & v84 Release
+- **Zero Cyrillic Leaks on English Mode:** Eliminated all hardcoded Russian text, double slash strings (`Полка / Shelf`, `Стеллаж (Rack)`, `Развернуть все / Expand All`, `Permanent Tooling / Постоянный инструмент`), and untranslated dropdown values across HTML markup, modals, dynamic grid renderers, and Excel export.
+- **Pure English Excel Export (All 5 Sheets):** Sheet 1 ("Summary"), Sheet 2 ("Inventory"), Sheet 3 ("Personnel"), Sheet 4 ("Archive"), and Sheet 5 ("Audit Log") generate 100% pure English text when `ENG` language is active with localized table headers, status badges, and digital integrity seal.
+- **100% Dictionary Key Parity:** `translations.ENG` and `translations.RU` verified at 449 keys each (0 missing keys, 0 placeholder leaks).
+- **Automated QA Verification Suite:** Passed automated syntax evaluation (18 inline scripts), dictionary parity check, markup audit, and export audit with zero failures.
 - **Detailed Physical Stock Breakdown Matrix:** Sheet 1 ("Сводка" / "Summary") Digital Verification Stamp block now explicitly breaks down inventory counts into 4 transparent metrics:
   - *Total Unique Catalog Items (SKU) / Уникальных позиций в каталоге (SKU):* e.g. `280 поз.`
   - *Permanent Tooling Stock / Штучный постоянный инструмент:* e.g. `240 шт. (уник. активов)`
