@@ -2,15 +2,20 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v84` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v85` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v84)
+## Recent Accomplishments (v49 – v85)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Complete Elimination of English Version Cyrillic Leaks, 100% i18n Parity & v84 Release
+### 0. Risk & Incidents Diagram Filtering Fix, i18n Dictionary Completion & v85 Release
+- **Risk & Incidents Radar Spoke Filter Resolution:** Fixed an issue where clicking on any spoke or node of the "Risk Index & Incidents" chart (`chartCulture`) displayed the filter banner ("Filtered by Location: ...") but rendered the entire list of active tools in the Tools Store. Added dedicated `f.type === 'location'` filtering in `applyFilters(list)` resolving tool addresses, workstation, and post hierarchies (`Ops.workstationAndPostOf`, `Ops.workstationOf`, and `t.location`).
+- **Filter Indicator Label Mapping:** Added `'location': 'Location'` mapping to `TYPE_LABEL` in `setFilter(type, value)` and added `'Location'` / `'Локация'` translation keys to both `ENG` and `RU` dictionaries.
+- **Elimination of Remaining EN Placeholder Keys:** Replaced all 27 uppercase placeholder dictionary values in `translations.ENG` (`FILTERED_BY`, `IMPACT_LINE`, `INTEGRITY_FOUND`, `INTEGRITY_OK`, `NO_ROLLBACK`, `POST_EXISTS`, `REMOVE_POST_CONFIRM`, `REMOVE_PROGRAM_CONFIRM`, `REMOVE_ZONE_CONFIRM`, `ROLLBACK_CONFIRM`, `ROLLBACK_DONE`, `ROTATION_HINT`, `RUN_INTEGRITY_NOW`, `STRUCTURE_HINT`, `WP_OVERVIEW`, `ZONE_EXISTS`, etc.) with authentic English localized strings.
+
+### 1. Complete Elimination of English Version Cyrillic Leaks, 100% i18n Parity & v84 Release
 - **Zero Cyrillic Leaks on English Mode:** Eliminated all hardcoded Russian text, double slash strings (`Полка / Shelf`, `Стеллаж (Rack)`, `Развернуть все / Expand All`, `Permanent Tooling / Постоянный инструмент`), and untranslated dropdown values across HTML markup, modals, dynamic grid renderers, and Excel export.
 - **Pure English Excel Export (All 5 Sheets):** Sheet 1 ("Summary"), Sheet 2 ("Inventory"), Sheet 3 ("Personnel"), Sheet 4 ("Archive"), and Sheet 5 ("Audit Log") generate 100% pure English text when `ENG` language is active with localized table headers, status badges, and digital integrity seal.
 - **100% Dictionary Key Parity:** `translations.ENG` and `translations.RU` verified at 449 keys each (0 missing keys, 0 placeholder leaks).

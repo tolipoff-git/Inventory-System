@@ -2431,7 +2431,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v84',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v85',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-17',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -2797,6 +2797,7 @@ const translations = {
         'SEARCH_PH': '🔍 Search: ID, name, category, location, employee…',
         'Category Hub View': 'Category Hub View',
         'All Tools Detailed Grid': 'All Tools Detailed Grid',
+        'Location': 'Location',
         'Location:': 'Location:',
         'Spec:': 'Spec:',
         'Assigned To:': 'Assigned To:',
@@ -3020,7 +3021,7 @@ const translations = {
         'Asset Lifecycle & Audit Timeline': 'Asset Lifecycle & Audit Timeline',
         'Assign Tool': 'Assign Tool',
         'Authentication Required': 'Authentication Required',
-        'BARCODE_HINT': 'BARCODE_HINT',
+        'BARCODE_HINT': 'Code from an existing physical label (5S00xxx). Scanning it opens this tool. Leave empty if the label shows the ID.',
         'Batch Rotation Operations': 'Batch Rotation Operations',
         'Brady CSV (all tools)': 'Brady CSV (all tools)',
         'Calibration': 'Calibration',
@@ -3050,13 +3051,13 @@ const translations = {
         'Export (.csv)': 'Export (.csv)',
         'Export Backup (.json)': 'Export Backup (.json)',
         'Export Full Inventory (.xlsx)': 'Export Full Inventory (.xlsx)',
-        'FILTERED_BY': 'FILTERED_BY',
+        'FILTERED_BY': 'Filter: {type} — {value}',
         'Final Measured Wear %': 'Final Measured Wear %',
         'Fix': 'Fix',
         'Generate 5S Report': 'Generate 5S Report',
-        'IMPACT_LINE': 'IMPACT_LINE',
-        'INTEGRITY_FOUND': 'INTEGRITY_FOUND',
-        'INTEGRITY_OK': 'INTEGRITY_OK',
+        'IMPACT_LINE': 'Impact: personnel — {emp}, tools — {tools}',
+        'INTEGRITY_FOUND': 'Dangling references found: {n}',
+        'INTEGRITY_OK': 'No dangling references found — integrity intact.',
         'Initial Location': 'Initial Location',
         'Initials & Transaction History': 'Initials & Transaction History',
         'Inspector Initials': 'Inspector Initials',
@@ -3071,7 +3072,7 @@ const translations = {
         'Min QTY (stock alert)': 'Min QTY (stock alert)',
         'Move to program…': 'Move to program…',
         'Move to zone…': 'Move to zone…',
-        'NO_ROLLBACK': 'NO_ROLLBACK',
+        'NO_ROLLBACK': 'No snapshot available for rollback.',
         'Name': 'Name',
         'New Name': 'New Name',
         'New post name': 'New post name',
@@ -3080,7 +3081,7 @@ const translations = {
         'No zone': 'No zone',
         'No zone (unassigned)': 'No zone (unassigned)',
         'Overdue / Late': 'Overdue / Late',
-        'POST_EXISTS': 'POST_EXISTS',
+        'POST_EXISTS': 'A post with this name already exists in this zone.',
         'Password': 'Password',
         'Percent:': 'Percent:',
         'Personnel': 'Personnel',
@@ -3097,13 +3098,13 @@ const translations = {
         'Purchase Order Preview': 'Purchase Order Preview',
         'Quantity to Order:': 'Quantity to Order:',
         'Quick Scan Barcode': 'Quick Scan Barcode',
-        'REMOVE_POST_CONFIRM': 'REMOVE_POST_CONFIRM',
-        'REMOVE_PROGRAM_CONFIRM': 'REMOVE_PROGRAM_CONFIRM',
-        'REMOVE_ZONE_CONFIRM': 'REMOVE_ZONE_CONFIRM',
-        'ROLLBACK_CONFIRM': 'ROLLBACK_CONFIRM',
-        'ROLLBACK_DONE': 'ROLLBACK_DONE',
-        'ROTATION_HINT': 'ROTATION_HINT',
-        'RUN_INTEGRITY_NOW': 'RUN_INTEGRITY_NOW',
+        'REMOVE_POST_CONFIRM': 'Delete post "{name}"? Assigned personnel and tools will become dangling — integrity check will detect them.',
+        'REMOVE_PROGRAM_CONFIRM': 'Delete program "{name}"? Its stations ({n} items) will remain and move to "No Program" group.',
+        'REMOVE_ZONE_CONFIRM': 'Delete zone "{name}"? Posts: {posts}, assigned personnel: {emp}, tools: {tools}. Posts will be cascade deleted.',
+        'ROLLBACK_CONFIRM': 'Roll back change "{reason}" from {ts}? Registries, personnel, and tools will revert to snapshot.',
+        'ROLLBACK_DONE': 'Rollback completed successfully.',
+        'ROTATION_HINT': 'Batch rotation applies operations across all currently filtered positions.',
+        'RUN_INTEGRITY_NOW': 'Dangling assignments remain. Run integrity check now?',
         'Rack': 'Rack',
         'Read SOP & Maintenance Manual': 'Read SOP & Maintenance Manual',
         'Reason for Decommissioning': 'Reason for Decommissioning',
@@ -3118,7 +3119,7 @@ const translations = {
         'Return Tool': 'Return Tool',
         'Role': 'Role',
         'Rollback Last Cascade': 'Rollback Last Cascade',
-        'STRUCTURE_HINT': 'STRUCTURE_HINT',
+        'STRUCTURE_HINT': 'Stations and posts are added directly inside their program/area. Areas without program (Tool Gage, Machine Shop, Store) are in the lower group.',
         'Save Tool': 'Save Tool',
         'Score:': 'Score:',
         'Select Label Stock': 'Select Label Stock',
@@ -3157,25 +3158,25 @@ const translations = {
         'User': 'User',
         'Username': 'Username',
         'Users & RBAC': 'Users & RBAC',
-        'WP_OVERVIEW': 'WP_OVERVIEW',
+        'WP_OVERVIEW': 'Overview: posts are managed within their zones on the "Programs & Stations" tab.',
         'Work Mode': 'Work Mode',
         'Workpost:': 'Workpost:',
         'Workposts': 'Workposts',
         'Workstation': 'Workstation',
         'Workstation:': 'Workstation:',
-        'ZONE_EXISTS': 'ZONE_EXISTS',
+        'ZONE_EXISTS': 'A zone with this name already exists.',
         'Zone': 'Zone',
         '— No program —': '— No program —',
-        'PICK_TARGET_ZONE': 'PICK_TARGET_ZONE',
-        'TARGET_HAS_POST': 'TARGET_HAS_POST',
-        'NAME_EMPTY_OR_SAME': 'NAME_EMPTY_OR_SAME',
-        'PICK_TARGET_PROGRAM': 'PICK_TARGET_PROGRAM',
-        'PROGRAM_EXISTS': 'PROGRAM_EXISTS',
-        'RENAME_ZONE': 'RENAME_ZONE',
-        'RENAME_POST': 'RENAME_POST',
-        'MOVE_POST': 'MOVE_POST',
-        'RENAME_PROGRAM': 'RENAME_PROGRAM',
-        'MOVE_STATION': 'MOVE_STATION',
+        'PICK_TARGET_ZONE': 'Select target zone.',
+        'TARGET_HAS_POST': 'Target zone already contains a post with this name.',
+        'NAME_EMPTY_OR_SAME': 'Name is empty or identical to current.',
+        'PICK_TARGET_PROGRAM': 'Select target program.',
+        'PROGRAM_EXISTS': 'A program with this name already exists.',
+        'RENAME_ZONE': 'Rename Zone',
+        'RENAME_POST': 'Rename Post',
+        'MOVE_POST': 'Move Post to Another Zone',
+        'RENAME_PROGRAM': 'Rename Program',
+        'MOVE_STATION': 'Move Station to Program',
         'Single Location': 'Single Location',
         'Batch Generation (Whole Rack/Shelf)': 'Batch Generation (Whole Rack/Shelf)',
         'Structure Type:': 'Structure Type:',
@@ -3264,6 +3265,7 @@ const translations = {
         'SEARCH_PH': '🔍 Поиск: ID, название, категория, локация, сотрудник…',
         'Category Hub View': 'Категорийный хаб',
         'All Tools Detailed Grid': 'Все инструменты (сетка)',
+        'Location': 'Локация',
         'Location:': 'Локация:',
         'Spec:': 'Спецификация:',
         'Assigned To:': 'Назначено на:',
@@ -5504,7 +5506,7 @@ const inMaintQueue = t => t.status === 'Maintenance' || t.status === 'Overdue' |
 
 function setFilter(type, value) {
     UI.currentFilter = { type, value };
-    const TYPE_LABEL = { status: 'Status', workstation: 'Workstation', permanent: 'Type', consumable: 'Type', maintq: 'Queue', location_qr: 'Location' };
+    const TYPE_LABEL = { status: 'Status', workstation: 'Workstation', location: 'Location', permanent: 'Type', consumable: 'Type', maintq: 'Queue', location_qr: 'Location' };
     const VALUE_LABEL = { permanent: 'Permanent', consumable: 'Consumables', maintq: 'Maintenance queue' };
     
     let labelVal = value || VALUE_LABEL[type] || '';
@@ -5548,6 +5550,24 @@ function applyFilters(list) {
     const f = UI.currentFilter;
     if (f.type === 'status') out = out.filter(t => t.status === f.value);
     else if (f.type === 'workstation') out = out.filter(t => Ops.workstationOf(t) === f.value);
+    else if (f.type === 'location') {
+        out = out.filter(t => {
+            const loc = Ops.workstationAndPostOf(t);
+            const hasPost = loc.post && loc.post !== 'Unknown' && loc.post !== loc.ws && loc.post !== '';
+            const toolPillar = hasPost ? `${loc.ws} | ${loc.post}` : loc.ws;
+            if (toolPillar === f.value) return true;
+            if (f.value.includes(' | ')) {
+                const parts = f.value.split(' | ');
+                const targetWs = parts[0];
+                const targetPost = parts.slice(1).join(' | ');
+                if (loc.ws === targetWs && (loc.post === targetPost || (t.location && t.location.includes(targetPost)))) return true;
+            } else {
+                if (loc.ws === f.value || Ops.workstationOf(t) === f.value) return true;
+                if (t.location && (t.location === f.value || t.location.startsWith(f.value + ' - ') || t.location.startsWith(f.value + ' / '))) return true;
+            }
+            return false;
+        });
+    }
     else if (f.type === 'permanent') out = out.filter(isPermanentTool);
     else if (f.type === 'consumable') out = out.filter(isConsumableTool);
     else if (f.type === 'maintq') out = out.filter(inMaintQueue);
