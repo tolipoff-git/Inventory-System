@@ -7054,18 +7054,25 @@ const Ops = {
         return Store.workstations.find(w => tool.location && tool.location.includes(w)) || 'Unknown';
     },
 
-    /** Рабочая станция и пост инструмента */
     workstationAndPostOf(tool) {
         if (tool.assigneeId) {
             const emp = Store.getEmp(tool.assigneeId);
             if (emp) return { ws: emp.workstation || emp.defaultWs || 'Unassigned', post: emp.post || emp.defaultPost || '' };
         }
-        const L = Store._locParts(tool.location);
-        if (L && L.parts.length >= 2) {
-            return { ws: L.parts[0] || 'Unassigned', post: L.parts.slice(1).join(L.sep) || '' };
-        } else if (L && L.parts.length === 1) {
-            return { ws: L.parts[0] || 'Unassigned', post: '' };
+        // Try tool.address.zone — this is the workstation/zone name
+        const addrZone = tool.address && tool.address.zone ? tool.address.zone : null;
+        // Find which registered workstation this tool belongs to
+        const matchedWs = addrZone && Store.workstations.includes(addrZone)
+            ? addrZone
+            : Store.workstations.find(w => tool.location && tool.location.startsWith(w));
+        if (matchedWs) {
+            // Find matching workpost for this workstation
+            const matchedPost = Store.workposts.find(p => p.ws === matchedWs);
+            return { ws: matchedWs, post: matchedPost ? matchedPost.name : '' };
         }
+        // Last resort: if location starts with a known workstation name
+        const wsFromLoc = Store.workstations.find(w => tool.location && tool.location.includes(w));
+        if (wsFromLoc) return { ws: wsFromLoc, post: '' };
         return { ws: tool.location || 'Unassigned', post: '' };
     },
 
