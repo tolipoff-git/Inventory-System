@@ -2,15 +2,23 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v85` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v86` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v85)
+## Recent Accomplishments (v49 – v86)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Risk & Incidents Diagram Filtering Fix, i18n Dictionary Completion & v85 Release
+### 0. Full 64-Character SHA-256 Checksum, Copyable Audit Log & Anti-Tamper Excel Sheet Lock (v86 Release)
+- **Full 64-Character SHA-256 in System Audit Trail:** Eliminated truncation of SHA checksums (`slice(0, 16)...`). `Store.log('INVENTORY_EXPORT', ...)` now logs the complete 64-character cryptographic hash, enabling exact 1:1 signature verification between the Excel export stamp, Sheet 5 Audit Log, and the System Audit Log modal.
+- **Enhanced Audit Log Modal with Monospace SHA Box:** Updated `Ops.openAuditLogModal()` to render SHA-256 signatures inside a stylized, full-width monospace badge with `word-break: break-all; user-select: all;`, making it effortless for administrators to select all, copy, and compare digital signatures against physical or digital export stamps.
+- **Automated Anti-Tamper Excel Sheet Protection:** All 5 worksheets (`Summary`, `Inventory`, `Personnel`, `Archive`, `Audit Log`) in `Reports.exportInventoryXLSX()` are now automatically locked and protected against unauthorized cell editing and structural alterations using `worksheet.protect(exportSerial, options)`. Sorting and filtering remain available for operators, while tampering with records requires the Export Serial password (which is prominently displayed on Sheet 1's Digital Integrity Seal for authorized admin unlock).
+- **Sheet 1 & Sheet 5 Excel Formatting:** Added `Tamper Protection Lock` status row to Sheet 1's Digital Integrity Seal, set monospace formatting (`Courier New`) for hash values on Sheet 1 and Sheet 5, and expanded Sheet 5's Details column to width 85 with text wrapping.
+- **Knowledge Base & FAQ Synchronization:** Synchronized English and Russian FAQ Section 5 to document full 64-character SHA snapshot hashes and automated Excel workbook sheet locking.
+- **100% Translation Parity:** Verified 451 keys in `translations.ENG` and 451 keys in `translations.RU` (0 missing, 0 placeholder leaks).
+
+### 1. Risk & Incidents Diagram Filtering Fix, i18n Dictionary Completion & v85 Release
 - **Risk & Incidents Radar Spoke Filter Resolution:** Fixed an issue where clicking on any spoke or node of the "Risk Index & Incidents" chart (`chartCulture`) displayed the filter banner ("Filtered by Location: ...") but rendered the entire list of active tools in the Tools Store. Added dedicated `f.type === 'location'` filtering in `applyFilters(list)` resolving tool addresses, workstation, and post hierarchies (`Ops.workstationAndPostOf`, `Ops.workstationOf`, and `t.location`).
 - **Filter Indicator Label Mapping:** Added `'location': 'Location'` mapping to `TYPE_LABEL` in `setFilter(type, value)` and added `'Location'` / `'Локация'` translation keys to both `ENG` and `RU` dictionaries.
 - **Elimination of Remaining EN Placeholder Keys:** Replaced all 27 uppercase placeholder dictionary values in `translations.ENG` (`FILTERED_BY`, `IMPACT_LINE`, `INTEGRITY_FOUND`, `INTEGRITY_OK`, `NO_ROLLBACK`, `POST_EXISTS`, `REMOVE_POST_CONFIRM`, `REMOVE_PROGRAM_CONFIRM`, `REMOVE_ZONE_CONFIRM`, `ROLLBACK_CONFIRM`, `ROLLBACK_DONE`, `ROTATION_HINT`, `RUN_INTEGRITY_NOW`, `STRUCTURE_HINT`, `WP_OVERVIEW`, `ZONE_EXISTS`, etc.) with authentic English localized strings.

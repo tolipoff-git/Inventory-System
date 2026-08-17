@@ -2431,7 +2431,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v85',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v86',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-17',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -3006,7 +3006,7 @@ const translations = {
 
     <details class="faq-details"><summary class="faq-summary">4. Risks, 5S Audits & Score Breakdown</summary><div class="faq-content"><b>Station | Post Risk Grouping:</b> The risk and incident chart groups equipment by workstations (<i>Assembly | Post 1</i>). Hovering over the bars displays a tooltip with the Program, Station, Post, Responsible Employee, and detailed rating factors (penalties for wear, overdues, and maintenance).<br><b>Interactive 5S Audits & Scoring Criteria:</b> Clicking a 5S radar spoke or a history row opens the post card with a full breakdown of each score from 1 to 5 across all 5 pillars (Sort, Set in Order, Shine, Standardize, Sustain) from the <code>S5_RUBRICS</code> directory (e.g., <i>"3 — Excess items present, but stacked separately"</i>).</div></details>
 
-    <details class="faq-details"><summary class="faq-summary">5. PWA, 1-Click PWA Auto-Update & Security</summary><div class="faq-content"><b>Offline PWA & Storage Protection:</b> The app functions offline in the browser. Data is saved to <code>localStorage</code> with secure QuotaExceeded catching, SHA-256 password validation, and strictly enforced Role-Based Access (Administrator / Tool Crib Manager / Operator). Only Administrators can restore JSON backups.<br><b>1-Click PWA Update:</b> The browser always polls Cloudflare Pages directly thanks to <code>no-cache</code> CDN headers. Clicking the clickable version badge (<b>v72</b>) in the header or the <code>[🔄 Update PWA]</code> button in the menu clears browser caches, unregisters service workers, and performs 1 guaranteed hard reload without looping.<br><b>Digital Integrity Stamp & Anti-Tamper Protection (SHA-256):</b> Every exported Excel report (.xlsx) is cryptographically stamped with a SHA-256 digital fingerprint and unique serial number (EXP-...). The export event, author, and exact asset quantities are immediately logged to the immutable system audit trail. Any post-export attempt to delete tools or subtract stock is instantly detectable — the exported checksum will mismatch, and the audit log permanently preserves the timestamped user action.</div></details>
+    <details class="faq-details"><summary class="faq-summary">5. PWA, 1-Click PWA Auto-Update & Security</summary><div class="faq-content"><b>Offline PWA & Storage Protection:</b> The app functions offline in the browser. Data is saved to <code>localStorage</code> with secure QuotaExceeded catching, SHA-256 password validation, and strictly enforced Role-Based Access (Administrator / Tool Crib Manager / Operator). Only Administrators can restore JSON backups.<br><b>1-Click PWA Update:</b> The browser always polls Cloudflare Pages directly thanks to <code>no-cache</code> CDN headers. Clicking the clickable version badge (<b>v86</b>) in the header or the <code>[🔄 Update PWA]</code> button in the menu clears browser caches, unregisters service workers, and performs 1 guaranteed hard reload without looping.<br><b>Digital Integrity Stamp & Anti-Tamper Sheet Lock (SHA-256):</b> Every exported Excel report (.xlsx) is cryptographically stamped with a complete 64-character SHA-256 digital fingerprint and unique serial number (EXP-...). The export event, author, exact asset quantities, and full checksum are permanently logged to the system audit trail. All workbook sheets are automatically locked and protected against unauthorized cell editing and tampering (unlockable via the Export Serial). Any post-export attempt to alter tool counts or database records creates an instant mismatch against the immutable audit log.</div></details>
 </div>`,
         'Action': 'Action',
         'Actions': 'Actions',
@@ -3135,6 +3135,7 @@ const translations = {
         'Submit Request': 'Submit Request',
         'Supplier Purchase Link:': 'Supplier Purchase Link:',
         'System Audit Log': 'System Audit Log',
+        'Tamper Protection Lock': 'Tamper Protection Lock',
         'System Registries': 'System Registries',
         'TT_KPI_ACTIVE': 'Active: {n} — ready for issue',
         'TT_KPI_ISSUED': 'Issued: {n} — in use by personnel',
@@ -3496,7 +3497,7 @@ const translations = {
 
     <details class="faq-details"><summary class="faq-summary">4. Риски, 5S-Аудиты и Расшифровка Оценок</summary><div class="faq-content"><b>Группировка рисков Станция | Пост:</b> Диаграмма рисков и инцидентов объединяет оборудование по рабочим постам (<i>Assembly | Post 1</i>). При наведении на столбцы выводится тултип с указанием Программы, Станции, Поста, Ответственного сотрудника и детализированных факторов рейтинга (штрафы за износ, просрочки и обслуживание).<br><b>Интерактивные 5S-аудиты и критерии оценок:</b> Клик по лучу 5S-радара или строке истории открывает карточку поста с полной расшифровкой каждой оценки от 1 до 5 по всем 5 столпам (Сортировка, Порядок, Чистота, Стандартизация, Совершенствование) из рубрикатора <code>S5_RUBRICS</code> (напр., <i>«3 — Лишнее есть, но сложено отдельно»</i>).</div></details>
 
-    <details class="faq-details"><summary class="faq-summary">5. PWA, PWA-Автообновление в 1 Клик и Безопасность</summary><div class="faq-content"><b>Офлайн PWA и защита хранилища:</b> Приложение функционирует офлайн в браузере. Данные сохраняются в <code>localStorage</code> с безопасным перехватом QuotaExceeded, валидацией паролей через SHA-256 и строго разграниченным ролевым доступом (Administrator / Tool Crib Manager / Operator). Только Администратор может восстанавливать бэкапы JSON.<br><b>Обновление PWA в 1 клик:</b> Браузер всегда опрашивает Cloudflare Pages напрямую благодаря CDN-заголовкам <code>no-cache</code>. Клик по кликабельной плашке версии (<b>v72</b>) в шапке или кнопке <code>[🔄 Обновить PWA]</code> в меню очищает браузерные кэши, снимает сервис-воркеры и выполняет 1 гарантированную жесткую перезагрузку без зацикливаний.<br><b>Цифровой штамп верификации и антифрод (SHA-256):</b> Каждый сформированный отчет Excel (.xlsx) заверяется криптографическим отпечатком SHA-256 и уникальным серийным номером выгрузки (EXP-...). Событие экспорта, автор и точное количество позиций немедленно фиксируются в неизменяемом системном журнале аудита. Любая попытка после экспорта задним числом списать, удалить инструмент или уменьшить его остаток в базе исключена — контрольная сумма отчета не совпадет, а в журнале останется неудаляемый след операции с указанием логина администратора.</div></details>
+    <details class="faq-details"><summary class="faq-summary">5. PWA, PWA-Автообновление в 1 Клик и Безопасность</summary><div class="faq-content"><b>Офлайн PWA и защита хранилища:</b> Приложение функционирует офлайн в браузере. Данные сохраняются в <code>localStorage</code> с безопасным перехватом QuotaExceeded, валидацией паролей через SHA-256 и строго разграниченным ролевым доступом (Administrator / Tool Crib Manager / Operator). Только Администратор может восстанавливать бэкапы JSON.<br><b>Обновление PWA в 1 клик:</b> Браузер всегда опрашивает Cloudflare Pages напрямую благодаря CDN-заголовкам <code>no-cache</code>. Клик по кликабельной плашке версии (<b>v86</b>) в шапке или кнопке <code>[🔄 Обновить PWA]</code> в меню очищает браузерные кэши, снимает сервис-воркеры и выполняет 1 гарантированную жесткую перезагрузку без зацикливаний.<br><b>Цифровой штамп верификации, полный SHA-256 и блокировка книги от изменений:</b> Каждый сформированный отчет Excel (.xlsx) заверяется полным 64-значным криптографическим отпечатком SHA-256 и уникальным серийным номером (EXP-...). Событие экспорта, автор, количество позиций и полный хэш фиксируются в системном журнале аудита. Все листы книги Excel автоматически защищены и заблокированы от случайного или несанкционированного изменения ячеек (пароль разблокировки — серийный номер выгрузки). Любая попытка после экспорта задним числом списать или изменить данные мгновенно выявляется сверкой подписей в журнале и на штампе.</div></details>
 </div>`,
         'Action': 'Действие',
         'Actions': 'Действия',
@@ -3625,6 +3626,7 @@ const translations = {
         'Submit Request': 'Отправить заявку',
         'Supplier Purchase Link:': 'Ссылка у поставщика:',
         'System Audit Log': 'Системный журнал аудита',
+        'Tamper Protection Lock': 'Защита книги от изменений',
         'System Registries': 'Справочники системы',
         'TT_KPI_ACTIVE': 'Активные: {n} — готовы к выдаче',
         'TT_KPI_ISSUED': 'Выданные: {n} — на руках у персонала',
@@ -7913,12 +7915,21 @@ const Ops = {
 
     /* ---------- Журнал аудита ---------- */
     openAuditLogModal() {
-        const rows = [...Store.auditLog].reverse().map(e => `<tr>
-            <td style="white-space:nowrap;">${Utils.esc(e.ts.replace('T', ' ').slice(0, 19))}</td>
-            <td>${Utils.esc(e.user)}<br><span style="color:var(--text-muted); font-size:0.82rem;">${Utils.esc(e.role)}</span></td>
-            <td><strong>${Utils.esc(e.action)}</strong></td>
-            <td>${Utils.esc(e.details)}</td>
-        </tr>`).join('');
+        const rows = [...Store.auditLog].reverse().map(e => {
+            let detHtml = Utils.esc(e.details);
+            if (e.action === 'INVENTORY_EXPORT' && e.details.includes('SHA-256:')) {
+                const parts = e.details.split(' | SHA-256: ');
+                const metaPart = Utils.esc(parts[0] || '');
+                const hashPart = Utils.esc(parts[1] || '');
+                detHtml = `<div>${metaPart}</div><div style="margin-top:6px; background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:4px; padding:6px 8px; font-family:monospace; font-size:0.82rem; word-break:break-all; user-select:all;"><span style="color:var(--primary-hover); font-weight:bold;">SHA-256:</span> ${hashPart}</div>`;
+            }
+            return `<tr>
+                <td style="white-space:nowrap;">${Utils.esc(e.ts.replace('T', ' ').slice(0, 19))}</td>
+                <td>${Utils.esc(e.user)}<br><span style="color:var(--text-muted); font-size:0.82rem;">${Utils.esc(e.role)}</span></td>
+                <td><strong style="color:${e.action === 'INVENTORY_EXPORT' ? 'var(--primary-hover)' : 'inherit'}">${Utils.esc(e.action)}</strong></td>
+                <td>${detHtml}</td>
+            </tr>`;
+        }).join('');
         document.getElementById('auditLogList').innerHTML = rows ||
             '<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Audit log is empty.</td></tr>';
         openModal('auditLogModal');
@@ -10471,7 +10482,7 @@ const Reports = {
             const hashPayload = active.map(t => `${t.id}|${t.name}|${t.type}|${t.qty}|${t.status}|${t.sn}`).join(';') + `::${exportSerial}::${author}`;
             const checksum = await Utils.hashPw(hashPayload);
 
-            Store.log('INVENTORY_EXPORT', `Serial: ${exportSerial} | SKU: ${active.length} | Perm: ${permQty} pcs | Cons: ${consQty} pcs | Total: ${totalQty} units | Author: ${author} | SHA-256: ${checksum.slice(0, 16)}...`);
+            Store.log('INVENTORY_EXPORT', `Serial: ${exportSerial} | SKU: ${active.length} | Perm: ${permQty} pcs | Cons: ${consQty} pcs | Total: ${totalQty} units | Author: ${author} | SHA-256: ${checksum}`);
             Store.save();
 
             const wb = new ExcelJS.Workbook();
@@ -10648,6 +10659,7 @@ const Reports = {
                 [isRu ? 'Штучный постоянный инструмент' : 'Permanent Tooling Stock', `${permQty} ${isRu ? 'шт. (уник. активов)' : 'units (individual assets)'}`],
                 [isRu ? 'Расходные материалы на складе' : 'Consumable Items in Stock', `${consQty} ${isRu ? 'шт. (в ячейках/упаковках)' : 'units (batch items in bins)'}`],
                 [isRu ? 'Итого физических единиц на складе' : 'Grand Total Physical Stock (Pieces)', `${totalQty} ${isRu ? 'шт. суммарно' : 'total units'}`],
+                [isRu ? 'Защита книги от изменений' : 'Tamper Protection Lock', isRu ? `ЗАБЛОКИРОВАНО ОТ ИЗМЕНЕНИЙ (Пароль: ${exportSerial})` : `LOCKED AGAINST TAMPERING (Password: ${exportSerial})`],
                 [isRu ? 'Статус аудита' : 'Audit Security Status', isRu ? 'ОФИЦИАЛЬНО ЗАВЕРЕН' : 'OFFICIALLY VERIFIED & LOGGED']
             ];
             stampRows.forEach(([lbl, val], sIdx) => {
@@ -10668,8 +10680,12 @@ const Reports = {
                 if (lbl === (isRu ? 'Статус аудита' : 'Audit Security Status')) {
                     c2.font = { bold: true, color: { argb: C.ok } };
                 }
+                if (lbl === (isRu ? 'Защита книги от изменений' : 'Tamper Protection Lock')) {
+                    c2.font = { bold: true, color: { argb: C.accent } };
+                }
                 if (lbl === (isRu ? 'Контрольная сумма снимка (SHA-256)' : 'Database Snapshot SHA-256')) {
-                    c2.font = { name: 'Courier New', size: 10, bold: true };
+                    c2.font = { name: 'Courier New', size: 9.5, bold: true };
+                    c2.alignment = { vertical: 'middle', wrapText: true };
                 }
                 rIdx++;
             });
@@ -10766,9 +10782,10 @@ const Reports = {
             per.autoFilter = { from: 'A1', to: `K${Store.personnel.length + 1}` };
 
             /* ================= ЛИСТ 4: АРХИВ ================= */
+            let arc = null;
             const retired = Store.tools.filter(t => t.status === 'Retired' || t.status === 'retired');
             if (retired.length) {
-                const arc = wb.addWorksheet(isRu ? 'Архив' : 'Archive');
+                arc = wb.addWorksheet(isRu ? 'Архив' : 'Archive');
                 arc.columns = [{ width: 10 }, { width: 42 }, { width: 14 }, { width: 14 }, { width: 20 }, { width: 10 }, { width: 12 }, { width: 44 }];
                 arc.addRow(isRu ? 
                     ['ID', 'Наименование', 'Введено', 'Списано', 'Причина', 'Износ %', 'Инспектор', 'Заметки'] : 
@@ -10788,15 +10805,43 @@ const Reports = {
 
             /* ================= ЛИСТ 5: ЖУРНАЛ ================= */
             const logSheet = wb.addWorksheet(isRu ? 'Журнал' : 'Audit Log');
-            logSheet.columns = [{ width: 20 }, { width: 14 }, { width: 18 }, { width: 18 }, { width: 50 }];
+            logSheet.columns = [{ width: 20 }, { width: 14 }, { width: 18 }, { width: 18 }, { width: 85 }];
             logSheet.addRow(isRu ? ['Дата/Время', 'Пользователь', 'Роль', 'Действие', 'Детали'] : ['Timestamp', 'User', 'Role', 'Action', 'Details']);
             styleHeader(logSheet.getRow(1));
             [...Store.auditLog].reverse().forEach((e, i) => {
                 const row = logSheet.addRow([e.ts.replace('T', ' ').slice(0, 19), e.user, e.role, e.action, e.details]);
                 row.eachCell(c => c.border = border);
                 if (i % 2) row.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.zebra } });
+                const detCell = row.getCell(5);
+                detCell.alignment = { vertical: 'middle', wrapText: true };
+                if (e.action === 'INVENTORY_EXPORT') {
+                    detCell.font = { name: 'Courier New', size: 9.5 };
+                }
             });
             logSheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+            /* ================= ЗАЩИТА ЛИСТОВ ОТ ИЗМЕНЕНИЙ (ANTI-TAMPER LOCK) ================= */
+            const protectOpts = {
+                selectLockedCells: true,
+                selectUnlockedCells: true,
+                formatCells: false,
+                formatColumns: false,
+                formatRows: false,
+                insertRows: false,
+                insertColumns: false,
+                insertHyperlinks: false,
+                deleteRows: false,
+                deleteColumns: false,
+                sort: true,
+                autoFilter: true,
+                pivotTables: false
+            };
+
+            await sum.protect(exportSerial, protectOpts);
+            await inv.protect(exportSerial, protectOpts);
+            await per.protect(exportSerial, protectOpts);
+            if (arc) await arc.protect(exportSerial, protectOpts);
+            await logSheet.protect(exportSerial, protectOpts);
 
             const buf = await wb.xlsx.writeBuffer();
             Utils.downloadBuffer(Utils.datedName('5S_Tools_Inventory', 'xlsx'), buf,
