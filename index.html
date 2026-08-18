@@ -1564,6 +1564,10 @@ select.work-only.form-control { max-width: 190px; }
                     </select>
                 </div>
             </div>
+            <div class="form-group" style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" id="addToolOrganizer" style="width:auto; margin:0;">
+                <label for="addToolOrganizer" style="margin:0; cursor:pointer;" data-i18n="ORGANIZER_FLAG">Organizer (holds many small items in one bin)</label>
+            </div>
             <div class="form-row">
                 <div class="form-group">
                     <label data-i18n="Calibration Interval (Days)">Calibration Interval (Days)</label>
@@ -1683,6 +1687,10 @@ select.work-only.form-control { max-width: 190px; }
                         <option>Bin 9</option><option>Bin 10</option>
                     </select>
                 </div>
+            </div>
+            <div class="form-group" style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" id="editToolOrganizer" style="width:auto; margin:0;">
+                <label for="editToolOrganizer" style="margin:0; cursor:pointer;" data-i18n="ORGANIZER_FLAG">Organizer (holds many small items in one bin)</label>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -2485,7 +2493,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v89',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v90',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-18',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -2583,7 +2591,7 @@ const Utils = {
         return parts[0] === 'SN' || CONFIG.TOOL_CLASSES.some(c => c.p === parts[0]);
     },
 
-    compressImageBase64(base64Str, maxSide = 800, quality = 0.62) {
+    compressImageBase64(base64Str, maxSide = 640, quality = 0.5) {
         return new Promise((resolve, reject) => {
             const img = new Image();
             img.onload = () => {
@@ -3011,6 +3019,9 @@ const translations = {
         'XLSX_FAILED_CSV': 'XLSX export failed: {msg}\nExporting CSV instead.',
         'EXPORT_GENERATING': 'Generating Excel report…',
         'BIN_OCCUPIED': 'occupied',
+        'BIN_ORGANIZER': 'organizer',
+        'ORGANIZER_FLAG': 'Organizer (holds many small items in one bin)',
+        'PHOTO_QUOTA_WARN': '⚠️ Storage is nearly full (photos). Export a backup (.json) and delete old photos before adding new ones — otherwise changes cannot be saved.',
         'LOGOUT_CONFIRM': 'Logout and switch to Operator role?',
         'ORDER_CANCEL_CONFIRM': 'Cancel this order?',
         'PHOTO_REMOVE_CONFIRM': 'Remove this photo?',
@@ -3093,7 +3104,7 @@ const translations = {
 
     <details class="faq-details"><summary class="faq-summary">4. Risks, 5S Audits & Score Breakdown</summary><div class="faq-content"><b>Station | Post Risk Grouping:</b> The risk and incident chart groups equipment by workstations (<i>Assembly | Post 1</i>). Hovering over the bars displays a tooltip with the Program, Station, Post, Responsible Employee, and detailed rating factors (penalties for wear, overdues, and maintenance).<br><b>Interactive 5S Audits & Scoring Criteria:</b> Clicking a 5S radar spoke or a history row opens the post card with a full breakdown of each score from 1 to 5 across all 5 pillars (Sort, Set in Order, Shine, Standardize, Sustain) from the <code>S5_RUBRICS</code> directory (e.g., <i>"3 — Excess items present, but stacked separately"</i>).</div></details>
 
-    <details class="faq-details"><summary class="faq-summary">5. PWA, 1-Click PWA Auto-Update & Security</summary><div class="faq-content"><b>Offline PWA & Storage Protection:</b> The app functions offline in the browser. Data is saved to <code>localStorage</code> with secure QuotaExceeded catching, SHA-256 password validation, and strictly enforced Role-Based Access (Administrator / Tool Crib Manager / Operator). Only Administrators can restore JSON backups.<br><b>1-Click PWA Update:</b> The browser always polls Cloudflare Pages directly thanks to <code>no-cache</code> CDN headers. Clicking the clickable version badge (<b>v89</b>) in the header or the <code>[🔄 Update PWA]</code> button in the menu clears browser caches, unregisters service workers, and performs 1 guaranteed hard reload without looping.<br><b>Digital Integrity Stamp & Anti-Tamper Sheet Lock (SHA-256):</b> Every exported Excel report (.xlsx) is cryptographically stamped with a complete 64-character SHA-256 digital fingerprint and unique serial number (EXP-...). The export event, author, exact asset quantities, and full checksum are permanently logged to the system audit trail. All workbook sheets are automatically locked and protected against unauthorized cell editing and tampering (unlock password: the first 16 characters of the export's SHA-256 checksum, copyable from the System Audit Log). Any post-export attempt to alter tool counts or database records creates an instant mismatch against the immutable audit log.</div></details>
+    <details class="faq-details"><summary class="faq-summary">5. PWA, 1-Click PWA Auto-Update & Security</summary><div class="faq-content"><b>Offline PWA & Storage Protection:</b> The app functions offline in the browser. Data is saved to <code>localStorage</code> with secure QuotaExceeded catching, SHA-256 password validation, and strictly enforced Role-Based Access (Administrator / Tool Crib Manager / Operator). Only Administrators can restore JSON backups.<br><b>1-Click PWA Update:</b> The browser always polls Cloudflare Pages directly thanks to <code>no-cache</code> CDN headers. Clicking the clickable version badge (<b>v90</b>) in the header or the <code>[🔄 Update PWA]</code> button in the menu clears browser caches, unregisters service workers, and performs 1 guaranteed hard reload without looping.<br><b>Digital Integrity Stamp & Anti-Tamper Sheet Lock (SHA-256):</b> Every exported Excel report (.xlsx) is cryptographically stamped with a complete 64-character SHA-256 digital fingerprint and unique serial number (EXP-...). The export event, author, exact asset quantities, and full checksum are permanently logged to the system audit trail. All workbook sheets are automatically locked and protected against unauthorized cell editing and tampering (unlock password: the first 16 characters of the export's SHA-256 checksum, copyable from the System Audit Log). Any post-export attempt to alter tool counts or database records creates an instant mismatch against the immutable audit log.</div></details>
 </div>`,
         'Action': 'Action',
         'Actions': 'Actions',
@@ -3492,6 +3503,9 @@ const translations = {
         'XLSX_FAILED_CSV': 'Ошибка XLSX-экспорта: {msg}\nЭкспортирую CSV.',
         'EXPORT_GENERATING': 'Формируется Excel-отчёт…',
         'BIN_OCCUPIED': 'занята',
+        'BIN_ORGANIZER': 'органайзер',
+        'ORGANIZER_FLAG': 'Органайзер (много мелких позиций в одной ячейке)',
+        'PHOTO_QUOTA_WARN': '⚠️ Хранилище почти заполнено (фото). Экспортируйте бэкап (.json) и удалите старые фото перед добавлением новых — иначе изменения не сохранятся.',
         'LOGOUT_CONFIRM': 'Выйти и переключиться на роль оператора?',
         'ORDER_CANCEL_CONFIRM': 'Отменить заказ?',
         'PHOTO_REMOVE_CONFIRM': 'Удалить фото?',
@@ -3597,7 +3611,7 @@ const translations = {
 
     <details class="faq-details"><summary class="faq-summary">4. Риски, 5S-Аудиты и Расшифровка Оценок</summary><div class="faq-content"><b>Группировка рисков Станция | Пост:</b> Диаграмма рисков и инцидентов объединяет оборудование по рабочим постам (<i>Assembly | Post 1</i>). При наведении на столбцы выводится тултип с указанием Программы, Станции, Поста, Ответственного сотрудника и детализированных факторов рейтинга (штрафы за износ, просрочки и обслуживание).<br><b>Интерактивные 5S-аудиты и критерии оценок:</b> Клик по лучу 5S-радара или строке истории открывает карточку поста с полной расшифровкой каждой оценки от 1 до 5 по всем 5 столпам (Сортировка, Порядок, Чистота, Стандартизация, Совершенствование) из рубрикатора <code>S5_RUBRICS</code> (напр., <i>«3 — Лишнее есть, но сложено отдельно»</i>).</div></details>
 
-    <details class="faq-details"><summary class="faq-summary">5. PWA, PWA-Автообновление в 1 Клик и Безопасность</summary><div class="faq-content"><b>Офлайн PWA и защита хранилища:</b> Приложение функционирует офлайн в браузере. Данные сохраняются в <code>localStorage</code> с безопасным перехватом QuotaExceeded, валидацией паролей через SHA-256 и строго разграниченным ролевым доступом (Administrator / Tool Crib Manager / Operator). Только Администратор может восстанавливать бэкапы JSON.<br><b>Обновление PWA в 1 клик:</b> Браузер всегда опрашивает Cloudflare Pages напрямую благодаря CDN-заголовкам <code>no-cache</code>. Клик по кликабельной плашке версии (<b>v89</b>) в шапке или кнопке <code>[🔄 Обновить PWA]</code> в меню очищает браузерные кэши, снимает сервис-воркеры и выполняет 1 гарантированную жесткую перезагрузку без зацикливаний.<br><b>Цифровой штамп верификации, полный SHA-256 и блокировка книги от изменений:</b> Каждый сформированный отчет Excel (.xlsx) заверяется полным 64-значным криптографическим отпечатком SHA-256 и уникальным серийным номером (EXP-...). Событие экспорта, автор, количество позиций и полный хэш фиксируются в системном журнале аудита. Все листы книги Excel автоматически защищены и заблокированы от случайного или несанкционированного изменения ячеек (пароль разблокировки — первые 16 символов SHA-256 хэша выгрузки, копируется из системного журнала аудита). Любая попытка после экспорта задним числом списать или изменить данные мгновенно выявляется сверкой подписей в журнале и на штампе.</div></details>
+    <details class="faq-details"><summary class="faq-summary">5. PWA, PWA-Автообновление в 1 Клик и Безопасность</summary><div class="faq-content"><b>Офлайн PWA и защита хранилища:</b> Приложение функционирует офлайн в браузере. Данные сохраняются в <code>localStorage</code> с безопасным перехватом QuotaExceeded, валидацией паролей через SHA-256 и строго разграниченным ролевым доступом (Administrator / Tool Crib Manager / Operator). Только Администратор может восстанавливать бэкапы JSON.<br><b>Обновление PWA в 1 клик:</b> Браузер всегда опрашивает Cloudflare Pages напрямую благодаря CDN-заголовкам <code>no-cache</code>. Клик по кликабельной плашке версии (<b>v90</b>) в шапке или кнопке <code>[🔄 Обновить PWA]</code> в меню очищает браузерные кэши, снимает сервис-воркеры и выполняет 1 гарантированную жесткую перезагрузку без зацикливаний.<br><b>Цифровой штамп верификации, полный SHA-256 и блокировка книги от изменений:</b> Каждый сформированный отчет Excel (.xlsx) заверяется полным 64-значным криптографическим отпечатком SHA-256 и уникальным серийным номером (EXP-...). Событие экспорта, автор, количество позиций и полный хэш фиксируются в системном журнале аудита. Все листы книги Excel автоматически защищены и заблокированы от случайного или несанкционированного изменения ячеек (пароль разблокировки — первые 16 символов SHA-256 хэша выгрузки, копируется из системного журнала аудита). Любая попытка после экспорта задним числом списать или изменить данные мгновенно выявляется сверкой подписей в журнале и на штампе.</div></details>
 </div>`,
         'Action': 'Действие',
         'Actions': 'Действия',
@@ -3948,21 +3962,40 @@ const Store = {
     programs: [], wsProgram: {}, // wsProgram: { 'DTS': 'USS' } — зона → программа; зоны без программы (Tool Gage, цех, склад) в карте отсутствуют
     auditLog: [], procurementLog: [], audits5s: [], meta: { schemaVersion: CONFIG.SCHEMA_VERSION },
 
-    /** Занятые номера ячеек на конкретной полке (точное совпадение Zone+Rack+Shelf), отсортированные по возрастанию */
-    getUsedBins(zone, rack, shelf) {
-        const used = Store.tools
-            .filter(t => t.address && (t.address.zone || '') === (zone || '') && (t.address.rack || '') === (rack || '') && (t.address.shelf || '') === (shelf || '') && t.address.bin)
+    /** Номера ячеек с органайзерами на полке (Rack+Shelf). Органайзер — контейнер:
+        в его ячейке лежит много мелких позиций, она не считается «занятой» */
+    getOrganizerBins(rack, shelf) {
+        const bins = Store.tools
+            .filter(t => t.organizer && t.address && (t.address.rack || '') === (rack || '') && (t.address.shelf || '') === (shelf || '') && t.address.bin)
             .map(t => {
                 let m = t.address.bin.match(/\d+/);
                 return m ? parseInt(m[0], 10) : null;
             })
             .filter(n => n !== null && n >= 1);
+        return [...new Set(bins)].sort((a, b) => a - b);
+    },
+
+    /** Занятые номера ячеек на конкретной полке, отсортированные по возрастанию.
+        Ключ — Rack+Shelf: зону сознательно игнорируем (address.zone в данных
+        не совпадает со списком workstations в форме; буквы стеллажей уникальны).
+        Ячейки с органайзером не блокируются — в них можно класть ещё позиции */
+    getUsedBins(zone, rack, shelf) {
+        const orgBins = new Set(this.getOrganizerBins(rack, shelf));
+        const used = Store.tools
+            .filter(t => !t.organizer && t.address && (t.address.rack || '') === (rack || '') && (t.address.shelf || '') === (shelf || '') && t.address.bin)
+            .map(t => {
+                let m = t.address.bin.match(/\d+/);
+                return m ? parseInt(m[0], 10) : null;
+            })
+            .filter(n => n !== null && n >= 1 && !orgBins.has(n));
         return [...new Set(used)].sort((a, b) => a - b);
     },
 
     getNextFreeBin(zone, rack, shelf) {
-        if (!zone && !rack && !shelf) return '1';
-        const used = this.getUsedBins(zone, rack, shelf);
+        if (!rack && !shelf) return '1';
+        // Автоподстановка предпочитает полностью пустые ячейки: занятые и органайзерные пропускаем
+        const used = [...this.getUsedBins(zone, rack, shelf), ...this.getOrganizerBins(rack, shelf)]
+            .sort((a, b) => a - b);
         let next = 1;
         for (let i = 0; i < used.length; i++) {
             if (used[i] === next) next++;
@@ -4207,6 +4240,43 @@ const Store = {
         }
     },
 
+    /** Грубая оценка размера БД в символах (для стража квоты при добавлении фото) */
+    estimatedSize() {
+        try { return JSON.stringify({ tools: this.tools, auditLog: this.auditLog, personnel: this.personnel }).length; }
+        catch (e) { return 0; }
+    },
+
+    /**
+     * Разовая миграция квоты (v90): пережимает ВСЕ сохранённые фото до Photos.MAX_SIDE/JPEG_Q.
+     * Без этого база с фото (~4M символов ≈ 8 МБ UTF-16) переполняла localStorage,
+     * save() молча падал, и правки (в т.ч. места хранения) терялись при перезагрузке.
+     * Флаг meta.photosCompacted гарантирует однократность; при восстановлении
+     * старого бэкапа без флага миграция отработает повторно.
+     */
+    async compactPhotos() {
+        if (this.meta && this.meta.photosCompacted) return;
+        const before = this.estimatedSize();
+        let n = 0;
+        for (const t of this.tools) {
+            if (!Array.isArray(t.photos)) continue;
+            for (const p of t.photos) {
+                if (p && typeof p.data === 'string' && p.data.startsWith('data:image')) {
+                    try { p.data = await Utils.compressImageBase64(p.data, Photos.MAX_SIDE, Photos.JPEG_Q); n++; }
+                    catch (e) { /* битое фото оставляем как есть */ }
+                }
+            }
+        }
+        this.meta.photosCompacted = true;
+        const after = this.estimatedSize();
+        if (n) {
+            this.log('PHOTO_COMPACT', `${n} photos recompressed; DB ~${(before / 1e6).toFixed(1)}M -> ${(after / 1e6).toFixed(1)}M chars`);
+            this.save();
+            if (typeof Utils !== 'undefined' && Utils.toast) {
+                Utils.toast(`📷 ${n} photos compacted — DB ${(before / 1e6).toFixed(1)}M → ${(after / 1e6).toFixed(1)}M chars`, 6000);
+            }
+        }
+    },
+
     addToLabelQueue(id) {
         if (!this.labelQueue.includes(id)) {
             this.labelQueue.push(id);
@@ -4257,6 +4327,7 @@ const Store = {
             }
             if (t.barcode === undefined) t.barcode = ''; // внешний штрихкод с физической наклейки (5S00xxx), если ≠ ID
             if (t.article === undefined) t.article = ''; // артикул/парт-номер (у расходников вместо SN)
+            if (t.organizer === undefined) t.organizer = false; // органайзер: ячейка-контейнер, не блокирует bin
             // Если есть объект address, но пустой/неполный location — пересобираем location
             if (t.address && (!t.location || t.location === 'Unassigned')) {
                 const parts = [t.address.zone, t.address.rack, t.address.shelf, t.address.bin].filter(Boolean);
@@ -7202,6 +7273,8 @@ const Ops = {
 
     stagePhoto(file) {
         if (this._pendingPhotos.length >= Photos.MAX_PER_TOOL) { alert(T('PHOTO_LIMIT')); return; }
+        // Страж квоты: база у лимита localStorage — фото не примем, иначе save() упадёт и правки потеряются
+        if (Store.estimatedSize() > 4300000) { alert(T('PHOTO_QUOTA_WARN')); return; }
         Photos.compress(file).then(data => {
             this._pendingPhotos.push(data);
             this._renderPendingPhotos();
@@ -7231,6 +7304,7 @@ const Ops = {
         document.getElementById('addToolStockRow').style.display = 'none';
         document.getElementById('addToolMinQty').value = 0;
         document.getElementById('addToolMaxQty').value = 0;
+        document.getElementById('addToolOrganizer').checked = false;
         // Селектор класса собираем при каждом открытии (актуальный язык), дефолт — TW
         document.getElementById('addToolClass').innerHTML = this.toolClassOptions('TW');
         this.onToolClassChange();
@@ -7254,7 +7328,7 @@ const Ops = {
         openModal('addToolModal');
     },
 
-    /** Пересборка списка ячеек в addToolModal: занятые (точное совпадение Zone+Rack+Shelf)
+    /** Пересборка списка ячеек в addToolModal: занятые (по совпадению Rack+Shelf)
         помечаются и блокируются, автоматически выбирается первая свободная;
         ручной выбор свободной ячейки сохраняется при смене полки */
     refreshAddToolBins() {
@@ -7262,6 +7336,7 @@ const Ops = {
               sEl = document.getElementById('addToolShelf'), sel = document.getElementById('addToolBin');
         if (!zEl || !rEl || !sEl || !sel) return;
         const used = new Set(Store.getUsedBins(zEl.value, rEl.value, sEl.value));
+        const orgBins = new Set(Store.getOrganizerBins(rEl.value, sEl.value));
         const next = parseInt(Store.getNextFreeBin(zEl.value, rEl.value, sEl.value), 10) || 1;
         const curM = sel.value.match(/\d+/);
         const cur = curM ? parseInt(curM[0], 10) : null;
@@ -7270,7 +7345,9 @@ const Ops = {
         for (let n = 1; n <= maxBin; n++) {
             const opt = document.createElement('option');
             opt.value = 'Bin ' + n;
-            opt.textContent = used.has(n) ? `Bin ${n} — ${T('BIN_OCCUPIED')}` : 'Bin ' + n;
+            opt.textContent = used.has(n) ? `Bin ${n} — ${T('BIN_OCCUPIED')}`
+                          : orgBins.has(n) ? `Bin ${n} — 🧰 ${T('BIN_ORGANIZER')}`
+                          : 'Bin ' + n;
             if (used.has(n)) opt.disabled = true;
             sel.appendChild(opt);
         }
@@ -7296,7 +7373,7 @@ const Ops = {
         const r = document.getElementById('addToolRack') ? document.getElementById('addToolRack').value : '';
         const s = document.getElementById('addToolShelf') ? document.getElementById('addToolShelf').value : '';
         const b = document.getElementById('addToolBin') ? document.getElementById('addToolBin').value : '';
-        const address = (z && r && s && b) ? { zone: z, rack: r, shelf: s, bin: b } : null;
+        const address = (r && s && b) ? { zone: z || '', rack: r, shelf: s, bin: b } : null; // зона опциональна: ключ адреса — Rack+Shelf+Bin
 
         const tool = {
             id,
@@ -7315,7 +7392,8 @@ const Ops = {
             maxQty,
             barcode: document.getElementById('addToolBarcode').value.trim().toUpperCase(), // внешняя наклейка 5S00xxx
             sn: document.getElementById('addToolSN').value.trim().toUpperCase(), // серийный номер
-            article: document.getElementById('addToolArticle').value.trim() // артикул (у расходников вместо SN)
+            article: document.getElementById('addToolArticle').value.trim(), // артикул (у расходников вместо SN)
+            organizer: document.getElementById('addToolOrganizer').checked // органайзер: ячейка-контейнер для мелких позиций
         };
         if (type === 'Permanent') {
             tool.minQty = null;
@@ -7376,6 +7454,7 @@ const Ops = {
         }
         
         document.getElementById('editToolSpec').value = tool.spec || '';
+        document.getElementById('editToolOrganizer').checked = !!tool.organizer;
         document.getElementById('editToolMinQty').value = tool.minQty || 0;
         document.getElementById('editToolMaxQty').value = tool.maxQty || 0;
         
@@ -7434,6 +7513,7 @@ const Ops = {
         tool.category = document.getElementById('editToolCat').value.trim() || 'Uncategorized';
         tool.location = document.getElementById('editToolLoc').value || '';
         tool.spec = document.getElementById('editToolSpec').value.trim();
+        tool.organizer = document.getElementById('editToolOrganizer').checked;
         
         // Адрес: незаполненные поля сохраняют прежнее значение (защита от потери),
         // полностью пустая форма — осознанное удаление адреса
@@ -10208,8 +10288,8 @@ const Scan = {
 /* --- Фотофиксация состояния инструмента --- */
 const Photos = {
     MAX_PER_TOOL: 5,      // лимит снимков на актив (localStorage не резиновый)
-    MAX_SIDE: 800,        // длинная сторона после ужатия
-    JPEG_Q: 0.62,         // качество JPEG (~50–80 КБ на снимок)
+    MAX_SIDE: 640,        // длинная сторона после ужатия (v90: было 800 — база упиралась в квоту 5 МБ)
+    JPEG_Q: 0.5,          // качество JPEG (~25–45 КБ на снимок; v90: было 0.62)
 
     /** Ужатие изображения через canvas → Promise<dataURL JPEG> */
     compress(file) {
@@ -11181,6 +11261,7 @@ function init() {
     Theme.init();
     Store.recomputeStatuses();   // актуализируем Overdue по датам
     Store.save();                // фиксируем пересчитанные статусы
+    Store.compactPhotos();       // разовая миграция квоты (async, сама сохранится)
     populateAllDropdowns();
     renderRbacList();
     updateRBACUI();

@@ -2,13 +2,24 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v89` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v90` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v88)
+## Recent Accomplishments (v49 – v90)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
+
+### 0. Rack+Shelf Bin Keying, Photo Quota Rescue & Organizer Bins (v90 Release)
+- **Bin Matching by Rack+Shelf Only (root-cause fix):** `getUsedBins`/`getNextFreeBin` no longer filter by zone — in real DBs `workstations` can be empty (the Zone select then has no value) and `address.zone` values (`Tool store`, `ITPS`) do not match the form's zone taxonomy, which silently disabled all bin occupancy detection. Rack letters are the practical unique key.
+- **Address Saved Without Zone (`submitAddTool`):** address object is now created whenever Rack+Shelf+Bin are set; previously an empty Zone select produced `address: null` and the tool was invisible to the bin system.
+- **Photo Quota Rescue (root cause of "locations reset after updates"):** the DB (~4M chars, 94% photos ≈ 8 MB UTF-16) exceeded the ~5 MB localStorage quota, so `save()` failed and edits made after that were lost on the forced PWA reload. Fixes:
+  - One-time async migration `Store.compactPhotos()` (flag `meta.photosCompacted`) recompresses every stored photo to `Photos.MAX_SIDE=640` / `JPEG_Q=0.5` and logs `PHOTO_COMPACT` with before/after sizes. Runs again automatically after restoring an old backup without the flag.
+  - New photos are compressed tighter (`Photos` 800/0.62 → 640/0.5; `Utils.compressImageBase64` defaults match).
+  - Quota sentry in `Ops.stagePhoto`: adding photos is refused with `PHOTO_QUOTA_WARN` when `Store.estimatedSize()` exceeds 4.3M chars.
+- **Organizer Bins:** new `t.organizer` flag with checkboxes (`ORGANIZER_FLAG`) in both `addToolModal` and `editToolModal` (existing cards can be flagged via edit). `Store.getOrganizerBins(rack, shelf)`; a bin holding an organizer never blocks (`getUsedBins` excludes organizer bins even when other items share the bin), renders as `Bin N — 🧰 organizer` (`BIN_ORGANIZER`) and stays selectable; `getNextFreeBin` auto-suggestion prefers fully empty bins. `Store.migrate` normalizes `organizer: false`.
+- **Dictionary Parity:** 467 keys in ENG = 467 keys in RU (0 missing).
+- **Known follow-up:** move photos from localStorage to IndexedDB (v91 candidate) for a permanent quota solution; `editToolModal` bin list is still the legacy static markup.
 
 ### 0. Hardening Patch: Qty Parsing, 5S Rollback Snapshot, CSV Escaping & Excel Lock Password (v87 Release)
 - **Receive Order Qty Parsing (`Ops.receiveOrder`):** Fixed string concatenation bug (`"5" + 3 → "53"`) when receiving purchase orders into an existing tool; quantities now summed via `parseInt`.
