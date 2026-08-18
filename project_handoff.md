@@ -2,13 +2,24 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v92` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v93` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) for data + **IndexedDB (`inv_photos_db`) for photo blobs (since v91)**; manual JSON backup/restore inlines photos back to base64. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v92)
+## Recent Accomplishments (v49 – v93)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
+
+### 0. Trailing Blank Background Page on Print Removed (v93 Release)
+- **Bug:** printing labels (roll/queue and legacy queue paths) always emitted one extra trailing page painted with the app background. Two causes: every queue cell/wrapper carried `page-break-after: always` — including the last one, which spawns a blank page after the final label — and `body`'s theme background (`var(--bg-color)`) painted the print page canvas.
+- **Fix (print CSS only):** `body.print-label-mode`/`body.print-zone-mode` now force `background: #fff !important` in `@media print`, and `body.print-label-mode #printLabelContainer > :last-child` resets `page-break-after/break-after: auto !important`, so the last label no longer generates a trailing empty page. Sheet mode (Avery) was already correct and is unaffected.
+
+### 0. Location Label Preview: Type Word Removed (v93 Release)
+- The `locationLabelModal` preview card (`Labels.renderLocationPreview`) rendered a bold localized type line («Стеллаж»/Rack) above the address — the word cluttered the label and never matched the actual printed cell (`Labels.renderCell` never prints the type). Preview is now the plain bold address line (`Zone | Rack X | Shelf Y | Bin Z`) plus the optional responsible line.
+
+### 0. Global Search Covers Address Storage (v93 Release)
+- **Bug:** `applyFilters`' search only matched `id/name/category/location/assignee/sn` — tools whose location lives in `t.address` (Zone/Rack/Shelf/Bin) were invisible to queries like `rack a` (0 hits with 94 tools actually on Rack A).
+- **Fix:** the search predicate now also matches three derived address strings: raw values joined (`tool store rack a shelf 3 bin 5`), EN+RU labeled core values (`rack a стеллаж a shelf 3 полка 3 bin 5 ячейка 5`, existing `Rack/Shelf/Bin` prefixes stripped first), and bare cores (`a 3 5`). Verified against the production backup: `rack a`→94, `rack a shelf 3`→37, `полка 3`→50, `стеллаж a`→94, `rack b`→22, `bin 12`→5, with no regression on legacy queries (`torx`→7, `tool store`→256).
 
 ### 0. Photo Viewer Aspect-Ratio Fix (v92 Release)
 - **Bug:** the full-size photo viewer (`#photoViewerModal`) distorted photos on desktop — `.modal` is `display:flex; flex-direction:column`, so the `<img id="photoViewerImg">` flex item got squashed/stretched by flex layout when the modal hit `max-height:90vh` (looked fine on phones, broken on scaled desktop displays).

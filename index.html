@@ -716,7 +716,7 @@ details[open] .faq-summary::before { transform: rotate(90deg); }
    ========================================================================== */
 @media print {
     /* --- Базовые сбросы для body --- */
-    body.print-label-mode, body.print-zone-mode { display: block !important; min-height: auto !important; height: auto !important; overflow: visible !important; }
+    body.print-label-mode, body.print-zone-mode { display: block !important; min-height: auto !important; height: auto !important; overflow: visible !important; background: #fff !important; }
     /* --- Режим этикетки --- */
     body.print-label-mode > * { display: none !important; }
     body.print-label-mode #printLabelModal.active { display: block !important; position: static !important; background: none; }
@@ -733,6 +733,8 @@ details[open] .faq-summary::before { transform: rotate(90deg); }
     body.print-label-mode #printLabelModal .modal-footer,
     body.print-label-mode #printLabelModal p { display: none !important; }
     body.print-label-mode #printLabelModal .modal-body { padding: 0 !important; background: transparent !important; overflow: visible !important; }
+    /* Хвостовой page-break последней этикетки не должен порождать пустую страницу (v93) */
+    body.print-label-mode #printLabelContainer > :last-child { page-break-after: auto !important; break-after: auto !important; }
 
     /* --- Режим отчёта/СОП: прячем приложение целиком, показываем зону --- */
     body.print-zone-mode > * { display: none !important; }
@@ -2493,7 +2495,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v92',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v93',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-18',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -3104,7 +3106,7 @@ const translations = {
 
     <details class="faq-details"><summary class="faq-summary">4. Risks, 5S Audits & Score Breakdown</summary><div class="faq-content"><b>Station | Post Risk Grouping:</b> The risk and incident chart groups equipment by workstations (<i>Assembly | Post 1</i>). Hovering over the bars displays a tooltip with the Program, Station, Post, Responsible Employee, and detailed rating factors (penalties for wear, overdues, and maintenance).<br><b>Interactive 5S Audits & Scoring Criteria:</b> Clicking a 5S radar spoke or a history row opens the post card with a full breakdown of each score from 1 to 5 across all 5 pillars (Sort, Set in Order, Shine, Standardize, Sustain) from the <code>S5_RUBRICS</code> directory (e.g., <i>"3 — Excess items present, but stacked separately"</i>).</div></details>
 
-    <details class="faq-details"><summary class="faq-summary">5. PWA, 1-Click PWA Auto-Update & Security</summary><div class="faq-content"><b>Offline PWA & Storage Protection:</b> The app functions offline in the browser. Data is saved to <code>localStorage</code> with secure QuotaExceeded catching, SHA-256 password validation, and strictly enforced Role-Based Access (Administrator / Tool Crib Manager / Operator). Only Administrators can restore JSON backups.<br><b>1-Click PWA Update:</b> The browser always polls Cloudflare Pages directly thanks to <code>no-cache</code> CDN headers. Clicking the clickable version badge (<b>v92</b>) in the header or the <code>[🔄 Update PWA]</code> button in the menu clears browser caches, unregisters service workers, and performs 1 guaranteed hard reload without looping.<br><b>Digital Integrity Stamp & Anti-Tamper Sheet Lock (SHA-256):</b> Every exported Excel report (.xlsx) is cryptographically stamped with a complete 64-character SHA-256 digital fingerprint and unique serial number (EXP-...). The export event, author, exact asset quantities, and full checksum are permanently logged to the system audit trail. All workbook sheets are automatically locked and protected against unauthorized cell editing and tampering (unlock password: the first 16 characters of the export's SHA-256 checksum, copyable from the System Audit Log). Any post-export attempt to alter tool counts or database records creates an instant mismatch against the immutable audit log.</div></details>
+    <details class="faq-details"><summary class="faq-summary">5. PWA, 1-Click PWA Auto-Update & Security</summary><div class="faq-content"><b>Offline PWA & Storage Protection:</b> The app functions offline in the browser. Data is saved to <code>localStorage</code> with secure QuotaExceeded catching, SHA-256 password validation, and strictly enforced Role-Based Access (Administrator / Tool Crib Manager / Operator). Only Administrators can restore JSON backups.<br><b>1-Click PWA Update:</b> The browser always polls Cloudflare Pages directly thanks to <code>no-cache</code> CDN headers. Clicking the clickable version badge (<b>v93</b>) in the header or the <code>[🔄 Update PWA]</code> button in the menu clears browser caches, unregisters service workers, and performs 1 guaranteed hard reload without looping.<br><b>Digital Integrity Stamp & Anti-Tamper Sheet Lock (SHA-256):</b> Every exported Excel report (.xlsx) is cryptographically stamped with a complete 64-character SHA-256 digital fingerprint and unique serial number (EXP-...). The export event, author, exact asset quantities, and full checksum are permanently logged to the system audit trail. All workbook sheets are automatically locked and protected against unauthorized cell editing and tampering (unlock password: the first 16 characters of the export's SHA-256 checksum, copyable from the System Audit Log). Any post-export attempt to alter tool counts or database records creates an instant mismatch against the immutable audit log.</div></details>
 </div>`,
         'Action': 'Action',
         'Actions': 'Actions',
@@ -3611,7 +3613,7 @@ const translations = {
 
     <details class="faq-details"><summary class="faq-summary">4. Риски, 5S-Аудиты и Расшифровка Оценок</summary><div class="faq-content"><b>Группировка рисков Станция | Пост:</b> Диаграмма рисков и инцидентов объединяет оборудование по рабочим постам (<i>Assembly | Post 1</i>). При наведении на столбцы выводится тултип с указанием Программы, Станции, Поста, Ответственного сотрудника и детализированных факторов рейтинга (штрафы за износ, просрочки и обслуживание).<br><b>Интерактивные 5S-аудиты и критерии оценок:</b> Клик по лучу 5S-радара или строке истории открывает карточку поста с полной расшифровкой каждой оценки от 1 до 5 по всем 5 столпам (Сортировка, Порядок, Чистота, Стандартизация, Совершенствование) из рубрикатора <code>S5_RUBRICS</code> (напр., <i>«3 — Лишнее есть, но сложено отдельно»</i>).</div></details>
 
-    <details class="faq-details"><summary class="faq-summary">5. PWA, PWA-Автообновление в 1 Клик и Безопасность</summary><div class="faq-content"><b>Офлайн PWA и защита хранилища:</b> Приложение функционирует офлайн в браузере. Данные сохраняются в <code>localStorage</code> с безопасным перехватом QuotaExceeded, валидацией паролей через SHA-256 и строго разграниченным ролевым доступом (Administrator / Tool Crib Manager / Operator). Только Администратор может восстанавливать бэкапы JSON.<br><b>Обновление PWA в 1 клик:</b> Браузер всегда опрашивает Cloudflare Pages напрямую благодаря CDN-заголовкам <code>no-cache</code>. Клик по кликабельной плашке версии (<b>v92</b>) в шапке или кнопке <code>[🔄 Обновить PWA]</code> в меню очищает браузерные кэши, снимает сервис-воркеры и выполняет 1 гарантированную жесткую перезагрузку без зацикливаний.<br><b>Цифровой штамп верификации, полный SHA-256 и блокировка книги от изменений:</b> Каждый сформированный отчет Excel (.xlsx) заверяется полным 64-значным криптографическим отпечатком SHA-256 и уникальным серийным номером (EXP-...). Событие экспорта, автор, количество позиций и полный хэш фиксируются в системном журнале аудита. Все листы книги Excel автоматически защищены и заблокированы от случайного или несанкционированного изменения ячеек (пароль разблокировки — первые 16 символов SHA-256 хэша выгрузки, копируется из системного журнала аудита). Любая попытка после экспорта задним числом списать или изменить данные мгновенно выявляется сверкой подписей в журнале и на штампе.</div></details>
+    <details class="faq-details"><summary class="faq-summary">5. PWA, PWA-Автообновление в 1 Клик и Безопасность</summary><div class="faq-content"><b>Офлайн PWA и защита хранилища:</b> Приложение функционирует офлайн в браузере. Данные сохраняются в <code>localStorage</code> с безопасным перехватом QuotaExceeded, валидацией паролей через SHA-256 и строго разграниченным ролевым доступом (Administrator / Tool Crib Manager / Operator). Только Администратор может восстанавливать бэкапы JSON.<br><b>Обновление PWA в 1 клик:</b> Браузер всегда опрашивает Cloudflare Pages напрямую благодаря CDN-заголовкам <code>no-cache</code>. Клик по кликабельной плашке версии (<b>v93</b>) в шапке или кнопке <code>[🔄 Обновить PWA]</code> в меню очищает браузерные кэши, снимает сервис-воркеры и выполняет 1 гарантированную жесткую перезагрузку без зацикливаний.<br><b>Цифровой штамп верификации, полный SHA-256 и блокировка книги от изменений:</b> Каждый сформированный отчет Excel (.xlsx) заверяется полным 64-значным криптографическим отпечатком SHA-256 и уникальным серийным номером (EXP-...). Событие экспорта, автор, количество позиций и полный хэш фиксируются в системном журнале аудита. Все листы книги Excel автоматически защищены и заблокированы от случайного или несанкционированного изменения ячеек (пароль разблокировки — первые 16 символов SHA-256 хэша выгрузки, копируется из системного журнала аудита). Любая попытка после экспорта задним числом списать или изменить данные мгновенно выявляется сверкой подписей в журнале и на штампе.</div></details>
 </div>`,
         'Action': 'Действие',
         'Actions': 'Действия',
@@ -5830,14 +5832,31 @@ function applyFilters(list) {
 
     if (UI.searchQuery) {
         const q = UI.searchQuery;
-        out = out.filter(t =>
-            (t.id || '').toLowerCase().includes(q) ||
-            (t.name || '').toLowerCase().includes(q) ||
-            (t.category || '').toLowerCase().includes(q) ||
-            (t.location || '').toLowerCase().includes(q) ||
-            Store.empName(t.assigneeId).toLowerCase().includes(q) ||
-            (t.sn || '').toLowerCase().includes(q)
-        );
+        const stripPfx = v => String(v || '').replace(/^(rack|shelf|bin|стеллаж|полка|ячейка)\s*/i, '').trim();
+        out = out.filter(t => {
+            // Адресное хранение в поиске (v93): «rack a», «rack a shelf 3», «полка 3», «стеллаж a», «a 3»
+            const a = t.address || {};
+            const addrPlain = [a.zone, a.rack, a.shelf, a.bin].filter(Boolean).join(' ').toLowerCase();
+            let addrLabeled = '', addrCores = '';
+            if (a.rack || a.shelf || a.bin) {
+                const rc = stripPfx(a.rack), sc = stripPfx(a.shelf), bc = stripPfx(a.bin);
+                addrLabeled = [
+                    rc ? `rack ${rc} стеллаж ${rc}` : '',
+                    sc ? `shelf ${sc} полка ${sc}` : '',
+                    bc ? `bin ${bc} ячейка ${bc}` : ''
+                ].filter(Boolean).join(' ').toLowerCase();
+                addrCores = [rc, sc, bc].filter(Boolean).join(' ').toLowerCase();
+            }
+            return (t.id || '').toLowerCase().includes(q) ||
+                (t.name || '').toLowerCase().includes(q) ||
+                (t.category || '').toLowerCase().includes(q) ||
+                (t.location || '').toLowerCase().includes(q) ||
+                Store.empName(t.assigneeId).toLowerCase().includes(q) ||
+                (t.sn || '').toLowerCase().includes(q) ||
+                addrPlain.includes(q) ||
+                addrLabeled.includes(q) ||
+                (addrCores.length > 1 && addrCores.includes(q));
+        });
     }
     return out;
 }
@@ -8939,15 +8958,13 @@ const Labels = {
         if (r) locParts.push(Utils.esc(cleanPrefix(r, 'Rack')));
         if (s) locParts.push(Utils.esc(cleanPrefix(s, 'Shelf')));
         if (b) locParts.push(Utils.esc(cleanPrefix(b, 'Bin')));
-        
-        let typeLabels = { RACK: T('Rack'), WORKBENCH: T('Workbench'), TOOLBOX: T('Toolbox'), AFRAME: T('A-Frame') };
-        let typeStr = Utils.esc(typeLabels[locType] || locType);
-        
+
         let displayStr = '';
         if (locParts.length === 0) {
             displayStr = 'Empty Location';
         } else {
-            displayStr = `<b>${typeStr}</b><br>${locParts.join(' | ')}`;
+            // v93: тип конструкции («Стеллаж»/Rack) на этикетке лишний — превью = чистая адресная строка
+            displayStr = `<b>${locParts.join(' | ')}</b>`;
             if (resp) displayStr += `<br><small>Resp: ${Utils.esc(resp)}</small>`;
         }
         
