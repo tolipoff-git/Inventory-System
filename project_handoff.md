@@ -2,13 +2,21 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v91` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v92` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) for data + **IndexedDB (`inv_photos_db`) for photo blobs (since v91)**; manual JSON backup/restore inlines photos back to base64. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v91)
+## Recent Accomplishments (v49 – v92)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
+
+### 0. Photo Viewer Aspect-Ratio Fix (v92 Release)
+- **Bug:** the full-size photo viewer (`#photoViewerModal`) distorted photos on desktop — `.modal` is `display:flex; flex-direction:column`, so the `<img id="photoViewerImg">` flex item got squashed/stretched by flex layout when the modal hit `max-height:90vh` (looked fine on phones, broken on scaled desktop displays).
+- **Fix:** inline style on `#photoViewerImg` now pins `width:auto; height:auto; flex:none; align-self:center; object-fit:contain` alongside `max-width:100%; max-height:85vh` — the image always keeps its native aspect ratio inside the viewer.
+
+### 0. Batch Location Print Actually Prints (v92 Release)
+- **Bug:** `Labels.printLocationBatch('batch')` (the "⚡ Batch Print" button in `locationLabelModal`) fell into the `mode === 'queue' || scope === 'batch'` branch — it silently added all matched location labels to `Store.labelQueue`, showed an English alert, and closed the modal. Nothing was printed and there was no preview, so the button appeared to do nothing.
+- **Fix:** after enqueueing, batch scope now immediately sets `Labels.isQueueMode = true` and calls `Labels.prepare(locLabelStock, firstLoc, 'location')`, which opens the standard `printLabelModal` preview of the whole queue (sheet grid or roll, per the stock selected in the location-label modal) with the usual browser print dialog one click away. Queue mode (`Add to Queue`) keeps the old alert behavior. Previously queued labels are never lost — they persist in `localStorage inv_labelQueue` and are printable via the "🖨 Print Queue (N)" button.
 
 ### 0. Photo Blobs Moved to IndexedDB — Permanent Quota Fix (v91 Release)
 - **`PhotoDB` module:** thin promise wrapper over IndexedDB (`inv_photos_db`, store `photos`, keyPath `id`) with `open/put/get/del`. Graceful degradation: when IndexedDB is unavailable or a write fails, photos fall back to legacy base64 in the tool card (`PhotoDB._failed`).
