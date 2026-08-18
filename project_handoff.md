@@ -2,13 +2,25 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v86` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v87` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v86)
+## Recent Accomplishments (v49 – v87)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
+
+### 0. Hardening Patch: Qty Parsing, 5S Rollback Snapshot, CSV Escaping & Excel Lock Password (v87 Release)
+- **Receive Order Qty Parsing (`Ops.receiveOrder`):** Fixed string concatenation bug (`"5" + 3 → "53"`) when receiving purchase orders into an existing tool; quantities now summed via `parseInt`.
+- **Zero-Qty Migration Guard (`Store.migrate`):** `qty = 0` is no longer treated as missing (`!t.qty` overwrote it with 15); check is now explicit (`undefined`/`null`/`< 0`).
+- **LocalStorage Quota Alerting (`Store.save`):** Removed redundant inner try-catch that silently swallowed `QuotaExceededError` into `console.error`; overflow now reliably triggers the `DB_QUOTA_EXCEEDED` alert.
+- **Rollback Snapshot Includes 5S Audits:** `Store.snapshot()`/`rollback()` now persist and restore `audits5s`, keeping 5S audit history consistent with tool state after a rollback.
+- **Zone Rename Cascade:** `_cascadeTools(fn(parts, sep, tool))` extended; renaming a zone now also updates `t.address.zone`, not just the location string.
+- **Radar Chart Labels (`Charts.radar`):** Dynamic `text-anchor` (start/middle/end by spoke angle), long-label truncation and adaptive font size to prevent label overlap.
+- **`audit_history` Defensive Guards:** All push/render sites initialize `tool.audit_history || []`; lifecycle rendering no longer throws on legacy tools.
+- **CSV Export Escaping:** `Ops.exportAuditLogCSV` and `Reports.exportInventoryCSV` now quote/escape every field; inventory CSV gained `Qty`, `Min Qty`, `Max Qty` columns.
+- **Excel Tamper-Lock Password Change:** Worksheet protection password changed from `exportSerial` to the first 16 characters of the export SHA-256 checksum (`checksum.slice(0, 16)`); the stamp row no longer prints the password — unlock via the System Audit Log. FAQ (EN/RU) updated accordingly.
+- **Checksum Payload Normalization:** Export hash payload uses `parseInt(t.qty) || 1` and `t.sn || ''` for deterministic signatures.
 
 ### 0. Full 64-Character SHA-256 Checksum, Copyable Audit Log & Anti-Tamper Excel Sheet Lock (v86 Release)
 - **System Audit Log in "System Management" Modal (`systemMenuModal`):** Enhanced the System Audit Log modal (`auditLogModal`) accessible via `⚙ System Management` -> `System Audit Log`:
