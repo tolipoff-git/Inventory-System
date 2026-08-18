@@ -2,13 +2,18 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v94` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v95` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) for data + **IndexedDB (`inv_photos_db`) for photo blobs (since v91)**; manual JSON backup/restore inlines photos back to base64. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v94)
+## Recent Accomplishments (v49 – v95)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
+
+### 0. Content-Adaptive Modal Widths (v95 Release)
+- **Bug:** every modal was capped at `max-width: 600px` (wide at 850px), so table-heavy windows (retired-assets archive, audit log) forced horizontal scrolling on wide desktop screens.
+- **Fix (CSS only, `.modal` block):** base sizing is now `width: fit-content; min-width: min(600px, 92vw); max-width: 94vw` — windows size to their content, never narrower than the old 600px on desktop, never wider than the screen. `.modal.wide` floors at 850px and caps at 96vw. `.modal.narrow` stays compact (`min(420px, 92vw)`).
+- **Regression guard:** modals with an inline `max-width` (login 420px, label previews 520px, photo viewer 90vw, etc.) keep their legacy sizing via `.modal[style*="max-width"] { width: 90%; min-width: 0; }` — the new 600px floor does not stretch them. Overflow safety: `.table-scroll` already handles both axes; the ≤640px media query still pins `.modal` to 94vw on phones.
 
 ### 0. Per-Tool Program Field (v94 Release)
 - **Why:** a tool's program existed only implicitly (`location → workstation → wsProgram`), so when the workstations/programs registries are empty there was nothing to derive and nothing to pick in the tool card.
