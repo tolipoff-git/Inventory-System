@@ -2,13 +2,22 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v90` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v91` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
-- **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
+- **Storage:** LocalStorage (`inv_inventory_db`) for data + **IndexedDB (`inv_photos_db`) for photo blobs (since v91)**; manual JSON backup/restore inlines photos back to base64. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v90)
+## Recent Accomplishments (v49 – v91)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
+
+### 0. Photo Blobs Moved to IndexedDB — Permanent Quota Fix (v91 Release)
+- **`PhotoDB` module:** thin promise wrapper over IndexedDB (`inv_photos_db`, store `photos`, keyPath `id`) with `open/put/get/del`. Graceful degradation: when IndexedDB is unavailable or a write fails, photos fall back to legacy base64 in the tool card (`PhotoDB._failed`).
+- **New photo schema:** `t.photos` entries are now metadata-only `{ id, ts, by, retire? }`; the blob lives in IndexedDB. Legacy `{ ts, by, data }` entries remain fully supported (dual-mode rendering).
+- **`Photos.attachData(tool, dataUrl, extra)`** is the single write path — used by `Photos.attach`, `Ops.submitAddTool` (now `async`, staged photos) and `Ops.submitRetire` (now `async`, retirement photo).
+- **Dual-mode rendering:** `Photos._imgTag(p, size, alt)` emits `data-pid` for IndexedDB photos and inline `src` for legacy base64; `Photos.hydrate(root)` resolves `img[data-pid]` to object URLs after innerHTML renders (detail-modal history, archive list, `Photos.render`). `Photos.remove` also deletes the blob from IndexedDB.
+- **Idempotent migration `Store.migratePhotosToIDB()`:** moves every base64 photo into IndexedDB (preserving existing `p.id` when present — same-machine restores do not duplicate blobs), logs `PHOTO_IDB`, saves. Runs on every `init()` chained after `Store.compactPhotos()` (v90), and after `restoreBackup`.
+- **Backups stay self-contained:** `Store.exportBackup()` is now `async` and inlines IndexedDB blobs back into `p.data` (base64) on a deep copy — live cards are untouched; restored backups re-migrate to IndexedDB automatically.
+- **Result:** the localStorage DB drops from ~4M chars (94% photos) to a few hundred KB — the ~5 MB quota is no longer a constraint, and the "edits lost after PWA update" failure mode is eliminated at the root.
 
 ### 0. Rack+Shelf Bin Keying, Photo Quota Rescue & Organizer Bins (v90 Release)
 - **Bin Matching by Rack+Shelf Only (root-cause fix):** `getUsedBins`/`getNextFreeBin` no longer filter by zone — in real DBs `workstations` can be empty (the Zone select then has no value) and `address.zone` values (`Tool store`, `ITPS`) do not match the form's zone taxonomy, which silently disabled all bin occupancy detection. Rack letters are the practical unique key.

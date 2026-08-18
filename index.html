@@ -2493,7 +2493,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v90',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v91',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-18',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -3104,7 +3104,7 @@ const translations = {
 
     <details class="faq-details"><summary class="faq-summary">4. Risks, 5S Audits & Score Breakdown</summary><div class="faq-content"><b>Station | Post Risk Grouping:</b> The risk and incident chart groups equipment by workstations (<i>Assembly | Post 1</i>). Hovering over the bars displays a tooltip with the Program, Station, Post, Responsible Employee, and detailed rating factors (penalties for wear, overdues, and maintenance).<br><b>Interactive 5S Audits & Scoring Criteria:</b> Clicking a 5S radar spoke or a history row opens the post card with a full breakdown of each score from 1 to 5 across all 5 pillars (Sort, Set in Order, Shine, Standardize, Sustain) from the <code>S5_RUBRICS</code> directory (e.g., <i>"3 — Excess items present, but stacked separately"</i>).</div></details>
 
-    <details class="faq-details"><summary class="faq-summary">5. PWA, 1-Click PWA Auto-Update & Security</summary><div class="faq-content"><b>Offline PWA & Storage Protection:</b> The app functions offline in the browser. Data is saved to <code>localStorage</code> with secure QuotaExceeded catching, SHA-256 password validation, and strictly enforced Role-Based Access (Administrator / Tool Crib Manager / Operator). Only Administrators can restore JSON backups.<br><b>1-Click PWA Update:</b> The browser always polls Cloudflare Pages directly thanks to <code>no-cache</code> CDN headers. Clicking the clickable version badge (<b>v90</b>) in the header or the <code>[🔄 Update PWA]</code> button in the menu clears browser caches, unregisters service workers, and performs 1 guaranteed hard reload without looping.<br><b>Digital Integrity Stamp & Anti-Tamper Sheet Lock (SHA-256):</b> Every exported Excel report (.xlsx) is cryptographically stamped with a complete 64-character SHA-256 digital fingerprint and unique serial number (EXP-...). The export event, author, exact asset quantities, and full checksum are permanently logged to the system audit trail. All workbook sheets are automatically locked and protected against unauthorized cell editing and tampering (unlock password: the first 16 characters of the export's SHA-256 checksum, copyable from the System Audit Log). Any post-export attempt to alter tool counts or database records creates an instant mismatch against the immutable audit log.</div></details>
+    <details class="faq-details"><summary class="faq-summary">5. PWA, 1-Click PWA Auto-Update & Security</summary><div class="faq-content"><b>Offline PWA & Storage Protection:</b> The app functions offline in the browser. Data is saved to <code>localStorage</code> with secure QuotaExceeded catching, SHA-256 password validation, and strictly enforced Role-Based Access (Administrator / Tool Crib Manager / Operator). Only Administrators can restore JSON backups.<br><b>1-Click PWA Update:</b> The browser always polls Cloudflare Pages directly thanks to <code>no-cache</code> CDN headers. Clicking the clickable version badge (<b>v91</b>) in the header or the <code>[🔄 Update PWA]</code> button in the menu clears browser caches, unregisters service workers, and performs 1 guaranteed hard reload without looping.<br><b>Digital Integrity Stamp & Anti-Tamper Sheet Lock (SHA-256):</b> Every exported Excel report (.xlsx) is cryptographically stamped with a complete 64-character SHA-256 digital fingerprint and unique serial number (EXP-...). The export event, author, exact asset quantities, and full checksum are permanently logged to the system audit trail. All workbook sheets are automatically locked and protected against unauthorized cell editing and tampering (unlock password: the first 16 characters of the export's SHA-256 checksum, copyable from the System Audit Log). Any post-export attempt to alter tool counts or database records creates an instant mismatch against the immutable audit log.</div></details>
 </div>`,
         'Action': 'Action',
         'Actions': 'Actions',
@@ -3611,7 +3611,7 @@ const translations = {
 
     <details class="faq-details"><summary class="faq-summary">4. Риски, 5S-Аудиты и Расшифровка Оценок</summary><div class="faq-content"><b>Группировка рисков Станция | Пост:</b> Диаграмма рисков и инцидентов объединяет оборудование по рабочим постам (<i>Assembly | Post 1</i>). При наведении на столбцы выводится тултип с указанием Программы, Станции, Поста, Ответственного сотрудника и детализированных факторов рейтинга (штрафы за износ, просрочки и обслуживание).<br><b>Интерактивные 5S-аудиты и критерии оценок:</b> Клик по лучу 5S-радара или строке истории открывает карточку поста с полной расшифровкой каждой оценки от 1 до 5 по всем 5 столпам (Сортировка, Порядок, Чистота, Стандартизация, Совершенствование) из рубрикатора <code>S5_RUBRICS</code> (напр., <i>«3 — Лишнее есть, но сложено отдельно»</i>).</div></details>
 
-    <details class="faq-details"><summary class="faq-summary">5. PWA, PWA-Автообновление в 1 Клик и Безопасность</summary><div class="faq-content"><b>Офлайн PWA и защита хранилища:</b> Приложение функционирует офлайн в браузере. Данные сохраняются в <code>localStorage</code> с безопасным перехватом QuotaExceeded, валидацией паролей через SHA-256 и строго разграниченным ролевым доступом (Administrator / Tool Crib Manager / Operator). Только Администратор может восстанавливать бэкапы JSON.<br><b>Обновление PWA в 1 клик:</b> Браузер всегда опрашивает Cloudflare Pages напрямую благодаря CDN-заголовкам <code>no-cache</code>. Клик по кликабельной плашке версии (<b>v90</b>) в шапке или кнопке <code>[🔄 Обновить PWA]</code> в меню очищает браузерные кэши, снимает сервис-воркеры и выполняет 1 гарантированную жесткую перезагрузку без зацикливаний.<br><b>Цифровой штамп верификации, полный SHA-256 и блокировка книги от изменений:</b> Каждый сформированный отчет Excel (.xlsx) заверяется полным 64-значным криптографическим отпечатком SHA-256 и уникальным серийным номером (EXP-...). Событие экспорта, автор, количество позиций и полный хэш фиксируются в системном журнале аудита. Все листы книги Excel автоматически защищены и заблокированы от случайного или несанкционированного изменения ячеек (пароль разблокировки — первые 16 символов SHA-256 хэша выгрузки, копируется из системного журнала аудита). Любая попытка после экспорта задним числом списать или изменить данные мгновенно выявляется сверкой подписей в журнале и на штампе.</div></details>
+    <details class="faq-details"><summary class="faq-summary">5. PWA, PWA-Автообновление в 1 Клик и Безопасность</summary><div class="faq-content"><b>Офлайн PWA и защита хранилища:</b> Приложение функционирует офлайн в браузере. Данные сохраняются в <code>localStorage</code> с безопасным перехватом QuotaExceeded, валидацией паролей через SHA-256 и строго разграниченным ролевым доступом (Administrator / Tool Crib Manager / Operator). Только Администратор может восстанавливать бэкапы JSON.<br><b>Обновление PWA в 1 клик:</b> Браузер всегда опрашивает Cloudflare Pages напрямую благодаря CDN-заголовкам <code>no-cache</code>. Клик по кликабельной плашке версии (<b>v91</b>) в шапке или кнопке <code>[🔄 Обновить PWA]</code> в меню очищает браузерные кэши, снимает сервис-воркеры и выполняет 1 гарантированную жесткую перезагрузку без зацикливаний.<br><b>Цифровой штамп верификации, полный SHA-256 и блокировка книги от изменений:</b> Каждый сформированный отчет Excel (.xlsx) заверяется полным 64-значным криптографическим отпечатком SHA-256 и уникальным серийным номером (EXP-...). Событие экспорта, автор, количество позиций и полный хэш фиксируются в системном журнале аудита. Все листы книги Excel автоматически защищены и заблокированы от случайного или несанкционированного изменения ячеек (пароль разблокировки — первые 16 символов SHA-256 хэша выгрузки, копируется из системного журнала аудита). Любая попытка после экспорта задним числом списать или изменить данные мгновенно выявляется сверкой подписей в журнале и на штампе.</div></details>
 </div>`,
         'Action': 'Действие',
         'Actions': 'Действия',
@@ -4277,6 +4277,39 @@ const Store = {
         }
     },
 
+    /**
+     * Миграция v91: переносит base64-фото из карточек в IndexedDB (PhotoDB).
+     * Идемпотентна: обрабатывает только фото с полем data; без флага схемы —
+     * после восстановления старого бэкапа отработает автоматически.
+     * Если у фото уже есть id (бэкап с этой же машины) — blob пишется под тем же id.
+     */
+    async migratePhotosToIDB() {
+        if (typeof PhotoDB === 'undefined' || !PhotoDB.available()) return;
+        let n = 0;
+        for (const t of this.tools) {
+            if (!Array.isArray(t.photos)) continue;
+            for (const p of t.photos) {
+                if (p && typeof p.data === 'string' && p.data.startsWith('data:image')) {
+                    try {
+                        const blob = await (await fetch(p.data)).blob();
+                        const id = p.id || Photos.newId();
+                        await PhotoDB.put({ id, toolId: t.id, blob });
+                        p.id = id;
+                        delete p.data;
+                        n++;
+                    } catch (e) { /* оставляем base64 как fallback */ }
+                }
+            }
+        }
+        if (n) {
+            this.log('PHOTO_IDB', `${n} photos moved to IndexedDB; DB now ~${(this.estimatedSize() / 1e6).toFixed(2)}M chars`);
+            this.save();
+            if (typeof Utils !== 'undefined' && Utils.toast) {
+                Utils.toast(`🗄 ${n} photos moved to IndexedDB — DB ${(this.estimatedSize() / 1e6).toFixed(2)}M chars`, 6000);
+            }
+        }
+    },
+
     addToLabelQueue(id) {
         if (!this.labelQueue.includes(id)) {
             this.labelQueue.push(id);
@@ -4746,8 +4779,22 @@ const Store = {
 
     /* --- Резервное копирование --- */
 
-    /** Полный экспорт: данные + пользователи + журналы + версия схемы */
-    exportBackup() {
+    /** Полный экспорт: данные + пользователи + журналы + версия схемы.
+        Фото из IndexedDB встраиваются обратно в base64 — бэкап остаётся самодостаточным */
+    async exportBackup() {
+        const tools = JSON.parse(JSON.stringify(this.tools)); // снимок: живые карточки не трогаем
+        if (typeof PhotoDB !== 'undefined' && PhotoDB.available()) {
+            for (const t of tools) {
+                for (const p of (t.photos || [])) {
+                    if (p && p.id && !p.data) {
+                        try {
+                            const rec = await PhotoDB.get(p.id);
+                            if (rec && rec.blob) p.data = await Photos._blobToDataURL(rec.blob);
+                        } catch (e) { /* фото без blob — экспортируем как есть */ }
+                    }
+                }
+            }
+        }
         const data = {
             schemaVersion: CONFIG.SCHEMA_VERSION,
             exportedAt: Utils.nowISO(),
@@ -4756,7 +4803,7 @@ const Store = {
             masterPrograms: this.programs,
             wsProgram: this.wsProgram,
             personnel: this.personnel,
-            tools: this.tools,
+            tools,
             rbacUsers: this.users,
             procurementLog: this.procurementLog,
             audits5s: this.audits5s,
@@ -4791,6 +4838,7 @@ const Store = {
                 this.log('BACKUP_RESTORE', `schema v${data.schemaVersion || 1}`);
                 this.save();
                 init();
+                this.migratePhotosToIDB(); // base64 из бэкапа → IndexedDB (async, сам сохранит)
                 alert(T('BACKUP_RESTORED'));
             } catch { alert(T('BACKUP_PARSE_ERR')); }
         };
@@ -7354,7 +7402,7 @@ const Ops = {
         sel.value = (cur && !used.has(cur) && cur <= maxBin) ? 'Bin ' + cur : 'Bin ' + next;
     },
 
-    submitAddTool() {
+    async submitAddTool() {
         const id = document.getElementById('addToolID').value.trim().toUpperCase();
         const err = document.getElementById('addToolError');
         if (!id) { err.innerText = T('ID_REQUIRED'); err.style.display = 'block'; return; }
@@ -7406,7 +7454,7 @@ const Ops = {
         if (!Array.isArray(tool.photos)) tool.photos = [];
         if (this._pendingPhotos.length) {
             const by = (typeof Auth !== 'undefined' && Auth.current && Auth.current.username) || 'local';
-            this._pendingPhotos.forEach(data => tool.photos.push({ ts: Utils.nowISO(), by, data }));
+            for (const data of this._pendingPhotos) await Photos.attachData(tool, data, { by });
             Store.toolEvent(tool, `Photo attached (${tool.photos.length}/${Photos.MAX_PER_TOOL})`);
             Store.log('TOOL_PHOTO', `${tool.id} +${this._pendingPhotos.length} at creation`);
             this._pendingPhotos = [];
@@ -7823,7 +7871,7 @@ const Ops = {
         openModal('retireModal');
     },
 
-    submitRetire() {
+    async submitRetire() {
         const tool = Store.getTool(document.getElementById('retireToolId').value);
         if (!tool) return;
         if (!confirm(T('RETIRE_CONFIRM').replace('{id}', tool.id))) return;
@@ -7843,8 +7891,7 @@ const Ops = {
         tool.retireWear = +wear || 0;
         // Фотофиксация состояния на момент списания
         if (this._retirePhoto) {
-            if (!Array.isArray(tool.photos)) tool.photos = [];
-            tool.photos.push({ ts: Utils.nowISO(), by: initials, data: this._retirePhoto, retire: true });
+            await Photos.attachData(tool, this._retirePhoto, { by: initials, retire: true });
             this._retirePhoto = null;
         }
         Store.toolEvent(tool, `Retired on ${dateStr} (Reason: ${reason}, Wear: ${wear}%, Insp: ${initials})`);
@@ -7971,8 +8018,7 @@ const Ops = {
 
         const renderPhoto = (p) => `
             <div style="position:relative; width:92px; display:inline-block; margin:4px;">
-                <img src="${Utils.esc(p.data)}" alt="photo" onclick="Photos.viewData(this.src)"
-                     style="width:92px; height:92px; object-fit:cover; border-radius:4px; border:1px solid var(--border); cursor:zoom-in;">
+                ${Photos._imgTag(p, 92, 'photo')}
                 <button data-action="photo-del" data-id="${Utils.esc(tool.id)}:${p.origIndex}" title="Delete"
                     style="position:absolute; top:-6px; right:-6px; width:22px; height:22px; border-radius:50%; border:none; background:var(--danger); color:#fff; cursor:pointer; font-size:12px; line-height:1;">✖</button>
                 <div style="font-size:0.78rem; color:var(--text-muted); text-align:center; margin-top:2px;">${Utils.fmtDate(p.ts)}</div>
@@ -7993,6 +8039,7 @@ const Ops = {
             }).join('');
         }
         document.getElementById('detHistory').innerHTML = historyHtml;
+        Photos.hydrate(document.getElementById('detHistory')); // подтянуть IDB-фото по data-pid
 
         const lc = document.getElementById('detLifecycle');
         lc.innerHTML = `<div style="margin-bottom:10px; font-weight:bold; color:var(--success);">Accepted into Service: ${Utils.esc(tool.commissioned_date || 'N/A')}</div>`;
@@ -8139,7 +8186,9 @@ const Ops = {
             ? retired.map(t => {
                 const retirePhoto = (t.photos || []).filter(p => p.retire).pop() || (t.photos || []).pop();
                 const thumb = retirePhoto
-                    ? `<img src="${retirePhoto.data}" onclick="Photos.viewData(this.src)" style="height:42px; border-radius:3px; cursor:pointer; border:1px solid var(--border);" title="${T('Click to enlarge')}">`
+                    ? (retirePhoto.id
+                        ? `<img data-pid="${Utils.esc(retirePhoto.id)}" src="" onclick="Photos.viewData(this.src)" style="height:42px; border-radius:3px; cursor:pointer; border:1px solid var(--border);" title="${T('Click to enlarge')}">`
+                        : `<img src="${Utils.esc(retirePhoto.data || '')}" onclick="Photos.viewData(this.src)" style="height:42px; border-radius:3px; cursor:pointer; border:1px solid var(--border);" title="${T('Click to enlarge')}">`)
                     : '<span style="color:var(--text-muted);">—</span>';
                 return `<tr style="background:rgba(255,0,0,0.08);">
                 <td style="font-weight:bold;">${Utils.esc(t.id)}</td><td>${Utils.esc(t.name)}</td>
@@ -8154,6 +8203,7 @@ const Ops = {
                 </td>
             </tr>`; }).join('')
             : '<tr><td colspan="8" style="text-align:center; color:var(--text-muted);">No retired assets found.</td></tr>';
+        Photos.hydrate(document.getElementById('archiveList')); // подтянуть IDB-фото по data-pid
         openModal('archiveModal');
     },
 
@@ -10285,6 +10335,62 @@ const Scan = {
     }
 };
 
+/* --- Хранилище фото в IndexedDB (v91) ---
+   Blobs лежат вне localStorage: квота IDB — сотни МБ, а не ~5 МБ.
+   В карточке инструмента остаются только метаданные { id, ts, by, retire? }.
+   Если IndexedDB недоступен (старый браузер/режим) — fallback на base64 в карточке. */
+const PhotoDB = {
+    NAME: 'inv_photos_db',
+    STORE: 'photos',
+    _db: null,
+    _failed: false,
+
+    available() { return !!window.indexedDB && !this._failed; },
+
+    open() {
+        if (this._db) return Promise.resolve(this._db);
+        return new Promise((resolve, reject) => {
+            if (!window.indexedDB) { this._failed = true; return reject(new Error('IndexedDB unavailable')); }
+            const req = indexedDB.open(this.NAME, 1);
+            req.onupgradeneeded = () => {
+                const db = req.result;
+                if (!db.objectStoreNames.contains(this.STORE)) db.createObjectStore(this.STORE, { keyPath: 'id' });
+            };
+            req.onsuccess = () => { this._db = req.result; resolve(this._db); };
+            req.onerror = () => { this._failed = true; reject(req.error); };
+        });
+    },
+
+    async put(rec) { // { id, toolId, blob }
+        const db = await this.open();
+        return new Promise((res, rej) => {
+            const tx = db.transaction(this.STORE, 'readwrite');
+            tx.objectStore(this.STORE).put(rec);
+            tx.oncomplete = () => res();
+            tx.onerror = () => rej(tx.error);
+        });
+    },
+
+    async get(id) {
+        const db = await this.open();
+        return new Promise((res, rej) => {
+            const rq = db.transaction(this.STORE, 'readonly').objectStore(this.STORE).get(id);
+            rq.onsuccess = () => res(rq.result || null);
+            rq.onerror = () => rej(rq.error);
+        });
+    },
+
+    async del(id) {
+        const db = await this.open();
+        return new Promise((res, rej) => {
+            const tx = db.transaction(this.STORE, 'readwrite');
+            tx.objectStore(this.STORE).delete(id);
+            tx.oncomplete = () => res();
+            tx.onerror = () => rej(tx.error);
+        });
+    }
+};
+
 /* --- Фотофиксация состояния инструмента --- */
 const Photos = {
     MAX_PER_TOOL: 5,      // лимит снимков на актив (localStorage не резиновый)
@@ -10310,14 +10416,70 @@ const Photos = {
         });
     },
 
+    /** Уникальный ID фото-записи */
+    newId() { return 'ph_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8); },
+
+    /** Blob → dataURL (для экспорта бэкапа с фото) */
+    _blobToDataURL(blob) {
+        return new Promise((res, rej) => {
+            const fr = new FileReader();
+            fr.onload = () => res(fr.result);
+            fr.onerror = rej;
+            fr.readAsDataURL(blob);
+        });
+    },
+
+    /**
+     * Центральный путь записи фото (v91): blob → IndexedDB, в карточку — только метаданные.
+     * Fallback при недоступной IndexedDB: base64 в карточке (старая схема).
+     */
+    async attachData(tool, dataUrl, extra = {}) {
+        if (!Array.isArray(tool.photos)) tool.photos = [];
+        const rec = { ts: Utils.nowISO(), ...extra };
+        if (PhotoDB.available()) {
+            try {
+                const blob = await (await fetch(dataUrl)).blob();
+                const id = this.newId();
+                await PhotoDB.put({ id, toolId: tool.id, blob });
+                rec.id = id;
+            } catch (e) {
+                console.warn('PhotoDB write failed, fallback to base64', e);
+                rec.data = dataUrl;
+            }
+        } else {
+            rec.data = dataUrl;
+        }
+        tool.photos.push(rec);
+    },
+
+    /** Подстановка src для <img data-pid> из IndexedDB (object URL) после рендера innerHTML */
+    async hydrate(root) {
+        if (!root || !PhotoDB.available()) return;
+        const imgs = root.querySelectorAll('img[data-pid]');
+        for (const img of imgs) {
+            try {
+                const rec = await PhotoDB.get(img.dataset.pid);
+                if (rec && rec.blob) img.src = URL.createObjectURL(rec.blob);
+                else img.style.opacity = '0.3';
+            } catch (e) { /* пропускаем битую запись */ }
+        }
+    },
+
+    /** Разметка миниатюры: IDB-фото → data-pid (гидратация), legacy base64 → src напрямую */
+    _imgTag(p, size, alt) {
+        const style = `width:${size}px; height:${size}px; object-fit:cover; border-radius:4px; border:1px solid var(--border); cursor:zoom-in;`;
+        const src = p.id ? `data-pid="${Utils.esc(p.id)}" src=""` : `src="${Utils.esc(p.data || '')}"`;
+        return `<img ${src} alt="${alt}" onclick="Photos.viewData(this.src)" style="${style}">`;
+    },
+
     /** Выбор файла → ужатие → сохранение в карточку */
     attach(toolId, file) {
         const tool = Store.getTool(toolId);
         if (!tool || !file) return;
         if (!Array.isArray(tool.photos)) tool.photos = [];
         if (tool.photos.length >= this.MAX_PER_TOOL) { alert(T('PHOTO_LIMIT')); return; }
-        this.compress(file).then(data => {
-            tool.photos.push({ ts: Utils.nowISO(), by: (typeof Auth !== 'undefined' && Auth.current && Auth.current.username) || 'local', data });
+        this.compress(file).then(async data => {
+            await this.attachData(tool, data, { by: (typeof Auth !== 'undefined' && Auth.current && Auth.current.username) || 'local' });
             Store.toolEvent(tool, `Photo attached (${tool.photos.length}/${this.MAX_PER_TOOL})`);
             Store.log('TOOL_PHOTO', `${tool.id} +photo`);
             Store.save();
@@ -10329,6 +10491,8 @@ const Photos = {
         const tool = Store.getTool(toolId);
         if (!tool || !tool.photos || !tool.photos[index]) return;
         if (!confirm(T('PHOTO_REMOVE_CONFIRM'))) return;
+        const p = tool.photos[index];
+        if (p.id && PhotoDB.available()) PhotoDB.del(p.id).catch(() => {}); // чистим blob в IndexedDB
         tool.photos.splice(index, 1);
         Store.log('TOOL_PHOTO_DEL', tool.id);
         Store.save();
@@ -10340,8 +10504,7 @@ const Photos = {
         const list = (tool.photos || []);
         return list.map((p, i) => `
             <div style="position:relative; width:92px;">
-                <img src="${Utils.esc(p.data)}" alt="photo ${i + 1}" onclick="Photos.viewData(this.src)"
-                     style="width:92px; height:92px; object-fit:cover; border-radius:4px; border:1px solid var(--border); cursor:zoom-in;">
+                ${this._imgTag(p, 92, 'photo ' + (i + 1))}
                 <button data-action="photo-del" data-id="${Utils.esc(tool.id)}:${i}" title="Delete"
                     style="position:absolute; top:-6px; right:-6px; width:22px; height:22px; border-radius:50%; border:none; background:var(--danger); color:#fff; cursor:pointer; font-size:12px; line-height:1;">✖</button>
                 <div style="font-size:0.78rem; color:var(--text-muted); text-align:center; margin-top:2px;">${Utils.fmtDate(p.ts)}</div>
@@ -11261,7 +11424,8 @@ function init() {
     Theme.init();
     Store.recomputeStatuses();   // актуализируем Overdue по датам
     Store.save();                // фиксируем пересчитанные статусы
-    Store.compactPhotos();       // разовая миграция квоты (async, сама сохранится)
+    // Миграции фото (async): сначала разовое пережатие (v90), затем перенос в IndexedDB (v91)
+    Store.compactPhotos().then(() => Store.migratePhotosToIDB());
     populateAllDropdowns();
     renderRbacList();
     updateRBACUI();
