@@ -7,7 +7,7 @@
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v87)
+## Recent Accomplishments (v49 – v88)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
 ### 0. Hardening Patch: Qty Parsing, 5S Rollback Snapshot, CSV Escaping & Excel Lock Password (v87 Release)
