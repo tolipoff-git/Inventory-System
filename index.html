@@ -1539,6 +1539,11 @@ select.work-only.form-control { max-width: 190px; }
                     <select id="addToolLoc" class="form-control"></select>
                 </div>
             </div>
+            <div class="form-group">
+                <label data-i18n="Program">Program</label>
+                <select id="addToolProgram" class="form-control"></select>
+                <div class="form-hint" data-i18n="PROGRAM_HINT">Product program the tool belongs to (USS, BAC, WABTEC…). Optional.</div>
+            </div>
             <div class="form-row">
                 <div class="form-group">
                     <label data-i18n="Zone">Zone</label>
@@ -1662,6 +1667,11 @@ select.work-only.form-control { max-width: 190px; }
                     <label data-i18n="Initial Location">Initial Location</label>
                     <select id="editToolLoc" class="form-control"></select>
                 </div>
+            </div>
+            <div class="form-group">
+                <label data-i18n="Program">Program</label>
+                <select id="editToolProgram" class="form-control"></select>
+                <div class="form-hint" data-i18n="PROGRAM_HINT">Product program the tool belongs to (USS, BAC, WABTEC…). Optional.</div>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -1855,6 +1865,10 @@ select.work-only.form-control { max-width: 190px; }
             <div class="form-group">
                 <div style="font-size:0.8rem; color:var(--text-muted);" data-i18n="Total Quantity">Total Quantity</div>
                 <div id="detQty" style="font-size:1.05rem; font-weight:bold;">1</div>
+            </div>
+            <div class="form-group">
+                <div style="font-size:0.8rem; color:var(--text-muted);" data-i18n="PROGRAM_WS_POST">Program / Workstation / Post</div>
+                <div id="detProgram" style="font-size:1rem;">N/A</div>
             </div>
             <div class="form-group">
                 <label data-i18n="Initials &amp; Transaction History">Initials &amp; Transaction History</label>
@@ -2495,7 +2509,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v93',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v94',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-18',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -3021,6 +3035,9 @@ const translations = {
         'XLSX_FAILED_CSV': 'XLSX export failed: {msg}\nExporting CSV instead.',
         'EXPORT_GENERATING': 'Generating Excel report…',
         'BIN_OCCUPIED': 'occupied',
+        'Program': 'Program',
+        'PROGRAM_HINT': 'Product program the tool belongs to (USS, BAC, WABTEC…). Optional.',
+        'PROGRAM_WS_POST': 'Program / Workstation / Post',
         'BIN_ORGANIZER': 'organizer',
         'ORGANIZER_FLAG': 'Organizer (holds many small items in one bin)',
         'PHOTO_QUOTA_WARN': '⚠️ Storage is nearly full (photos). Export a backup (.json) and delete old photos before adding new ones — otherwise changes cannot be saved.',
@@ -3106,7 +3123,7 @@ const translations = {
 
     <details class="faq-details"><summary class="faq-summary">4. Risks, 5S Audits & Score Breakdown</summary><div class="faq-content"><b>Station | Post Risk Grouping:</b> The risk and incident chart groups equipment by workstations (<i>Assembly | Post 1</i>). Hovering over the bars displays a tooltip with the Program, Station, Post, Responsible Employee, and detailed rating factors (penalties for wear, overdues, and maintenance).<br><b>Interactive 5S Audits & Scoring Criteria:</b> Clicking a 5S radar spoke or a history row opens the post card with a full breakdown of each score from 1 to 5 across all 5 pillars (Sort, Set in Order, Shine, Standardize, Sustain) from the <code>S5_RUBRICS</code> directory (e.g., <i>"3 — Excess items present, but stacked separately"</i>).</div></details>
 
-    <details class="faq-details"><summary class="faq-summary">5. PWA, 1-Click PWA Auto-Update & Security</summary><div class="faq-content"><b>Offline PWA & Storage Protection:</b> The app functions offline in the browser. Data is saved to <code>localStorage</code> with secure QuotaExceeded catching, SHA-256 password validation, and strictly enforced Role-Based Access (Administrator / Tool Crib Manager / Operator). Only Administrators can restore JSON backups.<br><b>1-Click PWA Update:</b> The browser always polls Cloudflare Pages directly thanks to <code>no-cache</code> CDN headers. Clicking the clickable version badge (<b>v93</b>) in the header or the <code>[🔄 Update PWA]</code> button in the menu clears browser caches, unregisters service workers, and performs 1 guaranteed hard reload without looping.<br><b>Digital Integrity Stamp & Anti-Tamper Sheet Lock (SHA-256):</b> Every exported Excel report (.xlsx) is cryptographically stamped with a complete 64-character SHA-256 digital fingerprint and unique serial number (EXP-...). The export event, author, exact asset quantities, and full checksum are permanently logged to the system audit trail. All workbook sheets are automatically locked and protected against unauthorized cell editing and tampering (unlock password: the first 16 characters of the export's SHA-256 checksum, copyable from the System Audit Log). Any post-export attempt to alter tool counts or database records creates an instant mismatch against the immutable audit log.</div></details>
+    <details class="faq-details"><summary class="faq-summary">5. PWA, 1-Click PWA Auto-Update & Security</summary><div class="faq-content"><b>Offline PWA & Storage Protection:</b> The app functions offline in the browser. Data is saved to <code>localStorage</code> with secure QuotaExceeded catching, SHA-256 password validation, and strictly enforced Role-Based Access (Administrator / Tool Crib Manager / Operator). Only Administrators can restore JSON backups.<br><b>1-Click PWA Update:</b> The browser always polls Cloudflare Pages directly thanks to <code>no-cache</code> CDN headers. Clicking the clickable version badge (<b>v94</b>) in the header or the <code>[🔄 Update PWA]</code> button in the menu clears browser caches, unregisters service workers, and performs 1 guaranteed hard reload without looping.<br><b>Digital Integrity Stamp & Anti-Tamper Sheet Lock (SHA-256):</b> Every exported Excel report (.xlsx) is cryptographically stamped with a complete 64-character SHA-256 digital fingerprint and unique serial number (EXP-...). The export event, author, exact asset quantities, and full checksum are permanently logged to the system audit trail. All workbook sheets are automatically locked and protected against unauthorized cell editing and tampering (unlock password: the first 16 characters of the export's SHA-256 checksum, copyable from the System Audit Log). Any post-export attempt to alter tool counts or database records creates an instant mismatch against the immutable audit log.</div></details>
 </div>`,
         'Action': 'Action',
         'Actions': 'Actions',
@@ -3505,6 +3522,9 @@ const translations = {
         'XLSX_FAILED_CSV': 'Ошибка XLSX-экспорта: {msg}\nЭкспортирую CSV.',
         'EXPORT_GENERATING': 'Формируется Excel-отчёт…',
         'BIN_OCCUPIED': 'занята',
+        'Program': 'Программа',
+        'PROGRAM_HINT': 'Продуктовая программа, к которой относится инструмент (USS, BAC, WABTEC…). Необязательно.',
+        'PROGRAM_WS_POST': 'Программа / Рабочая станция / Пост',
         'BIN_ORGANIZER': 'органайзер',
         'ORGANIZER_FLAG': 'Органайзер (много мелких позиций в одной ячейке)',
         'PHOTO_QUOTA_WARN': '⚠️ Хранилище почти заполнено (фото). Экспортируйте бэкап (.json) и удалите старые фото перед добавлением новых — иначе изменения не сохранятся.',
@@ -3613,7 +3633,7 @@ const translations = {
 
     <details class="faq-details"><summary class="faq-summary">4. Риски, 5S-Аудиты и Расшифровка Оценок</summary><div class="faq-content"><b>Группировка рисков Станция | Пост:</b> Диаграмма рисков и инцидентов объединяет оборудование по рабочим постам (<i>Assembly | Post 1</i>). При наведении на столбцы выводится тултип с указанием Программы, Станции, Поста, Ответственного сотрудника и детализированных факторов рейтинга (штрафы за износ, просрочки и обслуживание).<br><b>Интерактивные 5S-аудиты и критерии оценок:</b> Клик по лучу 5S-радара или строке истории открывает карточку поста с полной расшифровкой каждой оценки от 1 до 5 по всем 5 столпам (Сортировка, Порядок, Чистота, Стандартизация, Совершенствование) из рубрикатора <code>S5_RUBRICS</code> (напр., <i>«3 — Лишнее есть, но сложено отдельно»</i>).</div></details>
 
-    <details class="faq-details"><summary class="faq-summary">5. PWA, PWA-Автообновление в 1 Клик и Безопасность</summary><div class="faq-content"><b>Офлайн PWA и защита хранилища:</b> Приложение функционирует офлайн в браузере. Данные сохраняются в <code>localStorage</code> с безопасным перехватом QuotaExceeded, валидацией паролей через SHA-256 и строго разграниченным ролевым доступом (Administrator / Tool Crib Manager / Operator). Только Администратор может восстанавливать бэкапы JSON.<br><b>Обновление PWA в 1 клик:</b> Браузер всегда опрашивает Cloudflare Pages напрямую благодаря CDN-заголовкам <code>no-cache</code>. Клик по кликабельной плашке версии (<b>v93</b>) в шапке или кнопке <code>[🔄 Обновить PWA]</code> в меню очищает браузерные кэши, снимает сервис-воркеры и выполняет 1 гарантированную жесткую перезагрузку без зацикливаний.<br><b>Цифровой штамп верификации, полный SHA-256 и блокировка книги от изменений:</b> Каждый сформированный отчет Excel (.xlsx) заверяется полным 64-значным криптографическим отпечатком SHA-256 и уникальным серийным номером (EXP-...). Событие экспорта, автор, количество позиций и полный хэш фиксируются в системном журнале аудита. Все листы книги Excel автоматически защищены и заблокированы от случайного или несанкционированного изменения ячеек (пароль разблокировки — первые 16 символов SHA-256 хэша выгрузки, копируется из системного журнала аудита). Любая попытка после экспорта задним числом списать или изменить данные мгновенно выявляется сверкой подписей в журнале и на штампе.</div></details>
+    <details class="faq-details"><summary class="faq-summary">5. PWA, PWA-Автообновление в 1 Клик и Безопасность</summary><div class="faq-content"><b>Офлайн PWA и защита хранилища:</b> Приложение функционирует офлайн в браузере. Данные сохраняются в <code>localStorage</code> с безопасным перехватом QuotaExceeded, валидацией паролей через SHA-256 и строго разграниченным ролевым доступом (Administrator / Tool Crib Manager / Operator). Только Администратор может восстанавливать бэкапы JSON.<br><b>Обновление PWA в 1 клик:</b> Браузер всегда опрашивает Cloudflare Pages напрямую благодаря CDN-заголовкам <code>no-cache</code>. Клик по кликабельной плашке версии (<b>v94</b>) в шапке или кнопке <code>[🔄 Обновить PWA]</code> в меню очищает браузерные кэши, снимает сервис-воркеры и выполняет 1 гарантированную жесткую перезагрузку без зацикливаний.<br><b>Цифровой штамп верификации, полный SHA-256 и блокировка книги от изменений:</b> Каждый сформированный отчет Excel (.xlsx) заверяется полным 64-значным криптографическим отпечатком SHA-256 и уникальным серийным номером (EXP-...). Событие экспорта, автор, количество позиций и полный хэш фиксируются в системном журнале аудита. Все листы книги Excel автоматически защищены и заблокированы от случайного или несанкционированного изменения ячеек (пароль разблокировки — первые 16 символов SHA-256 хэша выгрузки, копируется из системного журнала аудита). Любая попытка после экспорта задним числом списать или изменить данные мгновенно выявляется сверкой подписей в журнале и на штампе.</div></details>
 </div>`,
         'Action': 'Действие',
         'Actions': 'Действия',
@@ -4488,6 +4508,11 @@ const Store = {
     /* --- Программы (верхний уровень: программа → зона → пост) --- */
     programOf(ws)          { return this.wsProgram[ws] || null; },
     wsOfProgram(prog)      { return this.workstations.filter(ws => this.wsProgram[ws] === prog); },
+    /** Справочник программ для селектов карточки инструмента (v94):
+        реестр programs + значения из карты wsProgram (переживает пустой реестр) */
+    programOptions() {
+        return [...new Set([...(this.programs || []), ...Object.values(this.wsProgram || {})].filter(Boolean))].sort();
+    },
     programExists(name)    { return this.programs.includes(name); },
 
     addProgram(name) {
@@ -5853,6 +5878,7 @@ function applyFilters(list) {
                 (t.location || '').toLowerCase().includes(q) ||
                 Store.empName(t.assigneeId).toLowerCase().includes(q) ||
                 (t.sn || '').toLowerCase().includes(q) ||
+                (t.program || '').toLowerCase().includes(q) ||
                 addrPlain.includes(q) ||
                 addrLabeled.includes(q) ||
                 (addrCores.length > 1 && addrCores.includes(q));
@@ -6726,6 +6752,16 @@ function populateAllDropdowns() {
     });
     fillWs(['regEmpWs', 'assignWs', 'addToolLoc', 'editToolLoc', 'transZone', 'addToolZone', 'editToolZone', 'procureWs', 'auditWs']);
 
+    // Селекты программы в карточках инструмента (v94): реестр + значения wsProgram
+    ['addToolProgram', 'editToolProgram'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const val = el.value;
+        el.innerHTML = `<option value="">—</option>` +
+            Store.programOptions().map(v => `<option value="${Utils.esc(v)}">${Utils.esc(v)}</option>`).join('');
+        if (val && Store.programOptions().includes(val)) el.value = val;
+    });
+
     // Посты зависят от зоны (иерархия зона → посты): выбрал зону — в списке только её посты
     const pair = (wsId, postId) => {
         const wsEl = document.getElementById(wsId), postEl = document.getElementById(postId);
@@ -7372,6 +7408,7 @@ const Ops = {
         document.getElementById('addToolMinQty').value = 0;
         document.getElementById('addToolMaxQty').value = 0;
         document.getElementById('addToolOrganizer').checked = false;
+        document.getElementById('addToolProgram').value = '';
         // Селектор класса собираем при каждом открытии (актуальный язык), дефолт — TW
         document.getElementById('addToolClass').innerHTML = this.toolClassOptions('TW');
         this.onToolClassChange();
@@ -7469,6 +7506,8 @@ const Ops = {
         }
         if (!tool.sn) tool.sn = (tool.id.includes('-') ? tool.id.split('-')[0] : 'SN') + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
         if (address) tool.address = address;
+        const prog = document.getElementById('addToolProgram').value;
+        if (prog) tool.program = prog; // продуктовая программа (v94)
         // Стейдженые фото прикрепляются к новому инструменту сразу при создании
         if (!Array.isArray(tool.photos)) tool.photos = [];
         if (this._pendingPhotos.length) {
@@ -7503,6 +7542,12 @@ const Ops = {
         document.getElementById('editToolArticle').value = tool.article || '';
         document.getElementById('editToolCat').value = tool.category || '';
         document.getElementById('editToolLoc').value = tool.location || '';
+        // Селект программы: пересобираем при открытии + текущее значение инструмента (v94)
+        const progSel = document.getElementById('editToolProgram');
+        progSel.innerHTML = `<option value="">—</option>` +
+            Store.programOptions().map(v => `<option value="${Utils.esc(v)}">${Utils.esc(v)}</option>`).join('');
+        ensureOption('editToolProgram', tool.program);
+        progSel.value = tool.program || '';
         
         if (tool.address) {
             ensureOption('editToolZone', tool.address.zone);
@@ -7581,6 +7626,8 @@ const Ops = {
         tool.location = document.getElementById('editToolLoc').value || '';
         tool.spec = document.getElementById('editToolSpec').value.trim();
         tool.organizer = document.getElementById('editToolOrganizer').checked;
+        const editProg = document.getElementById('editToolProgram').value;
+        if (editProg) tool.program = editProg; else delete tool.program; // v94: пустой выбор = снять программу
         
         // Адрес: незаполненные поля сохраняют прежнее значение (защита от потери),
         // полностью пустая форма — осознанное удаление адреса
@@ -7998,6 +8045,13 @@ const Ops = {
             ? tool.sn + (Utils.isAutoSn(tool.sn) ? ' (auto)' : '') : 'N/A';
         document.getElementById('detArticle').innerText = tool.article || 'N/A';
         document.getElementById('detQty').innerText = tool.qty || 1;
+
+        // v94: программа (явная у инструмента, иначе выведенная из станции) + станция/пост
+        const wsp = this.workstationAndPostOf(tool);
+        const progName = tool.program || Store.programOf(wsp.ws);
+        const wsName = (wsp.ws && wsp.ws !== 'Unknown' && wsp.ws !== 'Unassigned') ? wsp.ws : null;
+        document.getElementById('detProgram').innerText =
+            [progName, wsName, wsp.post].filter(Boolean).join(' · ') || 'N/A';
         
         document.getElementById('detPrintBtn').setAttribute('data-action', 'print-label');
         document.getElementById('detPrintBtn').setAttribute('data-id', tool.id);

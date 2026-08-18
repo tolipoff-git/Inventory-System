@@ -2,13 +2,20 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v93` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v94` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) for data + **IndexedDB (`inv_photos_db`) for photo blobs (since v91)**; manual JSON backup/restore inlines photos back to base64. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v93)
+## Recent Accomplishments (v49 – v94)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
+
+### 0. Per-Tool Program Field (v94 Release)
+- **Why:** a tool's program existed only implicitly (`location → workstation → wsProgram`), so when the workstations/programs registries are empty there was nothing to derive and nothing to pick in the tool card.
+- **New field `t.program`:** optional product program (USS, BAC, WABTEC…). `Program` select added to both `addToolModal` (`#addToolProgram`) and `editToolModal` (`#editToolProgram`), cleared on add-form reset, saved in `submitAddTool`/`submitEditTool` (empty choice deletes the field).
+- **Options source:** new `Store.programOptions()` — union of the `programs` registry and `wsProgram` values (wsProgram lives in its own localStorage key `inv_wsProgram` and survives an empty registry). Both selects are filled in `populateAllDropdowns()`; `openEditToolModal` re-fills and preselects the tool's program (unknown values survive via `ensureOption`).
+- **Visibility:** detail modal gained a "Program / Workstation / Post" row (`#detProgram`): explicit `t.program`, falling back to `Store.programOf(workstationAndPostOf(t).ws)`, then workstation and post (`Unknown`/`Unassigned` suppressed). Global search now also matches `t.program`.
+- **i18n:** keys `Program`, `PROGRAM_HINT`, `PROGRAM_WS_POST` in both dictionaries (parity 470=470).
 
 ### 0. Trailing Blank Background Page on Print Removed (v93 Release)
 - **Bug:** printing labels (roll/queue and legacy queue paths) always emitted one extra trailing page painted with the app background. Two causes: every queue cell/wrapper carried `page-break-after: always` — including the last one, which spawns a blank page after the final label — and `body`'s theme background (`var(--bg-color)`) painted the print page canvas.
