@@ -2,7 +2,7 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v88` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v89` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
 - **Storage:** LocalStorage (`inv_inventory_db`) with manual JSON backup/restore. 
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
@@ -22,6 +22,7 @@ The application has undergone massive functional and architectural expansion. Th
 - **Excel Tamper-Lock Password Change:** Worksheet protection password changed from `exportSerial` to the first 16 characters of the export SHA-256 checksum (`checksum.slice(0, 16)`); the stamp row no longer prints the password — unlock via the System Audit Log. FAQ (EN/RU) updated accordingly.
 - **Checksum Payload Normalization:** Export hash payload uses `parseInt(t.qty) || 1` and `t.sn || ''` for deterministic signatures.
 - **Export UX Loader & Main-Thread Yields (v88):** `Reports.exportInventoryXLSX()` now shows a full-screen spinner overlay (`#loadingOverlay`, key `EXPORT_GENERATING` in both dictionaries) and yields the main thread (`Reports._yieldUI()`) before each worksheet and before `wb.xlsx.writeBuffer()`, so the UI stays alive during the heavy synchronous ExcelJS build/compression phases.
+- **Bin Occupancy Guard in Add-Tool Form (v89):** `Store.getUsedBins(zone, rack, shelf)` extracted from `getNextFreeBin`; new `Ops.refreshAddToolBins()` rebuilds `#addToolBin` (Bin 1–50) on every Zone/Rack/Shelf change and on modal open — occupied bins (exact Zone+Rack+Shelf match) are shown as `Bin N — occupied` and `disabled`, the first free bin is auto-selected, and a manual free-bin selection survives shelf switches. New key `BIN_OCCUPIED` in both dictionaries. Note: `editToolModal` still uses the legacy static Bin 1–10 list.
 
 ### 0. Full 64-Character SHA-256 Checksum, Copyable Audit Log & Anti-Tamper Excel Sheet Lock (v86 Release)
 - **System Audit Log in "System Management" Modal (`systemMenuModal`):** Enhanced the System Audit Log modal (`auditLogModal`) accessible via `⚙ System Management` -> `System Audit Log`:
