@@ -500,6 +500,38 @@ html { overflow-x: hidden; }
 }
 .modal-overlay.active { display: flex; }
 
+/* Индикатор длительных операций (экспорт Excel): полноэкранный лоадер со спиннером */
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.85);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 99999;
+    backdrop-filter: blur(3px);
+}
+.loading-overlay.active { display: flex; }
+.loading-box {
+    background-color: var(--surface);
+    border: 1px solid var(--primary);
+    border-radius: 4px;
+    padding: 24px 36px;
+    text-align: center;
+    color: var(--text-main);
+    box-shadow: 0 0 20px rgba(69, 162, 158, 0.2);
+}
+.loading-spinner {
+    width: 36px;
+    height: 36px;
+    margin: 0 auto 12px;
+    border: 4px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: loading-spin 0.8s linear infinite;
+}
+@keyframes loading-spin { to { transform: rotate(360deg); } }
+
 .modal {
     background-color: var(--surface);
     border: 1px solid var(--primary);
@@ -1245,6 +1277,14 @@ select.work-only.form-control { max-width: 190px; }
         <div class="modal-footer">
             <button class="btn btn-warning" onclick="closeModal('legalNoticeModal')" data-i18n="Acknowledge">Acknowledge</button>
         </div>
+    </div>
+</div>
+
+<!-- Индикатор длительных операций (экспорт Excel и т.п.) -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-box">
+        <div class="loading-spinner"></div>
+        <div id="loadingOverlayText" style="font-size:0.95rem; font-weight:bold;">Loading…</div>
     </div>
 </div>
 
@@ -2445,7 +2485,7 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v87',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    APP_VERSION: 'v88',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
     BUILD_DATE: '2026-08-18',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
@@ -2969,6 +3009,7 @@ const translations = {
         'REQ_FAILED': 'Error generating Expense Request. CSV export is still available.',
         'XLSX_INIT_FAILED': 'Excel library failed to initialize. Exporting CSV instead.',
         'XLSX_FAILED_CSV': 'XLSX export failed: {msg}\nExporting CSV instead.',
+        'EXPORT_GENERATING': 'Generating Excel report…',
         'LOGOUT_CONFIRM': 'Logout and switch to Operator role?',
         'ORDER_CANCEL_CONFIRM': 'Cancel this order?',
         'PHOTO_REMOVE_CONFIRM': 'Remove this photo?',
@@ -3051,7 +3092,7 @@ const translations = {
 
     <details class="faq-details"><summary class="faq-summary">4. Risks, 5S Audits & Score Breakdown</summary><div class="faq-content"><b>Station | Post Risk Grouping:</b> The risk and incident chart groups equipment by workstations (<i>Assembly | Post 1</i>). Hovering over the bars displays a tooltip with the Program, Station, Post, Responsible Employee, and detailed rating factors (penalties for wear, overdues, and maintenance).<br><b>Interactive 5S Audits & Scoring Criteria:</b> Clicking a 5S radar spoke or a history row opens the post card with a full breakdown of each score from 1 to 5 across all 5 pillars (Sort, Set in Order, Shine, Standardize, Sustain) from the <code>S5_RUBRICS</code> directory (e.g., <i>"3 — Excess items present, but stacked separately"</i>).</div></details>
 
-    <details class="faq-details"><summary class="faq-summary">5. PWA, 1-Click PWA Auto-Update & Security</summary><div class="faq-content"><b>Offline PWA & Storage Protection:</b> The app functions offline in the browser. Data is saved to <code>localStorage</code> with secure QuotaExceeded catching, SHA-256 password validation, and strictly enforced Role-Based Access (Administrator / Tool Crib Manager / Operator). Only Administrators can restore JSON backups.<br><b>1-Click PWA Update:</b> The browser always polls Cloudflare Pages directly thanks to <code>no-cache</code> CDN headers. Clicking the clickable version badge (<b>v87</b>) in the header or the <code>[🔄 Update PWA]</code> button in the menu clears browser caches, unregisters service workers, and performs 1 guaranteed hard reload without looping.<br><b>Digital Integrity Stamp & Anti-Tamper Sheet Lock (SHA-256):</b> Every exported Excel report (.xlsx) is cryptographically stamped with a complete 64-character SHA-256 digital fingerprint and unique serial number (EXP-...). The export event, author, exact asset quantities, and full checksum are permanently logged to the system audit trail. All workbook sheets are automatically locked and protected against unauthorized cell editing and tampering (unlock password: the first 16 characters of the export's SHA-256 checksum, copyable from the System Audit Log). Any post-export attempt to alter tool counts or database records creates an instant mismatch against the immutable audit log.</div></details>
+    <details class="faq-details"><summary class="faq-summary">5. PWA, 1-Click PWA Auto-Update & Security</summary><div class="faq-content"><b>Offline PWA & Storage Protection:</b> The app functions offline in the browser. Data is saved to <code>localStorage</code> with secure QuotaExceeded catching, SHA-256 password validation, and strictly enforced Role-Based Access (Administrator / Tool Crib Manager / Operator). Only Administrators can restore JSON backups.<br><b>1-Click PWA Update:</b> The browser always polls Cloudflare Pages directly thanks to <code>no-cache</code> CDN headers. Clicking the clickable version badge (<b>v88</b>) in the header or the <code>[🔄 Update PWA]</code> button in the menu clears browser caches, unregisters service workers, and performs 1 guaranteed hard reload without looping.<br><b>Digital Integrity Stamp & Anti-Tamper Sheet Lock (SHA-256):</b> Every exported Excel report (.xlsx) is cryptographically stamped with a complete 64-character SHA-256 digital fingerprint and unique serial number (EXP-...). The export event, author, exact asset quantities, and full checksum are permanently logged to the system audit trail. All workbook sheets are automatically locked and protected against unauthorized cell editing and tampering (unlock password: the first 16 characters of the export's SHA-256 checksum, copyable from the System Audit Log). Any post-export attempt to alter tool counts or database records creates an instant mismatch against the immutable audit log.</div></details>
 </div>`,
         'Action': 'Action',
         'Actions': 'Actions',
@@ -3448,6 +3489,7 @@ const translations = {
         'REQ_FAILED': 'Ошибка формирования заявки. CSV-экспорт по-прежнему доступен.',
         'XLSX_INIT_FAILED': 'Excel-библиотека не инициализировалась. Экспортирую CSV.',
         'XLSX_FAILED_CSV': 'Ошибка XLSX-экспорта: {msg}\nЭкспортирую CSV.',
+        'EXPORT_GENERATING': 'Формируется Excel-отчёт…',
         'LOGOUT_CONFIRM': 'Выйти и переключиться на роль оператора?',
         'ORDER_CANCEL_CONFIRM': 'Отменить заказ?',
         'PHOTO_REMOVE_CONFIRM': 'Удалить фото?',
@@ -3553,7 +3595,7 @@ const translations = {
 
     <details class="faq-details"><summary class="faq-summary">4. Риски, 5S-Аудиты и Расшифровка Оценок</summary><div class="faq-content"><b>Группировка рисков Станция | Пост:</b> Диаграмма рисков и инцидентов объединяет оборудование по рабочим постам (<i>Assembly | Post 1</i>). При наведении на столбцы выводится тултип с указанием Программы, Станции, Поста, Ответственного сотрудника и детализированных факторов рейтинга (штрафы за износ, просрочки и обслуживание).<br><b>Интерактивные 5S-аудиты и критерии оценок:</b> Клик по лучу 5S-радара или строке истории открывает карточку поста с полной расшифровкой каждой оценки от 1 до 5 по всем 5 столпам (Сортировка, Порядок, Чистота, Стандартизация, Совершенствование) из рубрикатора <code>S5_RUBRICS</code> (напр., <i>«3 — Лишнее есть, но сложено отдельно»</i>).</div></details>
 
-    <details class="faq-details"><summary class="faq-summary">5. PWA, PWA-Автообновление в 1 Клик и Безопасность</summary><div class="faq-content"><b>Офлайн PWA и защита хранилища:</b> Приложение функционирует офлайн в браузере. Данные сохраняются в <code>localStorage</code> с безопасным перехватом QuotaExceeded, валидацией паролей через SHA-256 и строго разграниченным ролевым доступом (Administrator / Tool Crib Manager / Operator). Только Администратор может восстанавливать бэкапы JSON.<br><b>Обновление PWA в 1 клик:</b> Браузер всегда опрашивает Cloudflare Pages напрямую благодаря CDN-заголовкам <code>no-cache</code>. Клик по кликабельной плашке версии (<b>v87</b>) в шапке или кнопке <code>[🔄 Обновить PWA]</code> в меню очищает браузерные кэши, снимает сервис-воркеры и выполняет 1 гарантированную жесткую перезагрузку без зацикливаний.<br><b>Цифровой штамп верификации, полный SHA-256 и блокировка книги от изменений:</b> Каждый сформированный отчет Excel (.xlsx) заверяется полным 64-значным криптографическим отпечатком SHA-256 и уникальным серийным номером (EXP-...). Событие экспорта, автор, количество позиций и полный хэш фиксируются в системном журнале аудита. Все листы книги Excel автоматически защищены и заблокированы от случайного или несанкционированного изменения ячеек (пароль разблокировки — первые 16 символов SHA-256 хэша выгрузки, копируется из системного журнала аудита). Любая попытка после экспорта задним числом списать или изменить данные мгновенно выявляется сверкой подписей в журнале и на штампе.</div></details>
+    <details class="faq-details"><summary class="faq-summary">5. PWA, PWA-Автообновление в 1 Клик и Безопасность</summary><div class="faq-content"><b>Офлайн PWA и защита хранилища:</b> Приложение функционирует офлайн в браузере. Данные сохраняются в <code>localStorage</code> с безопасным перехватом QuotaExceeded, валидацией паролей через SHA-256 и строго разграниченным ролевым доступом (Administrator / Tool Crib Manager / Operator). Только Администратор может восстанавливать бэкапы JSON.<br><b>Обновление PWA в 1 клик:</b> Браузер всегда опрашивает Cloudflare Pages напрямую благодаря CDN-заголовкам <code>no-cache</code>. Клик по кликабельной плашке версии (<b>v88</b>) в шапке или кнопке <code>[🔄 Обновить PWA]</code> в меню очищает браузерные кэши, снимает сервис-воркеры и выполняет 1 гарантированную жесткую перезагрузку без зацикливаний.<br><b>Цифровой штамп верификации, полный SHA-256 и блокировка книги от изменений:</b> Каждый сформированный отчет Excel (.xlsx) заверяется полным 64-значным криптографическим отпечатком SHA-256 и уникальным серийным номером (EXP-...). Событие экспорта, автор, количество позиций и полный хэш фиксируются в системном журнале аудита. Все листы книги Excel автоматически защищены и заблокированы от случайного или несанкционированного изменения ячеек (пароль разблокировки — первые 16 символов SHA-256 хэша выгрузки, копируется из системного журнала аудита). Любая попытка после экспорта задним числом списать или изменить данные мгновенно выявляется сверкой подписей в журнале и на штампе.</div></details>
 </div>`,
         'Action': 'Действие',
         'Actions': 'Действия',
@@ -10622,6 +10664,22 @@ const Reports = {
             <div class="pz-sign"><div>Prepared by (Tool Crib Manager)</div><div>Reviewed by (5S Lead)</div></div>`);
     },
 
+    /** Пауза, отдающая главный поток браузеру (перерисовка лоадера между фазами экспорта) */
+    _yieldUI() {
+        return new Promise(r => setTimeout(r, 30));
+    },
+
+    /** Показ/скрытие полноэкранного лоадера с текстом фазы */
+    _exportLoader(show, msg) {
+        const ov = document.getElementById('loadingOverlay');
+        if (!ov) return;
+        if (msg) {
+            const t = document.getElementById('loadingOverlayText');
+            if (t) t.textContent = msg;
+        }
+        ov.classList.toggle('active', !!show);
+    },
+
     /* ==========================================================================
        ЭКСПОРТ ВСЕГО ИНВЕНТАРЯ В XLSX
        Лист 1 «Сводка»    — KPI, статусы, загрузка станций (фирменные цвета)
@@ -10639,6 +10697,8 @@ const Reports = {
             this.exportInventoryCSV();
             return;
         }
+        this._exportLoader(true, T('EXPORT_GENERATING'));
+        await this._yieldUI();
         try {
             const exportSerial = 'EXP-' + Utils.nowISO().replace(/[-:T]/g, '').slice(0, 14) + '-' + Math.random().toString(36).substr(2, 4).toUpperCase();
             const author = (Auth.current && Auth.current.username) ? `${Auth.current.username} (${Auth.current.role})` : 'System Administrator';
@@ -10859,6 +10919,8 @@ const Reports = {
                 rIdx++;
             });
 
+            await this._yieldUI(); // отдать поток браузеру между листами
+
             /* ================= ЛИСТ 2: ИНВЕНТАРЬ ================= */
             const inv = wb.addWorksheet(isRu ? 'Инвентарь' : 'Inventory');
             inv.columns = [
@@ -10923,6 +10985,8 @@ const Reports = {
             inv.views = [{ state: 'frozen', ySplit: 1 }];
             inv.autoFilter = { from: 'A1', to: `Q${active.length + 1}` };
 
+            await this._yieldUI(); // отдать поток браузеру между листами
+
             /* ================= ЛИСТ 3: ПЕРСОНАЛ ================= */
             const per = wb.addWorksheet(isRu ? 'Персонал' : 'Personnel');
             per.columns = [{ width: 10 }, { width: 24 }, { width: 10 }, { width: 10 }, { width: 20 }, { width: 20 }, { width: 12 }, { width: 12 }, { width: 12 }, { width: 12 }, { width: 10 }];
@@ -10950,6 +11014,8 @@ const Reports = {
             per.views = [{ state: 'frozen', ySplit: 1 }];
             per.autoFilter = { from: 'A1', to: `K${Store.personnel.length + 1}` };
 
+            await this._yieldUI(); // отдать поток браузеру между листами
+
             /* ================= ЛИСТ 4: АРХИВ ================= */
             let arc = null;
             const retired = Store.tools.filter(t => t.status === 'Retired' || t.status === 'retired');
@@ -10971,6 +11037,8 @@ const Reports = {
                 arc.autoFilter = { from: 'A1', to: `H${retired.length + 1}` };
                 arc.views = [{ state: 'frozen', ySplit: 1 }];
             }
+
+            await this._yieldUI(); // отдать поток браузеру между листами
 
             /* ================= ЛИСТ 5: ЖУРНАЛ ================= */
             const logSheet = wb.addWorksheet(isRu ? 'Журнал' : 'Audit Log');
@@ -11013,6 +11081,7 @@ const Reports = {
             if (arc) await arc.protect(protectPw, protectOpts);
             await logSheet.protect(protectPw, protectOpts);
 
+            await this._yieldUI(); // пауза перед финальной сборкой и сжатием книги
             const buf = await wb.xlsx.writeBuffer();
             Utils.downloadBuffer(Utils.datedName('5S_Tools_Inventory', 'xlsx'), buf,
                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -11020,6 +11089,8 @@ const Reports = {
             console.error('Inventory XLSX failed', e);
             alert(T('XLSX_FAILED_CSV').replace('{msg}', e.message));
             this.exportInventoryCSV();
+        } finally {
+            this._exportLoader(false);
         }
     },
 
