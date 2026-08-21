@@ -10,6 +10,8 @@ Do not re-audit or re-document what is already recorded there; append to it inst
   (~11,000 lines: markup, CSS, all JS modules as plain objects — `Store`, `Ops`,
   `Reports`, `Charts`, `Auth`, `Utils`, `Procure`, plus inlined vendor bundles
   ExcelJS/JSZip/QRious). There is no build step for the app itself.
+  A `СОДЕРЖАНИЕ ФАЙЛА` comment block at the top maps all sections with line
+  anchors — keep it in sync when adding or moving modules (`МОДУЛЬ: X` banners).
 - `sw.js` — service worker; `CACHE_VERSION` is generated, do not hand-edit.
 - `build.sh` — refreshes `sw.js` cache version from `CONFIG.APP_VERSION` + git short hash.
 - `project_handoff.md` — session-to-session memory (update it after every release).

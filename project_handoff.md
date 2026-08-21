@@ -232,3 +232,25 @@ The application has undergone massive functional and architectural expansion. Th
 - **Updating App Version:** Simply change `APP_VERSION` in `CONFIG.APP_VERSION` (in `index.html`).
 - **Cloudflare Pages Build Command:** Configure `bash build.sh` in Cloudflare Pages Build Settings.
 - **Local Testing:** Run `./build.sh` locally to verify `sw.js` updates with current commit short hash.
+
+## Deferred Audit Items (post-MVP, consciously postponed)
+A rendering-architecture audit flagged four items. Decision (user, MVP stage): do NOT implement now — the app works and the refactor risk outweighs the benefit. Revisit after MVP:
+- Memory leak on re-render (proposal: WeakMap-cached DOM elements).
+- No event model (proposal: Observer pattern / EventTarget).
+- Inefficient rendering (proposal: lit-html or a diff algorithm).
+- Performance: list virtualization / partial rendering.
+
+## "Improvement Patches" Proposal — Verified Against v95 Code (2026-08-21)
+An external "improvement patches" document (XSS / quota / salting / partial render / filter cache / DateHelper / ErrorLogger / rAF / self-tests) was checked item-by-item. Verdicts — do not re-verify:
+- **NOT applicable (already done):** XSS — all dynamic lists already escape via `Utils.esc` (`detHistory` :8119, audit lifecycle :8136–8138, emp history :8220, `integrityList` :7114); localStorage quota — `Store.save` alert + audit-log trim (1000) + 4M-char warn, `Ops.stagePhoto` sentry at 4.3M, photos in IndexedDB since v91.
+- **NOT applicable (duplicates/risky):** DateHelper module (duplicates `Utils.d`/`fmtDate`/`daysUntil`/`durationStr`/`nowISO` + `CONFIG.DAY_MS`); rAF render batching (breaks code reading DOM right after render: `Photos.hydrate` :8127/:8291, QR canvas draws :9045/:9489+, `Charts.update` chained in `init()` :11547); `?test` self-test harness — greenfield, separate decision.
+- **Worth doing post-MVP (in priority order):**
+  1. **Password hardening (the only real security item):** seed hashes are unsalted SHA-256 (`Utils.hashPw` :2842) and dictionary-weak — seed passwords crack trivially. Change seed passwords, add `Store.meta.salt` with re-hash-on-next-login migration (no change-password flow exists — one must be added). Plain salting without migration breaks all existing hashes on deployed machines.
+  2. **Filter caching:** `applyFilters` (:5827) re-runs on every keystroke (`onSearchInput` :5820); memoize the filtered result, invalidate on filter/data change. Input list `Store._activeTools` is already memoized.
+  3. **Persist runtime errors:** route `window.error` / `unhandledrejection` (:11596) into `Store.log` instead of console-only.
+  4. **Dedup `isOverdue`** — predicate inlined at :8053, :8175, :10654.
+  5. **Partial rendering `updateToolCard(toolId)`** (only if grid perf ever matters): needs `data-id` on the card root (:6630) and `renderToolCard` hoisted out of `renderGrid` (:6620); KPI/hub/charts still require full render after mutations.
+
+## File Navigation TOC (2026-08-21, non-release docs change)
+- Added a `СОДЕРЖАНИЕ ФАЙЛА` comment block at the top of `index.html` (after the header comment): maps vendor scripts, all `<style>` blocks, markup regions and all 14 JS module banners (`МОДУЛЬ: X`) with line anchors. Comment-only change — no `APP_VERSION` bump. Keep the TOC in sync when adding/moving sections.
+- Line numbers cited in this document are as of v95, before the TOC insert (+~45 lines after it).
