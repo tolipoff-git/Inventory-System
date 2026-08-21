@@ -4748,8 +4748,14 @@ const Store = {
     rollback() {
         const snap = this.rollbackInfo();
         if (!snap) return false;
-        this.workstations = snap.workstations;
-        this.workposts = snap.workposts;
+        // Validate critical arrays before applying to prevent data wipe on corrupt snapshot
+        if (!Array.isArray(snap.tools) || !Array.isArray(snap.personnel)) {
+            console.error('Store.rollback: corrupt snapshot — tools or personnel not arrays', snap);
+            if (typeof Utils !== 'undefined' && Utils.toast) Utils.toast('⚠️ Rollback snapshot corrupt — aborted to protect data.', 8000);
+            return false;
+        }
+        this.workstations = Array.isArray(snap.workstations) ? snap.workstations : this.workstations;
+        this.workposts = Array.isArray(snap.workposts) ? snap.workposts : this.workposts;
         this.programs = snap.programs || [];
         this.wsProgram = snap.wsProgram || {};
         this.personnel = snap.personnel;
@@ -5666,7 +5672,7 @@ const UI = {
     /* --- Сворачивание карточек (хабы и графики) ---
        Состояние сохраняется в localStorage; до первого касания действуют
        умные дефолты: на телефоне открыты только ключевые карточки. */
-    cardState: JSON.parse(localStorage.getItem('inv_cards') || '{}'),
+    cardState: (() => { try { return JSON.parse(localStorage.getItem('inv_cards') || '{}'); } catch(e) { return {}; } })(),
 
     cardCollapsed(key) {
         const saved = this.cardState[key];
@@ -10564,11 +10570,16 @@ const Photos = {
         if (!Array.isArray(tool.photos)) tool.photos = [];
         if (tool.photos.length >= this.MAX_PER_TOOL) { alert(T('PHOTO_LIMIT')); return; }
         this.compress(file).then(async data => {
-            await this.attachData(tool, data, { by: (typeof Auth !== 'undefined' && Auth.current && Auth.current.username) || 'local' });
-            Store.toolEvent(tool, `Photo attached (${tool.photos.length}/${this.MAX_PER_TOOL})`);
-            Store.log('TOOL_PHOTO', `${tool.id} +photo`);
-            Store.save();
-            Ops.openDetailModal(toolId); // перерисовать карточку
+            try {
+                await this.attachData(tool, data, { by: (typeof Auth !== 'undefined' && Auth.current && Auth.current.username) || 'local' });
+                Store.toolEvent(tool, `Photo attached (${tool.photos.length}/${this.MAX_PER_TOOL})`);
+                Store.log('TOOL_PHOTO', `${tool.id} +photo`);
+                Store.save();
+                Ops.openDetailModal(toolId); // перерисовать карточку
+            } catch(e) {
+                console.error('Photos.attach: attachData failed', e);
+                alert(T('PHOTO_BAD_FILE'));
+            }
         }).catch(() => alert(T('PHOTO_BAD_FILE')));
     },
 
@@ -11510,7 +11521,24 @@ function init() {
     Store.recomputeStatuses();   // актуализируем Overdue по датам
     Store.save();                // фиксируем пересчитанные статусы
     // Миграции фото (async): сначала разовое пережатие (v90), затем перенос в IndexedDB (v91)
-    Store.compactPhotos().then(() => Store.migratePhotosToIDB());
+    Store.compactPhotos()
+        .then(() => Store.migratePhotosToIDB())
+        .catch(e => console.error('Photo migration failed:', e));
+
+    // Warn if the app is already open in another tab (last-save-wins risk)
+    if (typeof BroadcastChannel !== 'undefined') {
+        const _tabChannel = new BroadcastChannel('inv_tab_sync');
+        _tabChannel.postMessage('ping');
+        _tabChannel.onmessage = (ev) => {
+            if (ev.data === 'ping') {
+                _tabChannel.postMessage('pong');
+            } else if (ev.data === 'pong') {
+                if (typeof Utils !== 'undefined' && Utils.toast) {
+                    Utils.toast('⚠️ App is open in another tab — changes may overwrite each other!', 10000);
+                }
+            }
+        };
+    }
     populateAllDropdowns();
     renderRbacList();
     updateRBACUI();
