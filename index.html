@@ -1199,8 +1199,8 @@ select.work-only.form-control { max-width: 190px; }
     </div>
 
     <div class="storage-note">
-        <strong data-i18n="Local Storage:">Local Storage:</strong>
-        <span data-i18n="STORAGE_NOTE">Data is stored securely in browser localStorage + JSON backup files.</span>
+        <strong data-i18n="Local Storage:">Storage:</strong>
+        <span data-i18n="STORAGE_NOTE">Data is stored securely in browser IndexedDB + JSON backup files.</span>
     </div>
 </header>
 
@@ -2556,8 +2556,8 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v95',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
-    BUILD_DATE: '2026-08-18',        // дата сборки для подвала
+    APP_VERSION: 'v96',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    BUILD_DATE: '2026-08-25',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
     WEAR_RETIRE_PCT: 75,             // износ, после которого инструмент списывается
@@ -2944,7 +2944,7 @@ const translations = {
         'System Management': 'System Management',
         'Operations & Reports': 'Operations & Reports',
         'Local Storage:': 'Local Storage:',
-        'STORAGE_NOTE': 'Data is stored securely in browser localStorage + JSON backup files.',
+        'STORAGE_NOTE': 'Data is stored securely in browser IndexedDB + JSON backup files.',
         'Tool Status Breakdown': 'Tool Status Breakdown',
         'Workstation Tool Load': 'Workstation Tool Load',
         'Risk Index & Incidents': 'Risk Index & Incidents',
@@ -2965,6 +2965,8 @@ const translations = {
         '[Decommission / Retire]': '[Decommission / Retire]',
         'Print Sticker / Label': '🖨 Print Sticker / Label',
         'Restricted': '🔒 Restricted',
+        'Pillar Focus:': 'Pillar Focus:',
+        'items': 'items',
         'FAQ_TITLE': '5S Tool Command Center: Knowledge Base',
         // Категорийный хаб
         'HUB_TOOLS': '🛠️ Capital Equipment & Tools Hub',
@@ -3170,7 +3172,7 @@ const translations = {
 
     <details class="faq-details"><summary class="faq-summary">4. Risks, 5S Audits & Score Breakdown</summary><div class="faq-content"><b>Station | Post Risk Grouping:</b> The risk and incident chart groups equipment by workstations (<i>Assembly | Post 1</i>). Hovering over the bars displays a tooltip with the Program, Station, Post, Responsible Employee, and detailed rating factors (penalties for wear, overdues, and maintenance).<br><b>Interactive 5S Audits & Scoring Criteria:</b> Clicking a 5S radar spoke or a history row opens the post card with a full breakdown of each score from 1 to 5 across all 5 pillars (Sort, Set in Order, Shine, Standardize, Sustain) from the <code>S5_RUBRICS</code> directory (e.g., <i>"3 — Excess items present, but stacked separately"</i>).</div></details>
 
-    <details class="faq-details"><summary class="faq-summary">5. PWA, 1-Click PWA Auto-Update & Security</summary><div class="faq-content"><b>Offline PWA & Storage Protection:</b> The app functions offline in the browser. Data is saved to <code>localStorage</code> with secure QuotaExceeded catching, SHA-256 password validation, and strictly enforced Role-Based Access (Administrator / Tool Crib Manager / Operator). Only Administrators can restore JSON backups.<br><b>1-Click PWA Update:</b> The browser always polls Cloudflare Pages directly thanks to <code>no-cache</code> CDN headers. Clicking the clickable version badge (<b>v95</b>) in the header or the <code>[🔄 Update PWA]</code> button in the menu clears browser caches, unregisters service workers, and performs 1 guaranteed hard reload without looping.<br><b>Digital Integrity Stamp & Anti-Tamper Sheet Lock (SHA-256):</b> Every exported Excel report (.xlsx) is cryptographically stamped with a complete 64-character SHA-256 digital fingerprint and unique serial number (EXP-...). The export event, author, exact asset quantities, and full checksum are permanently logged to the system audit trail. All workbook sheets are automatically locked and protected against unauthorized cell editing and tampering (unlock password: the first 16 characters of the export's SHA-256 checksum, copyable from the System Audit Log). Any post-export attempt to alter tool counts or database records creates an instant mismatch against the immutable audit log.</div></details>
+    <details class="faq-details"><summary class="faq-summary">5. PWA, 1-Click PWA Auto-Update & Security</summary><div class="faq-content"><b>Offline PWA & IndexedDB Architecture:</b> The app functions offline in the browser. Primary database storage (tools, personnel, users, audit, procurement, settings, photos) is managed in high-capacity <code>IndexedDB</code> (inv_inventory_db), while <code>localStorage</code> is strictly reserved for lightweight UI preferences (theme, language, display mode, cards state) and session metadata. SHA-256 password validation and Role-Based Access (Administrator / Tool Crib Manager / Operator) protect critical operations. Only Administrators can restore JSON backups.<br><b>1-Click PWA Update:</b> The browser always polls Cloudflare Pages directly thanks to <code>no-cache</code> CDN headers. Clicking the clickable version badge (<b>v96</b>) in the header or the <code>[🔄 Update PWA]</code> button in the menu clears browser caches, unregisters service workers, and performs 1 guaranteed hard reload without looping.<br><b>Digital Integrity Stamp & Anti-Tamper Sheet Lock (SHA-256):</b> Every exported Excel report (.xlsx) is cryptographically stamped with a complete 64-character SHA-256 digital fingerprint and unique serial number (EXP-...). The export event, author, exact asset quantities, and full checksum are permanently logged to the system audit trail. All workbook sheets are automatically locked and protected against unauthorized cell editing and tampering (unlock password: the first 16 characters of the export's SHA-256 checksum, copyable from the System Audit Log). Any post-export attempt to alter tool counts or database records creates an instant mismatch against the immutable audit log.</div></details>
 </div>`,
         'Action': 'Action',
         'Actions': 'Actions',
@@ -3432,7 +3434,7 @@ const translations = {
         'System Management': 'Управление системой',
         'Operations & Reports': 'Операции и отчеты',
         'Local Storage:': 'Локальное хранилище:',
-        'STORAGE_NOTE': 'Данные хранятся в localStorage браузера + JSON-файлы резервных копий.',
+        'STORAGE_NOTE': 'Данные хранятся в IndexedDB браузера + JSON-файлы резервных копий.',
         'Tool Status Breakdown': 'Статус инструментов',
         'Workstation Tool Load': 'Загрузка рабочих станций',
         'Risk Index & Incidents': 'Индекс рисков и инциденты',
@@ -3453,6 +3455,8 @@ const translations = {
         '[Decommission / Retire]': '[Списать]',
         'Print Sticker / Label': '🖨 Печать этикетки',
         'Restricted': '🔒 Нет доступа',
+        'Pillar Focus:': 'Фокус на столпе:',
+        'items': 'шт.',
         'FAQ_TITLE': '5S Tool Command Center: База знаний',
         'HUB_TOOLS': '🛠️ Хаб оборудования и инструмента',
         'HUB_STAFF': '👥 Хаб персонала',
@@ -3680,7 +3684,7 @@ const translations = {
 
     <details class="faq-details"><summary class="faq-summary">4. Риски, 5S-Аудиты и Расшифровка Оценок</summary><div class="faq-content"><b>Группировка рисков Станция | Пост:</b> Диаграмма рисков и инцидентов объединяет оборудование по рабочим постам (<i>Assembly | Post 1</i>). При наведении на столбцы выводится тултип с указанием Программы, Станции, Поста, Ответственного сотрудника и детализированных факторов рейтинга (штрафы за износ, просрочки и обслуживание).<br><b>Интерактивные 5S-аудиты и критерии оценок:</b> Клик по лучу 5S-радара или строке истории открывает карточку поста с полной расшифровкой каждой оценки от 1 до 5 по всем 5 столпам (Сортировка, Порядок, Чистота, Стандартизация, Совершенствование) из рубрикатора <code>S5_RUBRICS</code> (напр., <i>«3 — Лишнее есть, но сложено отдельно»</i>).</div></details>
 
-    <details class="faq-details"><summary class="faq-summary">5. PWA, PWA-Автообновление в 1 Клик и Безопасность</summary><div class="faq-content"><b>Офлайн PWA и защита хранилища:</b> Приложение функционирует офлайн в браузере. Данные сохраняются в <code>localStorage</code> с безопасным перехватом QuotaExceeded, валидацией паролей через SHA-256 и строго разграниченным ролевым доступом (Administrator / Tool Crib Manager / Operator). Только Администратор может восстанавливать бэкапы JSON.<br><b>Обновление PWA в 1 клик:</b> Браузер всегда опрашивает Cloudflare Pages напрямую благодаря CDN-заголовкам <code>no-cache</code>. Клик по кликабельной плашке версии (<b>v95</b>) в шапке или кнопке <code>[🔄 Обновить PWA]</code> в меню очищает браузерные кэши, снимает сервис-воркеры и выполняет 1 гарантированную жесткую перезагрузку без зацикливаний.<br><b>Цифровой штамп верификации, полный SHA-256 и блокировка книги от изменений:</b> Каждый сформированный отчет Excel (.xlsx) заверяется полным 64-значным криптографическим отпечатком SHA-256 и уникальным серийным номером (EXP-...). Событие экспорта, автор, количество позиций и полный хэш фиксируются в системном журнале аудита. Все листы книги Excel автоматически защищены и заблокированы от случайного или несанкционированного изменения ячеек (пароль разблокировки — первые 16 символов SHA-256 хэша выгрузки, копируется из системного журнала аудита). Любая попытка после экспорта задним числом списать или изменить данные мгновенно выявляется сверкой подписей в журнале и на штампе.</div></details>
+    <details class="faq-details"><summary class="faq-summary">5. PWA, PWA-Автообновление в 1 Клик и Безопасность</summary><div class="faq-content"><b>Офлайн PWA и архитектура IndexedDB:</b> Приложение функционирует офлайн в браузере. Основная база данных (инструменты, персонал, пользователи, аудит, закупки, настройки, фото) хранится в высокоёмком <code>IndexedDB</code> (inv_inventory_db), а <code>localStorage</code> зарезервирован исключительно для легковесных настроек UI (тема, язык, режим отображения, состояние карточек) и сессий. Валидация паролей через SHA-256 и строго разграниченный ролевой доступ (Administrator / Tool Crib Manager / Operator) защищают ключевые операции. Только Администратор может восстанавливать бэкапы JSON.<br><b>Обновление PWA в 1 клик:</b> Браузер всегда опрашивает Cloudflare Pages напрямую благодаря CDN-заголовкам <code>no-cache</code>. Клик по кликабельной плашке версии (<b>v96</b>) в шапке или кнопке <code>[🔄 Обновить PWA]</code> в меню очищает браузерные кэши, снимает сервис-воркеры и выполняет 1 гарантированную жесткую перезагрузку без зацикливаний.<br><b>Цифровой штамп верификации, полный SHA-256 и блокировка книги от изменений:</b> Каждый сформированный отчет Excel (.xlsx) заверяется полным 64-значным криптографическим отпечатком SHA-256 и уникальным серийным номером (EXP-...). Событие экспорта, автор, количество позиций и полный хэш фиксируются в системном журнале аудита. Все листы книги Excel автоматически защищены и заблокированы от случайного или несанкционированного изменения ячеек (пароль разблокировки — первые 16 символов SHA-256 хэша выгрузки, копируется из системного журнала аудита). Любая попытка после экспорта задним числом списать или изменить данные мгновенно выявляется сверкой подписей в журнале и на штампе.</div></details>
 </div>`,
         'Action': 'Действие',
         'Actions': 'Действия',
@@ -4007,19 +4011,428 @@ function onWorkFilterChange(val) {
 </script>
 <script>
 /* ============================================================================
-   МОДУЛЬ: Store
-   Единая точка правды: состояние приложения, персистентность в localStorage,
-   миграции старых данных, резервные копии, системный журнал аудита.
+   МОДУЛЬ: AppDB (IndexedDB Engine) & Store
+   Основное хранилище приложения: IndexedDB (inv_inventory_db)
+   ├── tools (хранилище инструментов и расходников, keyPath: 'id')
+   ├── personnel (хранилище сотрудников, keyPath: 'id')
+   ├── users (хранилище пользователей RBAC, keyPath: 'username')
+   ├── audit (системный журнал аудита, keyPath: 'id')
+   ├── procurement (журнал заявок и заказов, keyPath: 'id')
+   ├── settings (системные настройки, зоны, посты, программы, keyPath: 'key')
+   └── photos (BLOB-данные фотофиксации, keyPath: 'id')
 
-   Даты в состоянии хранятся ТОЛЬКО как ISO-строки (JSON-safe),
-   в Date объекты превращаются на лету через Utils.d().
+   localStorage используется ИСКЛЮЧИТЕЛЬНО для:
+   ├── inv_theme (тема оформления)
+   ├── inv_lang (язык интерфейса)
+   ├── inv_mode (UI-режим: рабочий / полный)
+   ├── inv_cards (UI-состояние свёрнутости карточек)
+   └── currentUser (метаданные активной сессии пользователя)
    ============================================================================ */
+const AppDB = {
+    NAME: 'inv_inventory_db',
+    VERSION: 1,
+    STORES: {
+        tools: 'tools',
+        personnel: 'personnel',
+        users: 'users',
+        audit: 'audit',
+        procurement: 'procurement',
+        settings: 'settings',
+        photos: 'photos'
+    },
+    _db: null,
+    _failed: false,
+
+    isAvailable() {
+        return typeof indexedDB !== 'undefined' && !this._failed;
+    },
+
+    open() {
+        if (this._db) return Promise.resolve(this._db);
+        return new Promise((resolve, reject) => {
+            if (typeof indexedDB === 'undefined') {
+                this._failed = true;
+                return reject(new Error('IndexedDB unavailable'));
+            }
+            const req = indexedDB.open(this.NAME, this.VERSION);
+            req.onupgradeneeded = () => {
+                const db = req.result;
+                if (!db.objectStoreNames.contains(this.STORES.tools)) {
+                    const store = db.createObjectStore(this.STORES.tools, { keyPath: 'id' });
+                    store.createIndex('status', 'status', { unique: false });
+                    store.createIndex('category', 'category', { unique: false });
+                }
+                if (!db.objectStoreNames.contains(this.STORES.personnel)) {
+                    const store = db.createObjectStore(this.STORES.personnel, { keyPath: 'id' });
+                    store.createIndex('name', 'name', { unique: false });
+                }
+                if (!db.objectStoreNames.contains(this.STORES.users)) {
+                    db.createObjectStore(this.STORES.users, { keyPath: 'username' });
+                }
+                if (!db.objectStoreNames.contains(this.STORES.audit)) {
+                    const store = db.createObjectStore(this.STORES.audit, { keyPath: 'id' });
+                    store.createIndex('ts', 'ts', { unique: false });
+                }
+                if (!db.objectStoreNames.contains(this.STORES.procurement)) {
+                    const store = db.createObjectStore(this.STORES.procurement, { keyPath: 'id' });
+                    store.createIndex('orderId', 'orderId', { unique: false });
+                }
+                if (!db.objectStoreNames.contains(this.STORES.settings)) {
+                    db.createObjectStore(this.STORES.settings, { keyPath: 'key' });
+                }
+                if (!db.objectStoreNames.contains(this.STORES.photos)) {
+                    const store = db.createObjectStore(this.STORES.photos, { keyPath: 'id' });
+                    store.createIndex('toolId', 'toolId', { unique: false });
+                }
+            };
+            req.onsuccess = () => {
+                this._db = req.result;
+                this._db.onversionchange = () => {
+                    this._db.close();
+                    this._db = null;
+                };
+                resolve(this._db);
+            };
+            req.onerror = () => {
+                this._failed = true;
+                console.error('[AppDB] open failed:', req.error);
+                reject(req.error);
+            };
+        });
+    },
+
+    async getAll(storeName) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(storeName, 'readonly');
+            const store = tx.objectStore(storeName);
+            const req = store.getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => reject(req.error);
+        });
+    },
+
+    async get(storeName, key) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(storeName, 'readonly');
+            const store = tx.objectStore(storeName);
+            const req = store.get(key);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => reject(req.error);
+        });
+    },
+
+    async put(storeName, item) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(storeName, 'readwrite');
+            const store = tx.objectStore(storeName);
+            store.put(item);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    },
+
+    async delete(storeName, key) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(storeName, 'readwrite');
+            const store = tx.objectStore(storeName);
+            store.delete(key);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    },
+
+    async clear(storeName) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(storeName, 'readwrite');
+            const store = tx.objectStore(storeName);
+            store.clear();
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    },
+
+    async setAll(storeName, items) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(storeName, 'readwrite');
+            const store = tx.objectStore(storeName);
+            store.clear();
+            for (const item of items) {
+                if (item) store.put(item);
+            }
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    },
+
+    async getSetting(key, fallback = null) {
+        const res = await this.get(this.STORES.settings, key);
+        return res ? res.value : fallback;
+    },
+
+    async setSetting(key, value) {
+        return this.put(this.STORES.settings, { key, value });
+    },
+
+    async saveAll(state) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction([
+                this.STORES.tools,
+                this.STORES.personnel,
+                this.STORES.users,
+                this.STORES.audit,
+                this.STORES.procurement,
+                this.STORES.settings
+            ], 'readwrite');
+
+            // 1. tools
+            if (Array.isArray(state.tools)) {
+                const store = tx.objectStore(this.STORES.tools);
+                store.clear();
+                for (const t of state.tools) {
+                    if (t && t.id) store.put(t);
+                }
+            }
+
+            // 2. personnel
+            if (Array.isArray(state.personnel)) {
+                const store = tx.objectStore(this.STORES.personnel);
+                store.clear();
+                for (const p of state.personnel) {
+                    if (p && p.id) store.put(p);
+                }
+            }
+
+            // 3. users
+            if (Array.isArray(state.users)) {
+                const store = tx.objectStore(this.STORES.users);
+                store.clear();
+                for (const u of state.users) {
+                    if (u && u.username) store.put(u);
+                }
+            }
+
+            // 4. audit
+            if (Array.isArray(state.auditLog)) {
+                const store = tx.objectStore(this.STORES.audit);
+                store.clear();
+                for (let i = 0; i < state.auditLog.length; i++) {
+                    const l = state.auditLog[i];
+                    if (l) {
+                        if (!l.id) l.id = 'aud_' + (l.ts || Utils.nowISO()) + '_' + i + '_' + Math.random().toString(36).slice(2, 6);
+                        store.put(l);
+                    }
+                }
+            }
+
+            // 5. procurement
+            if (Array.isArray(state.procurementLog)) {
+                const store = tx.objectStore(this.STORES.procurement);
+                store.clear();
+                for (let i = 0; i < state.procurementLog.length; i++) {
+                    const req = state.procurementLog[i];
+                    if (req) {
+                        if (!req.id) req.id = req.orderId || ('proc_' + i + '_' + Math.random().toString(36).slice(2, 6));
+                        store.put(req);
+                    }
+                }
+            }
+
+            // 6. settings
+            if (state.settings && typeof state.settings === 'object') {
+                const store = tx.objectStore(this.STORES.settings);
+                for (const [k, v] of Object.entries(state.settings)) {
+                    if (v !== undefined) store.put({ key: k, value: v });
+                }
+            }
+
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    },
+
+    async loadAll() {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction([
+                this.STORES.tools,
+                this.STORES.personnel,
+                this.STORES.users,
+                this.STORES.audit,
+                this.STORES.procurement,
+                this.STORES.settings
+            ], 'readonly');
+
+            const reqTools = tx.objectStore(this.STORES.tools).getAll();
+            const reqPersonnel = tx.objectStore(this.STORES.personnel).getAll();
+            const reqUsers = tx.objectStore(this.STORES.users).getAll();
+            const reqAudit = tx.objectStore(this.STORES.audit).getAll();
+            const reqProcure = tx.objectStore(this.STORES.procurement).getAll();
+            const reqSettings = tx.objectStore(this.STORES.settings).getAll();
+
+            tx.oncomplete = () => {
+                const settingsList = reqSettings.result || [];
+                const settingsMap = {};
+                for (const s of settingsList) {
+                    if (s && s.key) settingsMap[s.key] = s.value;
+                }
+                resolve({
+                    tools: reqTools.result || [],
+                    personnel: reqPersonnel.result || [],
+                    users: reqUsers.result || [],
+                    auditLog: (reqAudit.result || []).sort((a, b) => (b.ts || '').localeCompare(a.ts || '')),
+                    procurementLog: reqProcure.result || [],
+                    workstations: settingsMap.workstations || null,
+                    workposts: settingsMap.workposts || null,
+                    programs: settingsMap.programs || null,
+                    wsProgram: settingsMap.wsProgram || null,
+                    audits5s: settingsMap.audits5s || null,
+                    meta: settingsMap.meta || null,
+                    labelQueue: settingsMap.labelQueue || null,
+                    rollback: settingsMap.rollback || null
+                });
+            };
+            tx.onerror = () => reject(tx.error);
+        });
+    },
+
+    /** Миграция данных из старого localStorage в IndexedDB */
+    async migrateFromLocalStorage() {
+        if (typeof localStorage === 'undefined') return false;
+        let rawDb = null;
+        try { rawDb = localStorage.getItem('inv_inventory_db'); } catch(e) {}
+        if (rawDb) {
+            try {
+                const db = JSON.parse(rawDb);
+                const state = {
+                    tools: db.tools || [],
+                    personnel: db.personnel || [],
+                    users: db.users || [],
+                    auditLog: db.auditLog || [],
+                    procurementLog: db.procurementLog || [],
+                    settings: {
+                        workstations: db.workstations || [],
+                        workposts: db.workposts || [],
+                        programs: db.programs || [],
+                        wsProgram: db.wsProgram || {},
+                        audits5s: db.audits5s || [],
+                        meta: db.meta || { schemaVersion: CONFIG.SCHEMA_VERSION },
+                        labelQueue: db.labelQueue || []
+                    }
+                };
+                if ((state.tools && state.tools.length > 0) || (state.personnel && state.personnel.length > 0) || (state.settings.workstations && state.settings.workstations.length > 0)) {
+                    await this.saveAll(state);
+                    try { localStorage.removeItem('inv_inventory_db'); } catch(e) {}
+                    console.log('[AppDB] Migrated inv_inventory_db from localStorage to IndexedDB');
+                    return true;
+                }
+            } catch(e) {
+                console.error('[AppDB] Failed to migrate inv_inventory_db:', e);
+            }
+        }
+
+        // Проверяем старые отдельные ключи (legacy)
+        let hasLegacy = false;
+        const readKey = (k) => {
+            try {
+                const r = localStorage.getItem(k);
+                if (r) { hasLegacy = true; return JSON.parse(r); }
+            } catch(e) {}
+            return null;
+        };
+        const legacyTools = readKey('masterTools');
+        const legacyPersonnel = readKey('masterPersonnel');
+        const legacyUsers = readKey('rbacUsers');
+        if (hasLegacy && (legacyTools || legacyPersonnel || legacyUsers)) {
+            const state = {
+                tools: legacyTools || [],
+                personnel: legacyPersonnel || [],
+                users: legacyUsers || [],
+                auditLog: readKey('inv_auditLog') || [],
+                procurementLog: readKey('inv_procurementLog') || [],
+                settings: {
+                    workstations: readKey('masterWorkstations') || [],
+                    workposts: readKey('masterWorkposts') || [],
+                    programs: readKey('masterPrograms') || [],
+                    wsProgram: readKey('inv_wsProgram') || {},
+                    audits5s: readKey('inv_audits5s') || [],
+                    meta: readKey('inv_meta') || { schemaVersion: CONFIG.SCHEMA_VERSION },
+                    labelQueue: readKey('inv_labelQueue') || []
+                }
+            };
+            await this.saveAll(state);
+            ['masterTools', 'masterPersonnel', 'rbacUsers', 'inv_auditLog', 'inv_procurementLog',
+             'masterWorkstations', 'masterWorkposts', 'masterPrograms', 'inv_wsProgram',
+             'inv_audits5s', 'inv_meta', 'inv_labelQueue', 'inv_rollback'].forEach(k => {
+                try { localStorage.removeItem(k); } catch(e) {}
+            });
+            console.log('[AppDB] Migrated legacy keys from localStorage to IndexedDB');
+            return true;
+        }
+
+        return false;
+    },
+
+    /** Миграция фото из старой базы inv_photos_db в новую inv_inventory_db.photos */
+    async migratePhotosFromOldDB() {
+        if (typeof indexedDB === 'undefined') return;
+        try {
+            const oldDB = await new Promise((res, rej) => {
+                const req = indexedDB.open('inv_photos_db', 1);
+                req.onsuccess = () => res(req.result);
+                req.onerror = () => rej(req.error);
+            });
+            if (oldDB.objectStoreNames.contains('photos')) {
+                const photos = await new Promise((res, rej) => {
+                    const tx = oldDB.transaction('photos', 'readonly');
+                    const req = tx.objectStore('photos').getAll();
+                    req.onsuccess = () => res(req.result || []);
+                    req.onerror = () => rej(req.error);
+                });
+                if (photos && photos.length > 0) {
+                    const db = await this.open();
+                    await new Promise((res, rej) => {
+                        const tx = db.transaction(this.STORES.photos, 'readwrite');
+                        const store = tx.objectStore(this.STORES.photos);
+                        for (const p of photos) {
+                            if (p && p.id) store.put(p);
+                        }
+                        tx.oncomplete = () => res();
+                        tx.onerror = () => rej(tx.error);
+                    });
+                    console.log(`[AppDB] Migrated ${photos.length} photos from inv_photos_db`);
+                }
+            }
+            oldDB.close();
+        } catch(e) {
+            // No legacy database existed, normal condition
+        }
+    }
+};
+
 const Store = {
     _activeTools: null,
+    _dbChannel: (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('inv_db_sync') : null,
+    _rollbackSnap: null,
 
-    /* --- Ключи localStorage --- */
+    /* --- Ключи хранилищ (IndexedDB Stores) --- */
+    STORES: {
+        tools: 'tools',
+        personnel: 'personnel',
+        users: 'users',
+        audit: 'audit',
+        procurement: 'procurement',
+        settings: 'settings',
+        photos: 'photos'
+    },
     KEYS: {
-        db: 'inv_inventory_db',   // единый ключ БД (save/load); остальные — legacy-миграция
+        db: 'inv_inventory_db',
         users: 'rbacUsers', ws: 'masterWorkstations', wp: 'masterWorkposts',
         programs: 'masterPrograms', wsProg: 'inv_wsProgram',
         personnel: 'masterPersonnel', tools: 'masterTools',
@@ -4233,79 +4646,105 @@ const Store = {
         return { success: true, addedTools, updatedTools, addedEmp, updatedEmp, addedUsers, updatedUsers, listsUpdated, totalTools: this.tools.length };
     },
 
-    /** Загрузка из localStorage с fallback на seed-данные */
-    load() {
+    /** Загрузка из IndexedDB с fallback на миграцию из localStorage и seed-данные */
+    async load() {
         try {
-            let raw = null; try { raw = localStorage.getItem('inv_inventory_db'); } catch(e) {}
-            if (raw) {
-                const db = JSON.parse(raw);
-                this.users = db.users || Seed.users();
-                this.workstations = db.workstations || Seed.workstations();
-                this.workposts = db.workposts || Seed.workposts();
-                this.programs = db.programs || [];
-                this.wsProgram = db.wsProgram || {};
-                this.personnel = db.personnel || Seed.personnel();
-                this.tools = db.tools || Seed.tools();
-                this.auditLog = db.auditLog || [];
-                this.procurementLog = db.procurementLog || [];
-                this.audits5s     = db.audits5s || [];
-                this.labelQueue = db.labelQueue || [];
-                this.meta = db.meta || { schemaVersion: 1 };
-                this.migrate();
-                return;
-            }
-        } catch (e) {
-            console.error('Error loading inv_inventory_db:', e);
-        }
+            await AppDB.open();
+            const data = await AppDB.loadAll();
+            const hasData = (data.tools && data.tools.length > 0) || 
+                            (data.personnel && data.personnel.length > 0) || 
+                            (data.workstations && data.workstations.length > 0);
 
-        const read = (key, fallback) => {
-            try {
-                let raw = null; try { raw = localStorage.getItem(key); } catch(e) {}
-                return raw ? JSON.parse(raw) : fallback;
-            } catch { return fallback; }
-        };
-        this.users        = read(this.KEYS.users, Seed.users());
-        this.workstations = read(this.KEYS.ws, Seed.workstations());
-        this.workposts    = read(this.KEYS.wp, Seed.workposts());
-        this.programs     = read(this.KEYS.programs, []);
-        this.wsProgram    = read(this.KEYS.wsProg, {});
-        this.personnel    = read(this.KEYS.personnel, Seed.personnel());
-        this.tools        = read(this.KEYS.tools, Seed.tools());
-        if (!Array.isArray(this.tools) || this.tools.length === 0) {
-            this.tools = Seed.tools();
-            this.save();
+            if (!hasData) {
+                const migrated = await AppDB.migrateFromLocalStorage();
+                if (migrated) {
+                    const migData = await AppDB.loadAll();
+                    this.applyLoadedData(migData);
+                } else {
+                    this.users = Seed.users();
+                    this.workstations = Seed.workstations();
+                    this.workposts = Seed.workposts();
+                    this.programs = [];
+                    this.wsProgram = {};
+                    this.personnel = Seed.personnel();
+                    this.tools = Seed.tools();
+                    this.auditLog = [];
+                    this.procurementLog = [];
+                    this.audits5s = [];
+                    this.labelQueue = [];
+                    this.meta = { schemaVersion: CONFIG.SCHEMA_VERSION };
+                    this._rollbackSnap = null;
+                    await this.save();
+                }
+            } else {
+                this.applyLoadedData(data);
+            }
+
+            await AppDB.migratePhotosFromOldDB();
+            this.migrate();
+        } catch (e) {
+            console.error('[Store.load] Error loading from IndexedDB:', e);
+            if (!this.tools || this.tools.length === 0) {
+                this.users = Seed.users();
+                this.workstations = Seed.workstations();
+                this.workposts = Seed.workposts();
+                this.personnel = Seed.personnel();
+                this.tools = Seed.tools();
+                this.migrate();
+            }
         }
-        this.auditLog     = read(this.KEYS.audit, []);
-        this.procurementLog = read(this.KEYS.procurement, []);
-        this.audits5s     = read('inv_audits5s', []);
-        try { this.labelQueue = JSON.parse(localStorage.getItem('inv_labelQueue') || '[]'); } catch(e) { this.labelQueue = []; }
-        this.meta         = read(this.KEYS.meta, { schemaVersion: 1 });
-        this.migrate();
     },
 
-    /** Сохранение всего состояния; защита от переполнения localStorage */
+    /** Применение загруженного среза состояния */
+    applyLoadedData(data) {
+        this.tools = Array.isArray(data.tools) && data.tools.length ? data.tools : Seed.tools();
+        this.personnel = Array.isArray(data.personnel) ? data.personnel : Seed.personnel();
+        this.users = Array.isArray(data.users) && data.users.length ? data.users : Seed.users();
+        this.auditLog = Array.isArray(data.auditLog) ? data.auditLog : [];
+        this.procurementLog = Array.isArray(data.procurementLog) ? data.procurementLog : [];
+        this.workstations = Array.isArray(data.workstations) && data.workstations.length ? data.workstations : Seed.workstations();
+        this.workposts = Array.isArray(data.workposts) ? data.workposts : Seed.workposts();
+        this.programs = Array.isArray(data.programs) ? data.programs : [];
+        this.wsProgram = (data.wsProgram && typeof data.wsProgram === 'object') ? data.wsProgram : {};
+        this.audits5s = Array.isArray(data.audits5s) ? data.audits5s : [];
+        this.meta = (data.meta && typeof data.meta === 'object') ? data.meta : { schemaVersion: CONFIG.SCHEMA_VERSION };
+        this.labelQueue = Array.isArray(data.labelQueue) ? data.labelQueue : [];
+        this._rollbackSnap = data.rollback || null;
+    },
+
+    /** Сохранение всего состояния в IndexedDB */
     save() {
         this._activeTools = null;
         try {
-            const state = {
-                users: this.users, workstations: this.workstations, workposts: this.workposts,
-                programs: this.programs, wsProgram: this.wsProgram, personnel: this.personnel,
-                tools: this.tools, auditLog: this.auditLog, procurementLog: this.procurementLog,
-                audits5s: this.audits5s, meta: this.meta, labelQueue: this.labelQueue
-            };
-            // Trim audit log to prevent localStorage quota overflow
             if (this.auditLog.length > CONFIG.AUDIT_LOG_LIMIT) {
                 this.auditLog = this.auditLog.slice(-CONFIG.AUDIT_LOG_LIMIT);
-                state.auditLog = this.auditLog;
             }
-            const raw = JSON.stringify(state);
-            if (raw.length > 4000000 && !sessionStorage.getItem('inv_quota_warn')) {
-                alert(T('DB_SIZE_WARN'));
-                sessionStorage.setItem('inv_quota_warn', 'true');
-            }
-            localStorage.setItem('inv_inventory_db', raw);
+            const state = {
+                tools: this.tools,
+                personnel: this.personnel,
+                users: this.users,
+                auditLog: this.auditLog,
+                procurementLog: this.procurementLog,
+                settings: {
+                    workstations: this.workstations,
+                    workposts: this.workposts,
+                    programs: this.programs,
+                    wsProgram: this.wsProgram,
+                    audits5s: this.audits5s,
+                    meta: this.meta,
+                    labelQueue: this.labelQueue,
+                    rollback: this._rollbackSnap
+                }
+            };
+            return AppDB.saveAll(state).then(() => {
+                if (this._dbChannel) {
+                    this._dbChannel.postMessage({ type: 'db_saved', ts: Date.now() });
+                }
+            }).catch(e => {
+                console.error('[Store.save] IndexedDB save failed:', e);
+            });
         } catch (e) {
-            alert(T('DB_QUOTA_EXCEEDED'));
+            console.error('[Store.save] Unexpected error during save:', e);
         }
     },
 
@@ -4360,8 +4799,9 @@ const Store = {
             for (const p of t.photos) {
                 if (p && typeof p.data === 'string' && p.data.startsWith('data:image')) {
                     try {
-                        const blob = await (await fetch(p.data)).blob();
-                        const id = p.id || Photos.newId();
+                        let blob = typeof Photos !== 'undefined' && Photos._dataURLToBlob ? Photos._dataURLToBlob(p.data) : null;
+                        if (!blob) blob = await (await fetch(p.data)).blob();
+                        const id = p.id || (typeof Photos !== 'undefined' ? Photos.newId() : ('ph_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8)));
                         await PhotoDB.put({ id, toolId: t.id, blob });
                         p.id = id;
                         delete p.data;
@@ -4767,13 +5207,17 @@ const Store = {
 
     snapshot(reason) {
         try {
-            localStorage.setItem(this.ROLLBACK_KEY, JSON.stringify({
+            const snap = JSON.parse(JSON.stringify({
                 ts: Utils.nowISO(), reason,
                 workstations: this.workstations, workposts: this.workposts,
                 programs: this.programs, wsProgram: this.wsProgram,
                 personnel: this.personnel, tools: this.tools,
                 audits5s: this.audits5s || []
             }));
+            this._rollbackSnap = snap;
+            AppDB.setSetting('rollback', snap).catch(e => {
+                console.error('[Store.snapshot] Failed to save rollback snapshot in IDB:', e);
+            });
         } catch (e) {
             if (typeof Utils !== 'undefined' && Utils.toast) {
                 Utils.toast(T('ROLLBACK_SNAPSHOT_FAILED'), 8000);
@@ -4782,8 +5226,7 @@ const Store = {
     },
 
     rollbackInfo() {
-        try { const raw = localStorage.getItem(this.ROLLBACK_KEY); return raw ? JSON.parse(raw) : null; }
-        catch { return null; }
+        return this._rollbackSnap || null;
     },
 
     rollback() {
@@ -4795,13 +5238,13 @@ const Store = {
             if (typeof Utils !== 'undefined' && Utils.toast) Utils.toast('⚠️ Rollback snapshot corrupt — aborted to protect data.', 8000);
             return false;
         }
-        this.workstations = Array.isArray(snap.workstations) ? snap.workstations : this.workstations;
-        this.workposts = Array.isArray(snap.workposts) ? snap.workposts : this.workposts;
-        this.programs = snap.programs || [];
-        this.wsProgram = snap.wsProgram || {};
-        this.personnel = snap.personnel;
-        this.tools = snap.tools;
-        this.audits5s = snap.audits5s || this.audits5s || [];
+        this.workstations = Array.isArray(snap.workstations) ? JSON.parse(JSON.stringify(snap.workstations)) : this.workstations;
+        this.workposts = Array.isArray(snap.workposts) ? JSON.parse(JSON.stringify(snap.workposts)) : this.workposts;
+        this.programs = snap.programs ? JSON.parse(JSON.stringify(snap.programs)) : [];
+        this.wsProgram = snap.wsProgram ? JSON.parse(JSON.stringify(snap.wsProgram)) : {};
+        this.personnel = JSON.parse(JSON.stringify(snap.personnel));
+        this.tools = JSON.parse(JSON.stringify(snap.tools));
+        this.audits5s = snap.audits5s ? JSON.parse(JSON.stringify(snap.audits5s)) : (this.audits5s || []);
         this.migrate();
         this.log('ROLLBACK', `to ${snap.ts} (${snap.reason})`);
         this.save();
@@ -4899,7 +5342,7 @@ const Store = {
         const file = event.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = e => {
+        reader.onload = async e => {
             try {
                 const data = JSON.parse(e.target.result);
                 if (!data.tools || !data.personnel) { alert(T('BACKUP_BAD_SCHEMA')); return; }
@@ -4916,8 +5359,8 @@ const Store = {
                 this.auditLog     = data.auditLog || [];
                 this.migrate();
                 this.log('BACKUP_RESTORE', `schema v${data.schemaVersion || 1}`);
-                this.save();
-                init();
+                await this.save();
+                await init();
                 this.migratePhotosToIDB(); // base64 из бэкапа → IndexedDB (async, сам сохранит)
                 alert(T('BACKUP_RESTORED'));
             } catch { alert(T('BACKUP_PARSE_ERR')); }
@@ -6461,6 +6904,14 @@ function renderAll() {
     renderGrid();
 }
 
+/** Перерисовка интерфейса, селектов и графиков после мутаций данных (без перезагрузки базы из IDB) */
+function refreshUI() {
+    populateAllDropdowns();
+    populateEmpSelects();
+    renderAll();
+    Charts.update();
+}
+
 /* --- KPI-панель --- */
 function updateKPIs() {
     const active = Store.activeTools();
@@ -7177,7 +7628,7 @@ function rollbackLastCascade() {
     if (!confirm(T('ROLLBACK_CONFIRM').replace('{reason}', info.reason).replace('{ts}', Utils.fmtDate(info.ts)))) return;
     if (Store.rollback()) {
         closeModal('systemMenuModal');
-        init();
+        refreshUI();
         alert(T('ROLLBACK_DONE'));
     }
 }
@@ -7429,8 +7880,6 @@ const Ops = {
 
     stagePhoto(file) {
         if (this._pendingPhotos.length >= Photos.MAX_PER_TOOL) { alert(T('PHOTO_LIMIT')); return; }
-        // Страж квоты: база у лимита localStorage — фото не примем, иначе save() упадёт и правки потеряются
-        if (Store.estimatedSize() > 4300000) { alert(T('PHOTO_QUOTA_WARN')); return; }
         Photos.compress(file).then(data => {
             this._pendingPhotos.push(data);
             this._renderPendingPhotos();
@@ -7573,9 +8022,9 @@ const Ops = {
         Store.toolEvent(tool, 'Created in system');
         Store.tools.push(tool);
         Store.log('TOOL_ADD', id);
-        Store.save();
+        await Store.save();
         closeModal('addToolModal');
-        init();
+        refreshUI();
     },
 
     openEditToolModal(id) {
@@ -7645,7 +8094,7 @@ const Ops = {
         }
     },
 
-    submitEditTool() {
+    async submitEditTool() {
         const id = document.getElementById('editToolID').value;
         const tool = Store.getTool(id);
         if (!tool) return;
@@ -7710,8 +8159,8 @@ const Ops = {
         
         Store.touch(tool);
         Store.log('TOOL_EDIT', tool.id);
-        Store.save();
-        if (typeof renderAll === 'function') renderAll(); else init();
+        await Store.save();
+        refreshUI();
         closeModal('editToolModal');
         Utils.toast(T('TOOL_UPDATED'));
     },
@@ -7773,7 +8222,7 @@ const Ops = {
         }
     },
 
-    submitAssign() {
+    async submitAssign() {
         let tool = Store.getTool(document.getElementById('assignToolId').value);
         let empVal = document.getElementById('assignEmp').value.trim();
         let emp = Ops.resolveEmpInput(empVal);
@@ -7823,9 +8272,9 @@ const Ops = {
         Store.toolEvent(tool, `Assigned to ${emp.name} for ${days}d (Qty: ${issueQty}, Signed: ${initials})`);
         Store.empEvent(emp, `Received ${tool.id} (Qty: ${issueQty}, Signed: ${initials})`);
         Store.log('TOOL_ASSIGN', `${tool.id} → ${emp.id} (Qty: ${issueQty})`);
-        Store.save();
+        await Store.save();
         closeModal('assignModal');
-        init();
+        refreshUI();
     },
 
     /* ---------- Перемещение ---------- */
@@ -7844,7 +8293,7 @@ const Ops = {
         openModal('transferModal');
     },
 
-    submitTransfer() {
+    async submitTransfer() {
         const tool = Store.getTool(document.getElementById('transferToolId').value);
         if (!tool) return;
         const z = document.getElementById('transZone').value;
@@ -7856,9 +8305,9 @@ const Ops = {
         Store.touch(tool);
         Store.toolEvent(tool, `Moved to ${tool.location}`);
         Store.log('TOOL_TRANSFER', `${tool.id} → ${tool.location}`);
-        Store.save();
+        await Store.save();
         closeModal('transferModal');
-        init();
+        refreshUI();
     },
 
     /* ---------- Обслуживание ---------- */
@@ -7870,7 +8319,7 @@ const Ops = {
         openModal('serviceModal');
     },
 
-    submitSendToService() {
+    async submitSendToService() {
         const tool = Store.getTool(document.getElementById('serviceToolId').value);
         if (!tool) return;
         // Если был выдан — фиксируем возврат у сотрудника
@@ -7883,9 +8332,9 @@ const Ops = {
         Store.touch(tool);
         Store.toolEvent(tool, 'Sent to maintenance queue');
         Store.log('TOOL_SERVICE', tool.id);
-        Store.save();
+        await Store.save();
         closeModal('serviceModal');
-        init();
+        refreshUI();
     },
 
 
@@ -7896,7 +8345,7 @@ const Ops = {
         SOP.openForTool(tool);
     },
 
-    completeMaintenance(toolId) {
+    async completeMaintenance(toolId) {
         const tool = Store.getTool(toolId);
         if (!tool) return;
         tool.status = 'Backup';
@@ -7909,8 +8358,8 @@ const Ops = {
         });
         Store.toolEvent(tool, 'Maintenance completed. Set to Backup.');
         Store.log('TOOL_MAINT_DONE', tool.id);
-        Store.save();
-        init();
+        await Store.save();
+        refreshUI();
     },
 
     /* ---------- Возврат ---------- */
@@ -7922,7 +8371,7 @@ const Ops = {
         openModal('returnModal');
     },
 
-    submitReturn() {
+    async submitReturn() {
         const tool = Store.getTool(document.getElementById('returnToolId').value);
         if (!tool) return;
         const initials = document.getElementById('returnInitials').value.trim() || 'N/A';
@@ -7951,10 +8400,10 @@ const Ops = {
         Store.toolEvent(tool, `Returned — ${condition} (Signed: ${initials})`);
         if (emp) Store.empEvent(emp, `Returned ${tool.id} — ${condition} (Signed: ${initials})`);
         Store.log('TOOL_RETURN', `${tool.id} (${condition})`);
-        Store.save();
+        await Store.save();
         closeModal('returnModal');
         closeModal('employeeProfileModal');
-        init();
+        refreshUI();
     },
 
     /* ---------- Списание ---------- */
@@ -8021,14 +8470,14 @@ const Ops = {
         });
         Store.touch(tool);
         Store.log('TOOL_RETIRE', `${tool.id} (${reason}, ${wear}%)`);
-        Store.save();
+        await Store.save();
         closeModal('retireModal');
-        init();
+        refreshUI();
         Utils.toast(`🗄 <b>${Utils.esc(tool.id)}</b> ${T('TOAST_RETIRED')}`);
     },
 
     /* ---------- Восстановление из архива (ошибочное списание) ---------- */
-    restoreTool(toolId) {
+    async restoreTool(toolId) {
         const tool = Store.getTool(toolId);
         if (!tool) return;
         if (!confirm(T('RESTORE_TOOL_CONFIRM').replace('{id}', tool.id))) return;
@@ -8038,9 +8487,9 @@ const Ops = {
         Store.touch(tool);
         Store.toolEvent(tool, 'Restored from Archive to Backup');
         Store.log('TOOL_RESTORE', tool.id);
-        Store.save();
+        await Store.save();
         closeModal('archiveModal');
-        init();
+        refreshUI();
     },
 
     /* ---------- Пакетная ротация ---------- */
@@ -8062,7 +8511,7 @@ const Ops = {
         openModal('batchRotationModal');
     },
 
-    executeBatchRotation() {
+    async executeBatchRotation() {
         const list = window.batchCandidates || [];
         if (!list.length) { alert(T('NO_ROTATE')); closeModal('batchRotationModal'); return; }
         if (!confirm(T('ROTATE_CONFIRM').replace('{n}', list.length))) return;
@@ -8073,9 +8522,9 @@ const Ops = {
             Store.toolEvent(t, `Batch rotation swap executed by ${Auth.current.username}`);
         });
         Store.log('BATCH_ROTATION', `${list.length} tools`);
-        Store.save();
+        await Store.save();
         closeModal('batchRotationModal');
-        init();
+        refreshUI();
         alert(T('ROTATED_DONE').replace('{n}', list.length));
     },
 
@@ -8432,7 +8881,7 @@ const Ops = {
         this.renderAuditLogList(val);
     },
 
-    receiveOrder(orderId) {
+    async receiveOrder(orderId) {
         const order = Store.getTool(orderId);
         if (!order || order.status !== 'Pending Delivery') return;
         
@@ -8462,13 +8911,13 @@ const Ops = {
         const rec = Store.procurementLog.find(l => l.orderId === orderId);
         if (rec) { rec.status = 'received'; rec.receivedAt = Utils.nowISO().split('T')[0]; rec.receivedInto = receivedInto; }
 
-        Store.save();
-        init();
+        await Store.save();
+        refreshUI();
         if (document.getElementById('ordersModal').classList.contains('active')) this.openOrders();
         if (document.getElementById('orderDetailModal').classList.contains('active')) this.openOrderDetail(orderId);
     },
 
-    cancelOrder(orderId) {
+    async cancelOrder(orderId) {
         if (!confirm(T('ORDER_CANCEL_CONFIRM'))) return;
         const idx = Store.tools.findIndex(t => t.id === orderId);
         if (idx >= 0) {
@@ -8477,8 +8926,8 @@ const Ops = {
             const rec = Store.procurementLog.find(l => l.orderId === orderId);
             if (rec) { rec.status = 'cancelled'; rec.cancelledAt = Utils.nowISO().split('T')[0]; }
             Store.log('ORDER_CANCEL', orderId);
-            Store.save();
-            init();
+            await Store.save();
+            refreshUI();
             if (document.getElementById('ordersModal').classList.contains('active')) this.openOrders();
             if (document.getElementById('orderDetailModal').classList.contains('active')) this.openOrderDetail(orderId);
         }
@@ -8531,7 +8980,7 @@ const Ops = {
             `${v} — ${currentLang === 'RU' ? r.ru[v - 1] : r.en[v - 1]}`;
     },
 
-    submitPostAudit() {
+    async submitPostAudit() {
         const ws = document.getElementById('auditWs').value;
         const post = document.getElementById('auditPost').value;
         const initials = document.getElementById('auditInitials').value.trim();
@@ -8542,9 +8991,9 @@ const Ops = {
         S5_RUBRICS.forEach((r, pi) => scores[r.id] = +document.getElementById('auditScore' + pi).value);
         Store.audits5s.push({ ws, post, scores, auditor: initials, date: Utils.nowISO().split('T')[0] });
         Store.log('AUDIT_5S', `${ws} | ${post}: ${S5_RUBRICS.map(r => scores[r.id]).join('/')}`);
-        Store.save();
+        await Store.save();
         closeModal('postAuditModal');
-        init();
+        refreshUI();
         Utils.toast(T('AUDIT_SAVED'));
     },
 
@@ -8651,7 +9100,7 @@ const Ops = {
         if (order) order.status = newStatus;
     },
 
-    receiveOrderItem(orderId, itemId) {
+    async receiveOrderItem(orderId, itemId) {
         this.normalizeOrderItems(orderId);
         const rec = Store.procurementLog.find(l => l.orderId === orderId);
         if (!rec) return;
@@ -8697,14 +9146,14 @@ const Ops = {
 
         Store.log('ORDER_ITEM_RECEIVE', `${orderId} -> ${itemId} qty: ${inputQty}`);
         this.recalcOrderStatus(orderId);
-        Store.save();
+        await Store.save();
         if (document.getElementById('orderDetailModal').classList.contains('active')) {
             this.openOrderDetail(orderId);
         }
-        if (typeof renderAll === 'function') renderAll(); else init();
+        refreshUI();
     },
 
-    rejectOrderItem(orderId, itemId) {
+    async rejectOrderItem(orderId, itemId) {
         this.normalizeOrderItems(orderId);
         const rec = Store.procurementLog.find(l => l.orderId === orderId);
         if (!rec) return;
@@ -8720,11 +9169,11 @@ const Ops = {
 
         Store.log('ORDER_ITEM_REJECT', `${orderId} -> ${itemId} reason: ${reason}`);
         this.recalcOrderStatus(orderId);
-        Store.save();
+        await Store.save();
         if (document.getElementById('orderDetailModal').classList.contains('active')) {
             this.openOrderDetail(orderId);
         }
-        if (typeof renderAll === 'function') renderAll(); else init();
+        refreshUI();
     },
 
     /* ---------- Карточка закупки: детали, история статусов, комментарии, логи ---------- */
@@ -10467,60 +10916,17 @@ const Scan = {
     }
 };
 
-/* --- Хранилище фото в IndexedDB (v91) ---
-   Blobs лежат вне localStorage: квота IDB — сотни МБ, а не ~5 МБ.
-   В карточке инструмента остаются только метаданные { id, ts, by, retire? }.
-   Если IndexedDB недоступен (старый браузер/режим) — fallback на base64 в карточке. */
+/* --- Хранилище фото в IndexedDB (AppDB.photos) ---
+   Blobs лежат в IndexedDB (хранилище 'photos' единой базы inv_inventory_db).
+   В карточке инструмента хранятся только метаданные { id, ts, by, retire? }.
+   Если IndexedDB недоступен — fallback на base64 в карточке. */
 const PhotoDB = {
-    NAME: 'inv_photos_db',
-    STORE: 'photos',
-    _db: null,
-    _failed: false,
-
-    available() { return !!window.indexedDB && !this._failed; },
-
-    open() {
-        if (this._db) return Promise.resolve(this._db);
-        return new Promise((resolve, reject) => {
-            if (!window.indexedDB) { this._failed = true; return reject(new Error('IndexedDB unavailable')); }
-            const req = indexedDB.open(this.NAME, 1);
-            req.onupgradeneeded = () => {
-                const db = req.result;
-                if (!db.objectStoreNames.contains(this.STORE)) db.createObjectStore(this.STORE, { keyPath: 'id' });
-            };
-            req.onsuccess = () => { this._db = req.result; resolve(this._db); };
-            req.onerror = () => { this._failed = true; reject(req.error); };
-        });
-    },
-
-    async put(rec) { // { id, toolId, blob }
-        const db = await this.open();
-        return new Promise((res, rej) => {
-            const tx = db.transaction(this.STORE, 'readwrite');
-            tx.objectStore(this.STORE).put(rec);
-            tx.oncomplete = () => res();
-            tx.onerror = () => rej(tx.error);
-        });
-    },
-
-    async get(id) {
-        const db = await this.open();
-        return new Promise((res, rej) => {
-            const rq = db.transaction(this.STORE, 'readonly').objectStore(this.STORE).get(id);
-            rq.onsuccess = () => res(rq.result || null);
-            rq.onerror = () => rej(rq.error);
-        });
-    },
-
-    async del(id) {
-        const db = await this.open();
-        return new Promise((res, rej) => {
-            const tx = db.transaction(this.STORE, 'readwrite');
-            tx.objectStore(this.STORE).delete(id);
-            tx.oncomplete = () => res();
-            tx.onerror = () => rej(tx.error);
-        });
-    }
+    available() { return AppDB.isAvailable(); },
+    open() { return AppDB.open(); },
+    async put(rec) { return AppDB.put('photos', rec); },
+    async get(id) { return AppDB.get('photos', id); },
+    async del(id) { return AppDB.delete('photos', id); },
+    async getAll() { return AppDB.getAll('photos'); }
 };
 
 /* --- Фотофиксация состояния инструмента --- */
@@ -10561,6 +10967,24 @@ const Photos = {
         });
     },
 
+    /** dataURL → Blob (синхронно, без зависимости от сетевого fetch) */
+    _dataURLToBlob(dataURL) {
+        try {
+            const parts = dataURL.split(',');
+            const mimeMatch = parts[0].match(/:(.*?);/);
+            const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+            const bstr = atob(parts[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new Blob([u8arr], { type: mime });
+        } catch(e) {
+            return null;
+        }
+    },
+
     /**
      * Центральный путь записи фото (v91): blob → IndexedDB, в карточку — только метаданные.
      * Fallback при недоступной IndexedDB: base64 в карточке (старая схема).
@@ -10570,7 +10994,8 @@ const Photos = {
         const rec = { ts: Utils.nowISO(), ...extra };
         if (PhotoDB.available()) {
             try {
-                const blob = await (await fetch(dataUrl)).blob();
+                let blob = this._dataURLToBlob(dataUrl);
+                if (!blob) blob = await (await fetch(dataUrl)).blob();
                 const id = this.newId();
                 await PhotoDB.put({ id, toolId: tool.id, blob });
                 rec.id = id;
@@ -11548,10 +11973,10 @@ const Theme = {
 
 /* ============================================================================
    МОДУЛЬ: Init
-   Загрузка приложения: состояние → автопересчёт просрочек →
+   Загрузка приложения: состояние IndexedDB → автопересчёт просрочек →
    выпадающие списки → RBAC → рендер → графики → язык.
    ============================================================================ */
-function init() {
+async function init() {
     // Единый источник версии: шапка и подвал подставляются из CONFIG
     const _verTag = document.getElementById('appVersionTag');
     if (_verTag) _verTag.textContent = CONFIG.APP_VERSION;
@@ -11559,6 +11984,10 @@ function init() {
     if (_verFooter) _verFooter.textContent = `${CONFIG.APP_VERSION} | Build ${CONFIG.BUILD_DATE}`;
     Auth.initGate();
     Theme.init();
+
+    // Загрузка данных из IndexedDB
+    await Store.load();
+
     Store.recomputeStatuses();   // актуализируем Overdue по датам
     Store.save();                // фиксируем пересчитанные статусы
     // Миграции фото (async): сначала разовое пережатие (v90), затем перенос в IndexedDB (v91)
@@ -11566,20 +11995,27 @@ function init() {
         .then(() => Store.migratePhotosToIDB())
         .catch(e => console.error('Photo migration failed:', e));
 
-    // Warn if the app is already open in another tab (last-save-wins risk)
-    if (typeof BroadcastChannel !== 'undefined') {
-        const _tabChannel = new BroadcastChannel('inv_tab_sync');
-        _tabChannel.postMessage('ping');
-        _tabChannel.onmessage = (ev) => {
-            if (ev.data === 'ping') {
-                _tabChannel.postMessage('pong');
-            } else if (ev.data === 'pong') {
-                if (typeof Utils !== 'undefined' && Utils.toast) {
-                    Utils.toast('⚠️ App is open in another tab — changes may overwrite each other!', 10000);
-                }
+    // BroadcastChannel: кросс-вкладочная синхронизация базы данных
+    if (typeof BroadcastChannel !== 'undefined' && !window._dbSyncChannelInitialized) {
+        window._dbSyncChannelInitialized = true;
+        const _dbSyncChannel = new BroadcastChannel('inv_db_sync');
+        let _syncTimer;
+        _dbSyncChannel.onmessage = (ev) => {
+            if (ev.data && ev.data.type === 'db_saved') {
+                clearTimeout(_syncTimer);
+                _syncTimer = setTimeout(async () => {
+                    await Store.load();
+                    populateAllDropdowns();
+                    renderRbacList();
+                    updateRBACUI();
+                    populateEmpSelects();
+                    renderAll();
+                    Charts.update();
+                }, 150);
             }
         };
     }
+
     populateAllDropdowns();
     renderRbacList();
     updateRBACUI();
@@ -11618,18 +12054,19 @@ function init() {
     }
 }
 
-// Первый запуск: читаем localStorage (или seed), затем init
-Store.load();
+// Запуск инициализации при загрузке окна
+window.addEventListener('load', init);
 
-// Кросс-вкладочная синхронизация с debounce (предотвращает блокировку UI при множественных обновлениях)
-let _syncTimer;
+// Кросс-вкладочная синхронизация для настроек UI (тема, язык, режим)
 window.addEventListener('storage', (e) => {
-    if (e.key === Store.KEYS.db) {
-        clearTimeout(_syncTimer);
-        _syncTimer = setTimeout(() => {
-            Store.load();
-            renderAll();
-        }, 150);
+    if (e.key === 'inv_theme') {
+        Theme.init();
+    } else if (e.key === 'inv_lang') {
+        currentLang = e.newValue || 'ENG';
+        applyLanguage();
+    } else if (e.key === 'inv_mode') {
+        Mode.apply();
+        renderAll();
     }
 });
 
@@ -11640,8 +12077,6 @@ window.addEventListener('unhandledrejection', e => {
 window.addEventListener('error', e => {
     console.error('[System] Runtime Error:', e.message, 'at', e.filename, ':', e.lineno);
 });
-
-window.addEventListener('load', init);
 </script>
 
 </body>

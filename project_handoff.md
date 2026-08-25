@@ -2,13 +2,27 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v95` (Version string managed centrally via `CONFIG.APP_VERSION`)
-- **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~9,000+ lines). 
-- **Storage:** LocalStorage (`inv_inventory_db`) for data + **IndexedDB (`inv_photos_db`) for photo blobs (since v91)**; manual JSON backup/restore inlines photos back to base64. 
+- **Current Version:** `v96` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~12,000+ lines). 
+- **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v95)
+## Recent Accomplishments (v49 – v96)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
+
+### 0. Full Migration to Unified IndexedDB Engine (AppDB) (v96 Release)
+- **Problem:** `localStorage` has a strict ~5MB-10MB quota, synchronous blocking I/O, and string serialization limits. Heavy inventory operations, large audit trails, high tool counts, and photo attachments risked storage overflows and UI freezes.
+- **Solution (`AppDB` Module):** Built a high-performance, asynchronous IndexedDB storage layer with 7 dedicated object stores:
+  1. `tools` (keyPath: `id`, indexes: `status`, `category`) — tooling, consumables, serial tracking.
+  2. `personnel` (keyPath: `id`, index: `name`) — employee registry.
+  3. `users` (keyPath: `username`) — RBAC credentials and permissions.
+  4. `audit` (keyPath: `id`, index: `ts`) — immutable audit log.
+  5. `procurement` (keyPath: `id`, index: `orderId`) — procurement orders and receiving history.
+  6. `settings` (keyPath: `key`) — registries (workstations, workposts, programs, wsProgram, audits5s, meta, labelQueue, rollback).
+  7. `photos` (keyPath: `id`, index: `toolId`) — BLOB photo attachments.
+- **Automatic Migration Bridge:** Seamlessly reads legacy `inv_inventory_db` or individual legacy keys from `localStorage` on initial boot, saves everything to `AppDB` stores, clears stale localStorage bloat, and migrates legacy photos from `inv_photos_db`.
+- **Multi-Tab Sync:** Replaced storage events for database updates with `BroadcastChannel('inv_db_sync')`, notifying other tabs to reload IndexedDB data asynchronously on saves.
+- **`localStorage` Strict Isolation:** `localStorage` is exclusively used for `inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`, and `currentUser`.
 
 ### 0. Content-Adaptive Modal Widths (v95 Release)
 - **Bug:** every modal was capped at `max-width: 600px` (wide at 850px), so table-heavy windows (retired-assets archive, audit log) forced horizontal scrolling on wide desktop screens.
