@@ -2556,8 +2556,8 @@ select.work-only.form-control { max-width: 190px; }
    Все «магические числа» и справочные константы — только здесь.
    ============================================================================ */
 const CONFIG = {
-    APP_VERSION: 'v96',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
-    BUILD_DATE: '2026-08-25',        // дата сборки для подвала
+    APP_VERSION: 'v97',              // версия UI-сборки; единственное место правки — шапка и подвал берут отсюда
+    BUILD_DATE: '2026-08-26',        // дата сборки для подвала
     SCHEMA_VERSION: 4,               // версия схемы данных (для миграций бэкапов); v4 — программы над зонами (программа → зона → пост)
     CAL_WARNING_DAYS: 14,            // за сколько дней предупреждать о калибровке
     WEAR_RETIRE_PCT: 75,             // износ, после которого инструмент списывается
@@ -2645,12 +2645,19 @@ const Utils = {
     /** Текущая метка времени ISO для истории и журнала */
     nowISO() { return new Date().toISOString(); },
 
+    /** Безопасный URL для href — защита от javascript: / data: URI инъекций */
+    safeUrl(url) {
+        if (!url) return '';
+        const clean = String(url).trim();
+        return /^(https?:\/\/|\/)/i.test(clean) ? Utils.esc(clean) : '#';
+    },
+
     /** Системный (автогенерированный) серийник формата SN-XXXXXXXX — не заводской номер */
     isAutoSn(sn) {
         if (!sn) return false;
         const parts = sn.split('-');
         if (parts.length !== 2) return false;
-        if (!/^[0-9A-Z]{8}$/.test(parts[1])) return false;
+        if (!/^[0-9A-Z]{4,10}$/.test(parts[1])) return false;
         return parts[0] === 'SN' || CONFIG.TOOL_CLASSES.some(c => c.p === parts[0]);
     },
 
@@ -3172,7 +3179,7 @@ const translations = {
 
     <details class="faq-details"><summary class="faq-summary">4. Risks, 5S Audits & Score Breakdown</summary><div class="faq-content"><b>Station | Post Risk Grouping:</b> The risk and incident chart groups equipment by workstations (<i>Assembly | Post 1</i>). Hovering over the bars displays a tooltip with the Program, Station, Post, Responsible Employee, and detailed rating factors (penalties for wear, overdues, and maintenance).<br><b>Interactive 5S Audits & Scoring Criteria:</b> Clicking a 5S radar spoke or a history row opens the post card with a full breakdown of each score from 1 to 5 across all 5 pillars (Sort, Set in Order, Shine, Standardize, Sustain) from the <code>S5_RUBRICS</code> directory (e.g., <i>"3 — Excess items present, but stacked separately"</i>).</div></details>
 
-    <details class="faq-details"><summary class="faq-summary">5. PWA, 1-Click PWA Auto-Update & Security</summary><div class="faq-content"><b>Offline PWA & IndexedDB Architecture:</b> The app functions offline in the browser. Primary database storage (tools, personnel, users, audit, procurement, settings, photos) is managed in high-capacity <code>IndexedDB</code> (inv_inventory_db), while <code>localStorage</code> is strictly reserved for lightweight UI preferences (theme, language, display mode, cards state) and session metadata. SHA-256 password validation and Role-Based Access (Administrator / Tool Crib Manager / Operator) protect critical operations. Only Administrators can restore JSON backups.<br><b>1-Click PWA Update:</b> The browser always polls Cloudflare Pages directly thanks to <code>no-cache</code> CDN headers. Clicking the clickable version badge (<b>v96</b>) in the header or the <code>[🔄 Update PWA]</code> button in the menu clears browser caches, unregisters service workers, and performs 1 guaranteed hard reload without looping.<br><b>Digital Integrity Stamp & Anti-Tamper Sheet Lock (SHA-256):</b> Every exported Excel report (.xlsx) is cryptographically stamped with a complete 64-character SHA-256 digital fingerprint and unique serial number (EXP-...). The export event, author, exact asset quantities, and full checksum are permanently logged to the system audit trail. All workbook sheets are automatically locked and protected against unauthorized cell editing and tampering (unlock password: the first 16 characters of the export's SHA-256 checksum, copyable from the System Audit Log). Any post-export attempt to alter tool counts or database records creates an instant mismatch against the immutable audit log.</div></details>
+    <details class="faq-details"><summary class="faq-summary">5. PWA, 1-Click PWA Auto-Update & Security</summary><div class="faq-content"><b>Offline PWA & IndexedDB Architecture:</b> The app functions offline in the browser. Primary database storage (tools, personnel, users, audit, procurement, settings, photos) is managed in high-capacity <code>IndexedDB</code> (inv_inventory_db), while <code>localStorage</code> is strictly reserved for lightweight UI preferences (theme, language, display mode, cards state) and session metadata. SHA-256 password validation and Role-Based Access (Administrator / Tool Crib Manager / Operator) protect critical operations. Only Administrators can restore JSON backups.<br><b>1-Click PWA Update:</b> The browser always polls Cloudflare Pages directly thanks to <code>no-cache</code> CDN headers. Clicking the clickable version badge (<b>v97</b>) in the header or the <code>[🔄 Update PWA]</code> button in the menu clears browser caches, unregisters service workers, and performs 1 guaranteed hard reload without looping.<br><b>Digital Integrity Stamp & Anti-Tamper Sheet Lock (SHA-256):</b> Every exported Excel report (.xlsx) is cryptographically stamped with a complete 64-character SHA-256 digital fingerprint and unique serial number (EXP-...). The export event, author, exact asset quantities, and full checksum are permanently logged to the system audit trail. All workbook sheets are automatically locked and protected against unauthorized cell editing and tampering (unlock password: the first 16 characters of the export's SHA-256 checksum, copyable from the System Audit Log). Any post-export attempt to alter tool counts or database records creates an instant mismatch against the immutable audit log.</div></details>
 </div>`,
         'Action': 'Action',
         'Actions': 'Actions',
@@ -3684,7 +3691,7 @@ const translations = {
 
     <details class="faq-details"><summary class="faq-summary">4. Риски, 5S-Аудиты и Расшифровка Оценок</summary><div class="faq-content"><b>Группировка рисков Станция | Пост:</b> Диаграмма рисков и инцидентов объединяет оборудование по рабочим постам (<i>Assembly | Post 1</i>). При наведении на столбцы выводится тултип с указанием Программы, Станции, Поста, Ответственного сотрудника и детализированных факторов рейтинга (штрафы за износ, просрочки и обслуживание).<br><b>Интерактивные 5S-аудиты и критерии оценок:</b> Клик по лучу 5S-радара или строке истории открывает карточку поста с полной расшифровкой каждой оценки от 1 до 5 по всем 5 столпам (Сортировка, Порядок, Чистота, Стандартизация, Совершенствование) из рубрикатора <code>S5_RUBRICS</code> (напр., <i>«3 — Лишнее есть, но сложено отдельно»</i>).</div></details>
 
-    <details class="faq-details"><summary class="faq-summary">5. PWA, PWA-Автообновление в 1 Клик и Безопасность</summary><div class="faq-content"><b>Офлайн PWA и архитектура IndexedDB:</b> Приложение функционирует офлайн в браузере. Основная база данных (инструменты, персонал, пользователи, аудит, закупки, настройки, фото) хранится в высокоёмком <code>IndexedDB</code> (inv_inventory_db), а <code>localStorage</code> зарезервирован исключительно для легковесных настроек UI (тема, язык, режим отображения, состояние карточек) и сессий. Валидация паролей через SHA-256 и строго разграниченный ролевой доступ (Administrator / Tool Crib Manager / Operator) защищают ключевые операции. Только Администратор может восстанавливать бэкапы JSON.<br><b>Обновление PWA в 1 клик:</b> Браузер всегда опрашивает Cloudflare Pages напрямую благодаря CDN-заголовкам <code>no-cache</code>. Клик по кликабельной плашке версии (<b>v96</b>) в шапке или кнопке <code>[🔄 Обновить PWA]</code> в меню очищает браузерные кэши, снимает сервис-воркеры и выполняет 1 гарантированную жесткую перезагрузку без зацикливаний.<br><b>Цифровой штамп верификации, полный SHA-256 и блокировка книги от изменений:</b> Каждый сформированный отчет Excel (.xlsx) заверяется полным 64-значным криптографическим отпечатком SHA-256 и уникальным серийным номером (EXP-...). Событие экспорта, автор, количество позиций и полный хэш фиксируются в системном журнале аудита. Все листы книги Excel автоматически защищены и заблокированы от случайного или несанкционированного изменения ячеек (пароль разблокировки — первые 16 символов SHA-256 хэша выгрузки, копируется из системного журнала аудита). Любая попытка после экспорта задним числом списать или изменить данные мгновенно выявляется сверкой подписей в журнале и на штампе.</div></details>
+    <details class="faq-details"><summary class="faq-summary">5. PWA, PWA-Автообновление в 1 Клик и Безопасность</summary><div class="faq-content"><b>Офлайн PWA и архитектура IndexedDB:</b> Приложение функционирует офлайн в браузере. Основная база данных (инструменты, персонал, пользователи, аудит, закупки, настройки, фото) хранится в высокоёмком <code>IndexedDB</code> (inv_inventory_db), а <code>localStorage</code> зарезервирован исключительно для легковесных настроек UI (тема, язык, режим отображения, состояние карточек) и сессий. Валидация паролей через SHA-256 и строго разграниченный ролевой доступ (Administrator / Tool Crib Manager / Operator) защищают ключевые операции. Только Администратор может восстанавливать бэкапы JSON.<br><b>Обновление PWA в 1 клик:</b> Браузер всегда опрашивает Cloudflare Pages напрямую благодаря CDN-заголовкам <code>no-cache</code>. Клик по кликабельной плашке версии (<b>v97</b>) в шапке или кнопке <code>[🔄 Обновить PWA]</code> в меню очищает браузерные кэши, снимает сервис-воркеры и выполняет 1 гарантированную жесткую перезагрузку без зацикливаний.<br><b>Цифровой штамп верификации, полный SHA-256 и блокировка книги от изменений:</b> Каждый сформированный отчет Excel (.xlsx) заверяется полным 64-значным криптографическим отпечатком SHA-256 и уникальным серийным номером (EXP-...). Событие экспорта, автор, количество позиций и полный хэш фиксируются в системном журнале аудита. Все листы книги Excel автоматически защищены и заблокированы от случайного или несанкционированного изменения ячеек (пароль разблокировки — первые 16 символов SHA-256 хэша выгрузки, копируется из системного журнала аудита). Любая попытка после экспорта задним числом списать или изменить данные мгновенно выявляется сверкой подписей в журнале и на штампе.</div></details>
 </div>`,
         'Action': 'Действие',
         'Actions': 'Действия',
@@ -4131,6 +4138,7 @@ const AppDB = {
             store.put(item);
             tx.oncomplete = () => resolve();
             tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error || new Error('Transaction aborted'));
         });
     },
 
@@ -4142,6 +4150,7 @@ const AppDB = {
             store.delete(key);
             tx.oncomplete = () => resolve();
             tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error || new Error('Transaction aborted'));
         });
     },
 
@@ -4153,6 +4162,7 @@ const AppDB = {
             store.clear();
             tx.oncomplete = () => resolve();
             tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error || new Error('Transaction aborted'));
         });
     },
 
@@ -4167,6 +4177,7 @@ const AppDB = {
             }
             tx.oncomplete = () => resolve();
             tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error || new Error('Transaction aborted'));
         });
     },
 
@@ -4254,6 +4265,7 @@ const AppDB = {
 
             tx.oncomplete = () => resolve();
             tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error || new Error('Transaction aborted'));
         });
     },
 
@@ -4299,6 +4311,7 @@ const AppDB = {
                 });
             };
             tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error || new Error('Transaction aborted'));
         });
     },
 
@@ -4651,7 +4664,9 @@ const Store = {
         try {
             await AppDB.open();
             const data = await AppDB.loadAll();
-            const hasData = (data.tools && data.tools.length > 0) || 
+            const isInitialized = !!(data.meta && data.meta.schemaVersion) || (Array.isArray(data.users) && data.users.length > 0);
+            const hasData = isInitialized ||
+                            (data.tools && data.tools.length > 0) || 
                             (data.personnel && data.personnel.length > 0) || 
                             (data.workstations && data.workstations.length > 0);
 
@@ -5182,6 +5197,7 @@ const Store = {
     /** Удаление зоны: её посты удаляются каскадом. Привязки персонала/инструментов
         становятся висячими — их находит и чинит самодиагностика. */
     removeWorkstation(name) {
+        if (typeof Auth !== 'undefined' && !Auth.has('Administrator')) return { posts: 0 };
         this.snapshot(`remove zone ${name}`);
         const i = this.workstations.indexOf(name);
         if (i >= 0) this.workstations.splice(i, 1);
@@ -5194,6 +5210,7 @@ const Store = {
     },
 
     removeWorkpost(name, ws) {
+        if (typeof Auth !== 'undefined' && !Auth.has('Administrator')) return { removed: 0 };
         this.snapshot(`remove post ${name}`);
         const before = this.workposts.length;
         this.workposts = this.workposts.filter(p => !(p.name === name && p.ws === (ws === undefined ? null : ws)));
@@ -5230,6 +5247,10 @@ const Store = {
     },
 
     rollback() {
+        if (typeof Auth !== 'undefined' && !Auth.has('Administrator')) {
+            alert(T('ACCESS_DENIED') || 'Access Denied');
+            return false;
+        }
         const snap = this.rollbackInfo();
         if (!snap) return false;
         // Validate critical arrays before applying to prevent data wipe on corrupt snapshot
@@ -6103,6 +6124,7 @@ function updateRBACUI() {
 /* --- Управление пользователями RBAC (в справочниках) --- */
 
 async function addRegistryRbac() {
+    if (!Auth.has('Administrator')) { alert(T('ACCESS_DENIED') || 'Access Denied'); return; }
     const u = document.getElementById('regRbacUser').value.trim();
     const p = document.getElementById('regRbacPass').value.trim();
     const r = document.getElementById('regRbacRole').value;
@@ -6117,6 +6139,7 @@ async function addRegistryRbac() {
 }
 
 function removeRbacUser(index) {
+    if (!Auth.has('Administrator')) { alert(T('ACCESS_DENIED') || 'Access Denied'); return; }
     const user = Store.users[index];
     if (user.username === 'admin') { alert(T('ADMIN_NODELETE')); return; }
     if (!confirm(`${T('Delete user')} "${user.username}"?`)) return;
@@ -6191,23 +6214,26 @@ function openModal(id) {
     el.classList.add('active');
 }
 function closeModal(id) {
-    let el = document.getElementById(id);
+    let el = (typeof id === 'string') ? document.getElementById(id) : id;
     if (!el && id === 'reportModal') el = document.getElementById('report5sModal');
     if (!el) return;
     el.classList.remove('active');
+    if ((el.id === 'qrScanModal' || el.id === 'photoAttachModal') && typeof Scan !== 'undefined' && Scan.close) {
+        Scan.close();
+    }
 }
 
 // Закрытие по клику на затемнённый фон
 document.addEventListener('mousedown', e => {
     if (e.target.classList && e.target.classList.contains('modal-overlay')) {
-        e.target.classList.remove('active');
+        closeModal(e.target);
     }
 });
 // Закрытие верхней модалки по Esc
 document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     const open = [...document.querySelectorAll('.modal-overlay.active')];
-    if (open.length) open[open.length - 1].classList.remove('active');
+    if (open.length) closeModal(open[open.length - 1]);
 });
 
 /* --- Тултипы (единый элемент #svgTooltip) --- */
@@ -7849,9 +7875,10 @@ const Ops = {
     // Следующий свободный номер в классе: сканируем существующие PREFIX-NNN
     suggestId(prefix) {
         let max = 0;
-        const re = new RegExp('^' + prefix + '-(\\d+)$');
-        Store.tools.forEach(t => { const m = t.id.match(re); if (m) max = Math.max(max, parseInt(m[1], 10)); });
-        return prefix + '-' + String(max + 1).padStart(3, '0');
+        const cleanPrefix = String(prefix || 'TOOL').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp('^' + cleanPrefix + '-(\\d+)$');
+        Store.tools.forEach(t => { const m = t.id && t.id.match(re); if (m) max = Math.max(max, parseInt(m[1], 10)); });
+        return (prefix || 'TOOL') + '-' + String(max + 1).padStart(3, '0');
     },
 
     // Смена класса: перегенерация номера + подстановка типовой категории
@@ -8141,7 +8168,7 @@ const Ops = {
             tool.location = [z, r, s, b].filter(Boolean).join(' - ');
         } else {
             delete tool.address;
-            if (tool.location) {
+            if (tool.location && tool.location.includes('-') && !tool.location.includes('/')) {
                 const L = Store._locParts(tool.location);
                 if (L && L.parts.length >= 2) {
                     tool.address = {
@@ -8258,6 +8285,7 @@ const Ops = {
             clone.qty = issueQty;
             clone.sn = (tool.id.includes('-') ? tool.id.split('-')[0] : 'SN') + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
             clone.barcode = ''; // штрихкод оригинала не наследуем — иначе дубль в системе
+            clone.photos = []; // фото оригинала не дублируем с теми же blob ID, чтобы удаление у клона не ломало оригинал
             Store.tools.push(clone);
             tool = clone; 
         }
@@ -8889,7 +8917,9 @@ const Ops = {
         
         let receivedInto;
         if (target) {
-            target.qty = (parseInt(target.qty) || 1) + (parseInt(order.qty) || 1);
+            const curQty = Number.isFinite(Number(target.qty)) ? Number(target.qty) : 0;
+            const addQty = Number.isFinite(Number(order.qty)) ? Number(order.qty) : 1;
+            target.qty = curQty + addQty;
             if (order.cost) target.cost = order.cost;
             if (order.purchase_url) target.purchase_url = order.purchase_url;
             Store.touch(target);
@@ -9129,12 +9159,15 @@ const Ops = {
                     id: targetId,
                     name: item.name,
                     qty: inputQty,
+                    sn: 'SN-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+                    barcode: '',
                     status: 'Active',
                     category: 'Uncategorized',
                     type: 'Permanent',
                     history: [],
                     audit_history: []
                 };
+                Store.touch(newTool);
                 Store.tools.push(newTool);
             }
             item.receivedIntoToolId = targetId;
@@ -9202,7 +9235,7 @@ const Ops = {
         const info = [
             row(T('Name'), `<strong>${Utils.esc(rec.name)}</strong>`),
             row(T('Reason'), Utils.esc(rec.reason || '—')),
-            row(T('ORDER_SUPPLIER'), rec.link ? `<a href="${Utils.esc(rec.link)}" target="_blank" rel="noopener">${Utils.esc(rec.link)}</a>` : '—'),
+            row(T('ORDER_SUPPLIER'), rec.link ? `<a href="${Utils.safeUrl(rec.link)}" target="_blank" rel="noopener noreferrer">${Utils.esc(rec.link)}</a>` : '—'),
             row(T('ORDER_REQUESTER'), Utils.esc(rec.initials || '—')),
             row(T('ORDER_LOCATION'), Utils.esc([rec.ws, rec.wp].filter(Boolean).join(' / ') || '—')),
             row(T('Status'), `<span style="color:${bc}; font-weight:bold;">${bl}</span>`)
@@ -9315,7 +9348,7 @@ const Ops = {
             Object.entries(byPost).map(([k, list]) => {
                 const sorted = [...list].sort((a, b) => String(b.date).localeCompare(String(a.date)));
                 const rIds = S5_RUBRICS.map(r => r.id);
-                const avgOf = a => (rIds.reduce((s, rid) => s + (a.scores[rid] || 0), 0) / rIds.length).toFixed(1);
+                const avgOf = a => (rIds.reduce((s, rid) => s + ((a.scores && a.scores[rid]) || 0), 0) / rIds.length).toFixed(1);
 
                 const hist = sorted.map(a => `
                     <div class="audit-history-item-card" style="background:var(--surface); border:1px solid var(--border); color:var(--text-main); border-radius:8px; padding:14px; margin-bottom:14px;">
@@ -9328,7 +9361,7 @@ const Ops = {
                         </div>
                         <div style="display:flex; flex-direction:column; gap:8px;">
                             ${S5_RUBRICS.map((r, i) => {
-                                const val = a.scores[r.id] || 0;
+                                const val = (a.scores && a.scores[r.id]) || 0;
                                 const explanation = Ops.get5SRubricExplanation(i, val);
                                 const isHl = pi === i;
                                 const color = val >= 4 ? 'var(--success, #4caf50)' : (val === 3 ? 'var(--warning, #ffa500)' : 'var(--danger, #ff4d4d)');

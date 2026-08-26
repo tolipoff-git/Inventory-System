@@ -2,15 +2,23 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v96` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v97` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~12,000+ lines). 
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v96)
+## Recent Accomplishments (v49 – v97)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Full Migration to Unified IndexedDB Engine (AppDB) (v96 Release)
+### 0. IndexedDB Invariant Hardening, Security & Edge Case Fixes (v97 Release)
+- **IndexedDB `onabort` Handlers (`AppDB`):** Added explicit `tx.onabort = () => reject(...)` handlers across all transaction operations (`put`, `delete`, `clear`, `setAll`, `saveAll`, `loadAll`), preventing promise hang on transaction abortion.
+- **Empty Database Seed Resurrection Fix (`Store.load`):** Fixed race/lifecycle condition where an empty database with initialized metadata/users would trigger demo data re-seeding. Added initialization check `isInitialized = !!(data.meta?.schemaVersion) || (Array.isArray(data.users) && data.users.length > 0)`.
+- **RBAC Enforcement on Registry & State Mutations:** Enforced strict `Auth.has('Administrator')` checks in `Store.removeWorkstation`, `Store.removeWorkpost`, `Store.rollback`, `addRegistryRbac`, and `removeRbacUser`.
+- **MediaStream WebRTC Camera Cleanup:** Unified modal closing (`closeModal`) with `Scan.close()` to guarantee `MediaStreamTrack.stop()` on overlay click and `Escape` keypress.
+- **XSS & Regex Safety (`Utils.safeUrl`, `Ops.suggestId`):** Sanitized dynamic regex prefix generation in `Ops.suggestId` against special characters. Enforced `Utils.safeUrl` with `rel="noopener noreferrer"` on procurement supplier URLs to block `javascript:` / `data:` URI attacks.
+- **Asset Cloning Isolation & Inventory Count Precision:** Cloned tool instances on partial assignment (`Ops.submitAssign`) now reset `photos` to `[]` to prevent cross-deletion of parent photo blobs. `Ops.receiveOrder` and `Ops.receiveOrderItem` hardened for zero-stock items with explicit `sn` and `barcode` assignment.
+
+### 1. Full Migration to Unified IndexedDB Engine (AppDB) (v96 Release)
 - **Problem:** `localStorage` has a strict ~5MB-10MB quota, synchronous blocking I/O, and string serialization limits. Heavy inventory operations, large audit trails, high tool counts, and photo attachments risked storage overflows and UI freezes.
 - **Solution (`AppDB` Module):** Built a high-performance, asynchronous IndexedDB storage layer with 7 dedicated object stores:
   1. `tools` (keyPath: `id`, indexes: `status`, `category`) — tooling, consumables, serial tracking.
