@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-APP_VERSION=$(grep -oP "APP_VERSION:\s*'([^']+)'" index.html | head -1 | sed -E "s/.*'([^']+)'.*/\1/")
+APP_VERSION=$(grep -oP "APP_VERSION(?::\s*|\s*=\s*)'([^']+)'" src/config/constants.ts index.html index.monolith.v97.html 2>/dev/null | head -1 | sed -E "s/.*'([^']+)'.*/\1/")
 if [ -z "$APP_VERSION" ]; then
   APP_VERSION="v0"
 fi
