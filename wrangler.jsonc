@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "inventory-system",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-08-31",
+  "kv_namespaces": [
+    {
+      "binding": "INVENTORY_KV",
+      "id": "inventory_kv_main"
+    }
+  ],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true
+    }
+  }
+}

@@ -17,7 +17,7 @@ syntax_*.js
 
 # Node / dependencies
 node_modules/
-package*.json
+dist/
 
 # OS / Editor junk
 .DS_Store

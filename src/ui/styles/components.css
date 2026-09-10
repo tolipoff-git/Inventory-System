@@ -1,0 +1,430 @@
+/* ==========================================================================
+   4. ГРАФИКИ — карточки дашборда и SVG-элементы
+   ========================================================================== */
+.dashboard-charts { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }
+
+.chart-card {
+    flex: 1;
+    min-width: 300px;
+    background: var(--surface);
+    padding: 15px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+}
+.chart-card h3 {
+    color: var(--primary-hover);
+    margin: 0 0 10px;
+    font-size: 1rem;
+    text-transform: uppercase;
+}
+
+.svg-slice { transition: transform 0.2s, filter 0.2s; cursor: pointer; }
+.svg-slice:hover { transform: scale(1.05); filter: brightness(1.2); }
+.svg-bar { transition: filter 0.2s; cursor: pointer; }
+.svg-bar:hover { filter: brightness(1.3); }
+.svg-node { transition: r 0.2s; cursor: pointer; }
+.svg-node:hover { r: 6; fill: var(--primary-hover); }
+
+/* Всплывающая подсказка для графиков и KPI */
+#svgTooltip {
+    position: absolute;
+    display: none;
+    max-width: min(340px, 86vw);
+    background: rgba(11, 12, 16, 0.95);
+    color: #fff;
+    padding: 8px 12px;
+    border: 1px solid var(--primary);
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.45;
+    pointer-events: none;
+    z-index: 1200;
+    box-shadow: 0 0 10px rgba(69, 162, 158, 0.5);
+    white-space: pre-wrap;
+    max-width: 320px;
+}
+
+/* ==========================================================================
+   5. ОСНОВНАЯ ОБЛАСТЬ — поиск, переключатель видов, индикатор фильтра
+   ========================================================================== */
+main { flex: 1; padding: 20px; }
+
+.search-bar { display: flex; gap: 10px; margin-bottom: 18px; }
+.search-bar input {
+    flex: 1;
+    padding: 10px 14px;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+.search-bar input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 8px rgba(69,162,158,0.5); }
+
+.view-switcher { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.view-switcher .btn.active { background-color: var(--primary); color: var(--bg-color); }
+
+#filterIndicator {
+    display: none;
+    background: rgba(69, 162, 158, 0.2);
+    border: 1px solid var(--primary);
+    color: var(--primary-hover);
+    padding: 8px 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    font-weight: bold;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+#filterIndicator.active { display: flex; }
+#filterIndicator button {
+    background: var(--danger);
+    border: none;
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 12px;
+    text-transform: uppercase;
+    font-family: inherit;
+}
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+
+/* --- Защита от горизонтального переполнения на узких экранах ---
+   min-width:0 разрешает flex/grid-детям сжиматься ниже min-content;
+   nowrap-строки внутри карточек обрезаются эллипсисом, а не раздувают трек */
+.grid > *, .dashboard-charts > *, .tool-card > *, .tool-row > *, .tool-header > * { min-width: 0; }
+.chart-card { min-width: min(300px, 100%); }
+.kpi-card { min-width: min(150px, 100%); }
+.table-scroll { overflow-x: auto; }
+.search-bar input { min-width: 0; }
+html { overflow-x: hidden; }
+
+.empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--text-muted);
+    padding: 40px 10px;
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+}
+
+/* ==========================================================================
+   6. КАРТОЧКА ИНСТРУМЕНТА
+   ========================================================================== */
+.tool-card {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 15px;
+    position: relative;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+.tool-card:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.5); border-color: var(--primary); }
+.tool-card.overdue { border-color: var(--danger); }
+
+.tool-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
+    border-bottom: 1px dashed var(--border);
+    padding-bottom: 10px;
+    cursor: pointer;
+}
+.tool-title { font-size: 1.05rem; font-weight: bold; color: var(--text-main); word-break: break-word; }
+.tool-id { font-size: 0.85rem; color: var(--primary-hover); }
+
+.status-badge {
+    flex-shrink: 0;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    font-weight: bold;
+    background: var(--bg-color);
+    border: 1px solid var(--text-muted);
+    color: var(--text-muted);
+}
+.status-badge.Active      { border-color: var(--success); color: var(--success); }
+.status-badge.Issued      { border-color: var(--warning); color: var(--warning); }
+.status-badge.Maintenance { border-color: var(--warning); color: var(--warning); }
+.status-badge.Overdue     { border-color: var(--danger);  color: var(--danger);  background: rgba(255,0,60,0.1); }
+.status-badge.Backup      { border-color: var(--primary); color: var(--primary-hover); }
+.status-badge.Pending     { border-color: #f59e0b; color: #f59e0b; background: rgba(245,158,11,0.1); }
+
+.tool-body { font-size: 0.9rem; margin-bottom: 15px; flex: 1; cursor: pointer; }
+.tool-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.tool-label { color: var(--text-muted); flex-shrink: 0; }
+.tool-val { color: var(--text-main); text-align: right; word-break: break-word; }
+
+.tool-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: auto; }
+.tool-actions .btn { flex: 1; min-width: 45%; font-size: 0.82rem; padding: 7px 6px; text-align: center; }
+.tool-actions .btn.wide { min-width: 100%; }
+
+/* Кликабельный бейдж сотрудника */
+.person-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background-color: rgba(69, 162, 158, 0.1);
+    border: 1px solid var(--primary);
+    color: var(--primary-hover);
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s;
+    font-size: 0.9em;
+}
+.person-badge:hover { background-color: var(--primary); color: var(--bg-color); box-shadow: 0 0 8px var(--primary); }
+
+
+
+/* ==========================================================================
+   7. МОДАЛЬНЫЕ ОКНА — общий каркас, закрытие по Esc и клику на оверлей
+   ========================================================================== */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.85);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(3px);
+}
+.modal-overlay.active { display: flex; }
+
+/* Индикатор длительных операций (экспорт Excel): полноэкранный лоадер со спиннером */
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.85);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 99999;
+    backdrop-filter: blur(3px);
+}
+.loading-overlay.active { display: flex; }
+.loading-box {
+    background-color: var(--surface);
+    border: 1px solid var(--primary);
+    border-radius: 4px;
+    padding: 24px 36px;
+    text-align: center;
+    color: var(--text-main);
+    box-shadow: 0 0 20px rgba(69, 162, 158, 0.2);
+}
+.loading-spinner {
+    width: 36px;
+    height: 36px;
+    margin: 0 auto 12px;
+    border: 4px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: loading-spin 0.8s linear infinite;
+}
+@keyframes loading-spin { to { transform: rotate(360deg); } }
+
+.modal {
+    background-color: var(--surface);
+    border: 1px solid var(--primary);
+    border-radius: 4px;
+    /* v95: ширина по содержимому — таблицы (архив, журналы) разворачиваются
+       до почти всего экрана, простые формы не уже прежних 600px */
+    width: fit-content;
+    min-width: min(600px, 92vw);
+    max-width: 94vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 20px rgba(69, 162, 158, 0.2);
+}
+.modal.wide { min-width: min(850px, 94vw); max-width: 96vw; }
+.modal.narrow { width: min(420px, 92vw); min-width: 0; max-width: 94vw; }
+/* Модалки с инлайн-лимитом (логин 420, превью этикетки 520 и т.п.):
+   оставляем прежнее поведение (90% с их потолком), без нового пола 600px */
+.modal[style*="max-width"] { width: 90%; min-width: 0; }
+
+.modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px dashed var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0,0,0,0.2);
+}
+.modal-title { margin: 0; color: var(--primary-hover); font-size: 1.1rem; text-transform: uppercase; }
+.modal-body { padding: 20px; overflow-y: auto; }
+.modal-footer {
+    padding: 15px 20px;
+    border-top: 1px dashed var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background: rgba(0,0,0,0.2);
+    flex-wrap: wrap;
+}
+.modal-footer.spread { justify-content: space-between; }
+
+.close-btn { background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; transition: color 0.2s; line-height: 1; }
+.close-btn:hover { color: var(--danger); }
+
+/* Стек кнопок-меню в системных модалках */
+.menu-stack { display: flex; flex-direction: column; gap: 10px; }
+
+/* ==========================================================================
+   8. ФОРМЫ
+   ========================================================================== */
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; margin-bottom: 5px; color: var(--primary-hover); font-size: 0.85rem; text-transform: uppercase; }
+.form-control {
+    width: 100%;
+    padding: 10px;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 0.9rem;
+}
+.form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 5px rgba(69,162,158,0.5); }
+select.form-control option { background-color: var(--bg-color); }
+.form-row { display: flex; gap: 10px; }
+.form-row > * { flex: 1; }
+.form-error { color: var(--danger); font-size: 0.85rem; margin-bottom: 10px; display: none; }
+.form-hint { color: var(--text-muted); font-size: 0.85rem; margin-top: 4px; }
+
+/* ==========================================================================
+   9. ТАБЛИЦЫ И СПИСКИ
+   ========================================================================== */
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th, td { text-align: left; padding: 10px; border-bottom: 1px solid var(--border); }
+th { color: var(--primary-hover); text-transform: uppercase; font-size: 0.85rem; }
+tr:hover td { background: rgba(69,162,158,0.05); }
+
+.table-scroll { max-height: 320px; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px; }
+.table-scroll thead th { position: sticky; top: 0; background: var(--surface); z-index: 1; }
+
+.history-list { list-style: none; padding: 0; margin: 0; }
+.history-item {
+    padding: 8px;
+    border-bottom: 1px dashed var(--border);
+    font-size: 0.85rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+}
+.history-item:last-child { border-bottom: none; }
+
+/* Цветные статус-плашки в аудите сотрудника */
+.status-audit { padding: 4px 8px; border-radius: 4px; font-weight: bold; text-transform: uppercase; font-size: 0.8rem; color: #fff; white-space: nowrap; }
+.status-audit.overdue { background-color: crimson; box-shadow: 0 0 10px crimson; }
+.status-audit.amber   { background-color: #ffb700; color: #000; box-shadow: 0 0 10px #ffb700; }
+.status-audit.ok      { background-color: #00ffcc; color: #000; box-shadow: 0 0 10px #00ffcc; }
+
+/* Счётчики в профиле сотрудника */
+.audit-counters { display: flex; gap: 15px; margin: 15px 0; flex-wrap: wrap; }
+.audit-counter {
+    flex: 1;
+    min-width: 110px;
+    padding: 10px;
+    border-radius: 4px;
+    text-align: center;
+    font-weight: bold;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+}
+.audit-counter .num { font-size: 1.5rem; display: block; margin-top: 4px; }
+.audit-counter.overdue-count { border-color: crimson; color: crimson; }
+.audit-counter.amber-count   { border-color: #ffb700; color: #ffb700; }
+.audit-counter.ok-count      { border-color: #00ffcc; color: #00ffcc; }
+.audit-counter.total-count   { border-color: var(--primary); color: var(--primary-hover); }
+.audit-btn { font-size: 0.85rem; padding: 5px 9px; margin: 2px; }
+
+/* Профильный блок сотрудника */
+.profile-head {
+    margin-bottom: 10px;
+    padding: 15px;
+    background: rgba(69, 162, 158, 0.1);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+}
+.profile-head .name { font-size: 1.4rem; font-weight: bold; color: var(--text-main); }
+.profile-head .meta { color: var(--text-main); font-size: 0.95rem; margin-top: 8px; }
+.profile-head .meta span { color: var(--primary-hover); font-weight: bold; }
+
+/* ==========================================================================
+   10. FAQ-АККОРДЕОН
+   ========================================================================== */
+.faq-details { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; margin-bottom: 10px; overflow: hidden; }
+.faq-summary { background: rgba(0,0,0,0.2); padding: 15px; cursor: pointer; font-weight: bold; color: var(--primary-hover); user-select: none; list-style: none; }
+.faq-summary::-webkit-details-marker { display: none; }
+.faq-summary::before { content: '\25B8 '; display: inline-block; width: 20px; transition: transform 0.2s; }
+details[open] .faq-summary::before { transform: rotate(90deg); }
+.faq-summary:hover { background: rgba(69, 162, 158, 0.1); }
+.faq-content { padding: 15px; color: var(--text-main); font-size: 0.9rem; line-height: 1.5; border-top: 1px dashed var(--border); }
+
+
+
+/* ==========================================================================
+   12. АДАПТИВ — планшеты и узкие киоск-экраны
+   ========================================================================== */
+@media (max-width: 900px) {
+    .header-row { flex-direction: column; align-items: stretch; text-align: center; }
+    .header-title-block { align-items: center; }
+    .auth-status { text-align: center; }
+    .kpi-card { min-width: 45%; }
+    .chart-card { min-width: 100%; }
+    .grid { grid-template-columns: 1fr; }
+    .form-row { flex-direction: column; }
+}
+
+/* ==========================================================================
+   13. ТЕЛЕФОНЫ — Android/iOS: крупные тач-цели, читаемый текст,
+       поля ввода ≥16px (защита от авто-зума Safari при фокусе)
+   ========================================================================== */
+@media (max-width: 640px) {
+    main { padding: 12px; }
+    header { padding: 12px; }
+    .kpi-card { min-width: 0; flex: 1 1 47%; padding: 10px; }
+    .dashboard-charts { gap: 12px; }
+    .chart-card { min-width: 0; flex-basis: 100%; padding: 12px; }
+    .tool-card { padding: 12px; }
+    .grid { gap: 12px; }
+    .view-switcher { flex-direction: column; gap: 8px; }
+    .view-switcher .btn { width: 100%; }
+    .kpi-value { font-size: 1.5rem; }
+    .modal { width: 94vw; max-width: 94vw; max-height: 92vh; }
+    .modal-body { padding: 14px; }
+    .btn { min-height: 42px; font-size: 0.95rem; }
+    .tool-actions .btn { min-width: 47%; font-size: 0.88rem; min-height: 44px; }
+    input, select, textarea { font-size: 16px !important; }
+    .search-bar { flex-wrap: wrap; }
+    .search-bar select { flex-basis: 100%; order: -1; max-width: none !important; }
+    .search-bar input { font-size: 16px; padding: 12px; flex: 1; min-width: 0; }
+    #qrScanBtn { min-height: 48px; flex-shrink: 0; }
+    .menu-stack .btn { width: 100%; }
+    .audit-counters { gap: 10px; }
+    .audit-counter { flex: 1 1 40%; }
+    .table-scroll { -webkit-overflow-scrolling: touch; }
+    .modal-body td, .modal-body th { padding: 6px 5px; font-size: 0.85rem; }
+    .modal-body td { overflow-wrap: anywhere; }
+    .history-list { font-size: 0.85rem; }
+}
+
+
+
+/* Компенсация фаски: отступ контента от скошенного левого угла */
+.chart-card h3, .kpi-card .kpi-label { padding-left: 14px; }
+.tool-header h3 { padding-left: 10px; }

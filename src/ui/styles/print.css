@@ -1,0 +1,96 @@
+/* ==========================================================================
+   11. ЭТИКЕТКИ A/B/C — превью на экране и точные размеры для печати
+   ========================================================================== */
+.label-preview-box {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 2px solid #000000;
+    padding: 2mm;
+    margin: 0 auto 20px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    overflow: hidden;
+}
+.label-preview-box, .label-preview-box * { color: #000000 !important; }
+
+.label-type-a { width: 70mm; height: 36mm; }
+.label-type-b, .label-type-c { width: 100mm; height: 50mm; }
+/* Листовая раскладка (Avery): на экране ячейки размечены пунктиром для контроля
+   стартовой позиции; при печати пунктир снимается динамическим стилем */
+.sheet-cell { outline: 1px solid rgba(0,0,0,0.1); }
+@media print { .sheet-cell { outline: none !important; border: none !important; } }
+
+.label-details { font-size: 8px; line-height: 1.25; flex: 1; }
+.label-details .title { font-size: 12.5px; font-weight: bold; margin-bottom: 2px; }
+.label-details .id { font-size: 14px; font-weight: bold; margin-bottom: 2px; }
+.label-qr { width: 25mm; height: 25mm; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.label-qr canvas { width: 100%; height: 100%; }
+
+.label-type-card { text-align: left; padding: 15px; width: 100%; }
+.label-type-card small { font-size: 0.88rem; color: var(--text-muted); text-transform: none; }
+/* Ховер карточки этикетки: фон становится бирюзовым, поэтому и заголовок,
+   и описание переводим в тёмный — текст остаётся читаемым */
+.label-type-card:hover strong { color: var(--bg-color); }
+.label-type-card:hover small { color: #232a33; }
+
+/* Скрытая печатная зона: наполняется из JS перед печатью отчётов/СОП */
+#printZone { display: none; }
+
+/* ==========================================================================
+   ПЕЧАТЬ — два независимых режима, включаются классом на <body> из JS:
+   · body.print-label-mode — печать этикетки (только #printLabelContainer,
+     размер страницы задаётся через #dynamicPageStyle под тип A/B/C);
+   · body.print-zone-mode  — печать отчёта/СОП (только #printZone).
+   ========================================================================== */
+@media print {
+    /* --- Базовые сбросы для body --- */
+    body.print-label-mode, body.print-zone-mode { display: block !important; min-height: auto !important; height: auto !important; overflow: visible !important; background: #fff !important; }
+    /* --- Режим этикетки --- */
+    body.print-label-mode > * { display: none !important; }
+    body.print-label-mode #printLabelModal.active { display: block !important; position: static !important; background: none; }
+    body.print-label-mode #printLabelContainer {
+        background: white !important;
+        border: none !important;
+        margin: 0;
+        padding: 0;
+    }
+    body.print-label-mode .modal-overlay { display: none !important; }
+
+    body.print-label-mode #printLabelModal .modal { position: static !important; border: none; box-shadow: none; padding: 0; margin: 0; background: none; max-width: none !important; width: auto !important; height: auto !important; max-height: none !important; overflow: visible !important; }
+    body.print-label-mode #printLabelModal .modal-header,
+    body.print-label-mode #printLabelModal .modal-footer,
+    body.print-label-mode #printLabelModal p { display: none !important; }
+    body.print-label-mode #printLabelModal .modal-body { padding: 0 !important; background: transparent !important; overflow: visible !important; }
+    /* Хвостовой page-break последней этикетки не должен порождать пустую страницу (v93) */
+    body.print-label-mode #printLabelContainer > :last-child { page-break-after: auto !important; break-after: auto !important; }
+
+    /* --- Режим отчёта/СОП: прячем приложение целиком, показываем зону --- */
+    body.print-zone-mode > * { display: none !important; }
+    body.print-zone-mode #printZone {
+        display: block !important;
+        position: absolute; left: 0; top: 0; width: 100%;
+        background: #fff; color: #111;
+        font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; line-height: 1.5;
+        padding: 0;
+    }
+    /* Светлая типографика печатных документов */
+    #printZone h1 { font-size: 20px; margin: 0 0 2mm; color: #111; }
+    #printZone h2 { font-size: 14px; margin: 6mm 0 2mm; padding-bottom: 1mm; border-bottom: 2px solid #1f6f6b; color: #1f6f6b; text-transform: uppercase; }
+    #printZone .pz-meta { color: #555; font-size: 11px; margin-bottom: 4mm; }
+    #printZone .pz-kpis { display: flex; gap: 4mm; margin: 3mm 0; }
+    #printZone .pz-kpi { flex: 1; border: 1px solid #ccc; border-radius: 2mm; padding: 3mm; text-align: center; }
+    #printZone .pz-kpi b { display: block; font-size: 22px; }
+    #printZone table { width: 100%; border-collapse: collapse; margin: 2mm 0; }
+    #printZone th, #printZone td { border: 1px solid #bbb; padding: 1.5mm 2mm; text-align: left; font-size: 11px; }
+    #printZone th { background: #e6f2f1; }
+    #printZone ul { margin: 1mm 0 2mm 5mm; padding: 0; }
+    #printZone .pz-sign { display: flex; justify-content: space-between; margin-top: 12mm; }
+    #printZone .pz-sign div { width: 45%; border-top: 1px solid #111; padding-top: 1.5mm; font-size: 11px; color: #333; }
+    #printZone .pz-ok { color: #0a7a3d; font-weight: bold; }
+    #printZone .pz-warn { color: #a86a00; font-weight: bold; }
+    #printZone .pz-bad { color: #b00020; font-weight: bold; }
+}
+
+/* Динамический @page под размер выбранной этикетки (заполняется из JS) */

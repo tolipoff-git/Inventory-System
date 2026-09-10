@@ -1,0 +1,247 @@
+/* ==========================================================================
+   1. ДИЗАЙН-ТОКЕНЫ — вся цветовая схема и типографика в одном месте
+   ========================================================================== */
+:root {
+    /* --- TRON GRID · Flynn White: ледяное свечение на глубоком синем --- */
+    --bg-color: #05080e;
+    --surface: #0b1119;
+    --surface-hover: #16202e;
+    --chip: #131c29;
+    --primary: #8fc3e8;
+    --primary-hover: #e8f6ff;
+    --neon: #e8f6ff;
+    --neon-glow: rgba(160, 215, 255, 0.55);
+    --edge: rgba(160, 215, 255, 0.40);
+    --text-main: #e2e8ee;
+    --text-muted: #9db2c2;
+    --success: #2ee6b0;
+    --warning: #ffb700;
+    --danger: #ff2d55;
+    --border: #25374a;
+    --font-family: 'Consolas', 'Courier New', monospace;
+    --font-display: 'Russo One', 'Consolas', sans-serif;
+}
+
+html[data-theme="light"] {
+    --bg-color: #eef2f6;
+    --surface: #ffffff;
+    --surface-hover: #f8fafc;
+    --chip: #f1f5f9;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --neon: #3b82f6;
+    --neon-glow: rgba(59, 130, 246, 0.25);
+    --edge: rgba(59, 130, 246, 0.35);
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --success: #059669;
+    --warning: #d97706;
+    --danger: #dc2626;
+    --border: #cbd5e1;
+}
+
+/* ==========================================================================
+   2. БАЗА — body, скроллбар, фокус
+   ========================================================================== */
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: var(--font-family);
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-color); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+:focus-visible { outline: 2px solid var(--primary-hover); outline-offset: 1px; }
+
+/* ==========================================================================
+   3. ШАПКА — брендинг, KPI-панель, тулбар
+   ========================================================================== */
+header {
+    background-color: var(--surface);
+    padding: 20px;
+    border-bottom: 2px solid var(--primary);
+    box-shadow: 0 0 15px rgba(69, 162, 158, 0.2);
+}
+
+.header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.header-title-block { display: flex; flex-direction: column; gap: 8px; }
+
+.header-title {
+    margin: 0;
+    font-size: 1.8rem;
+    color: var(--text-main);
+    text-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+}
+
+.header-subtitle {
+    font-size: 0.95rem;
+    color: var(--danger);
+    text-shadow: 0 0 5px var(--danger);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: bold;
+    border: 1px solid var(--danger);
+    padding: 2px 8px;
+    width: max-content;
+    box-shadow: 0 0 10px rgba(255, 0, 60, 0.5);
+}
+
+/* Фирменная подпись разработчика — тонкая, не спорит с интерфейсом */
+.brand-credit {
+    margin-top: 6px;
+    font-size: 0.75rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.brand-credit b { color: var(--primary-hover); font-weight: bold; }
+.brand-credit i { font-style: normal; opacity: 0.75; }
+.login-credit { text-align: center; margin-top: 14px; }
+
+/* Префиксы классов внутри FAQ */
+.faq-content code { font-family: 'Consolas', 'Courier New', monospace; background: rgba(69, 162, 158, 0.15); padding: 1px 5px; border-radius: 3px; color: var(--primary-hover); font-weight: bold; }
+
+/* --- Toast-уведомление: плашка поверх всего, не перекрывает центр надолго --- */
+#toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(140%);
+    background: var(--surface); color: var(--text-main);
+    border: 1px solid var(--primary); border-left: 5px solid var(--success);
+    border-radius: 6px; padding: 13px 20px; font-size: 0.95rem; line-height: 1.45;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6); z-index: 9999; max-width: min(480px, 92vw);
+    text-align: center; opacity: 0; transition: transform 0.35s ease, opacity 0.35s ease;
+    pointer-events: none;
+}
+#toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+/* --- Сворачиваемые карточки: шеврон + плавная анимация высоты --- */
+.collapse-toggle { cursor: pointer; user-select: none; }
+.collapse-chevron { margin-left: auto; flex-shrink: 0; padding-left: 10px; color: var(--text-muted); transition: transform 0.25s ease; }
+.collapsed > .collapse-toggle .collapse-chevron { transform: rotate(-90deg); }
+.collapsible { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.28s ease; }
+.collapsed > .collapsible { grid-template-rows: 0fr; }
+.collapsible-inner { overflow: hidden; min-height: 0; }
+.collapsed > .collapse-toggle { margin-bottom: 0 !important; border-bottom: none !important; padding-bottom: 0 !important; }
+.chart-card h3 .collapse-chevron { font-size: 0.85rem; }
+
+/* Моноширинное поле инвентарного номера + подсветка автогенерации */
+#addToolID { font-family: 'Consolas', 'Courier New', monospace; letter-spacing: 1px; font-weight: bold; }
+
+.auth-status {
+    font-size: 0.9rem;
+    color: var(--text-main);
+    cursor: pointer;
+    text-align: right;
+}
+.auth-status .user { color: var(--primary-hover); font-weight: bold; }
+.auth-status .logout { color: var(--danger); text-decoration: underline; }
+
+/* --- KPI-карточки (клик = фильтр) --- */
+.kpi-container { display: flex; gap: 15px; margin: 18px 0; flex-wrap: wrap; }
+
+.kpi-card {
+    flex: 1;
+    min-width: 150px;
+    background: rgba(11, 12, 16, 0.6);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 15px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+    background: var(--primary);
+}
+.kpi-card.danger::before  { background: var(--danger); }
+.kpi-card.warning::before { background: var(--warning); }
+.kpi-card.success::before { background: var(--success); }
+
+.kpi-card:hover { transform: scale(1.05); border-color: var(--primary-hover); box-shadow: 0 0 15px rgba(102,252,241,0.5); }
+.kpi-card.success:hover { border-color: var(--success); box-shadow: 0 0 15px rgba(0,255,204,0.5); }
+.kpi-card.warning:hover { border-color: var(--warning); box-shadow: 0 0 15px rgba(255,183,0,0.5); }
+.kpi-card.danger:hover  { border-color: var(--danger);  box-shadow: 0 0 15px rgba(255,0,60,0.5); }
+
+/* Пульсация карточки просрочки, когда есть что проверить */
+.kpi-card.danger.alert { animation: pulse-danger 1.6s infinite; }
+@keyframes pulse-danger {
+    0%, 100% { box-shadow: 0 0 4px rgba(255,0,60,0.3); }
+    50%      { box-shadow: 0 0 22px rgba(255,0,60,0.9); }
+}
+
+.kpi-value { font-size: 2rem; font-weight: bold; margin: 10px 0 6px; color: var(--text-main); }
+.kpi-label { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; }
+.kpi-hint  { font-size: 0.8rem; color: var(--text-muted); }
+
+/* --- Тулбар и кнопки --- */
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.btn {
+    background-color: transparent;
+    color: var(--primary-hover);
+    border: 1px solid var(--primary);
+    padding: 8px 16px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-family: inherit;
+    text-transform: uppercase;
+    transition: all 0.2s;
+}
+.btn:hover { background-color: var(--primary); color: var(--bg-color); box-shadow: 0 0 10px var(--primary); }
+
+.btn-danger  { border-color: var(--danger);  color: var(--danger); }
+.btn-danger:hover  { background-color: var(--danger);  color: #fff; box-shadow: 0 0 10px var(--danger); }
+.btn-warning { border-color: var(--warning); color: var(--warning); }
+.btn-warning:hover { background-color: var(--warning); color: #000; box-shadow: 0 0 10px var(--warning); }
+.btn-success { border-color: var(--success); color: var(--success); }
+.btn-success:hover { background-color: var(--success); color: #000; box-shadow: 0 0 10px var(--success); }
+.btn-muted   { border-color: var(--text-muted); color: var(--text-muted); }
+.btn-muted:hover   { background-color: var(--text-muted); color: #000; box-shadow: none; }
+
+.storage-note { margin-top: 14px; font-size: 0.85rem; color: var(--text-muted); }
+.storage-note strong { color: var(--primary-hover); }
+
+
+
+/* ==== РАБОЧИЙ РЕЖИМ (Work Mode) ====
+   Операционный контур без статистики: KPI, графики и отчёты скрываются,
+   поиск/QR, карточки, операции и справочники остаются. */
+body.mode-work .kpi-container,
+body.mode-work .dashboard-charts,
+body.mode-work .storage-note,
+body.mode-work .work-hide { display: none !important; }
+
+/* Элементы, видимые ТОЛЬКО в рабочем режиме (напр. компактный фильтр статуса) */
+.work-only { display: none; }
+body.mode-work .work-only { display: block !important; }
+select.work-only.form-control { max-width: 190px; }
+
+
+
+    /* Privacy Lock */
+    #appMainContainer.locked { display: none !important; }
