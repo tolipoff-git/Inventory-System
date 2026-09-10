@@ -6,15 +6,12 @@
   "build": {
     "command": "npm run build"
   },
-  // Sync persistence (Live Sync): create the namespace once in Cloudflare dashboard
-  // (Workers & Pages -> KV -> Create namespace: INVENTORY_KV), then paste the ID below.
-  // Until bound, the Worker seamlessly uses the isolate in-memory fallback.
-  // "kv_namespaces": [
-  //   {
-  //     "binding": "INVENTORY_KV",
-  //     "id": "PASTE_INVENTORY_KV_ID_HERE"
-  //   }
-  // ],
+  "kv_namespaces": [
+    {
+      "binding": "INVENTORY_KV",
+      "id": "bcaf03c4670a45b696abdeebe98b4977"
+    }
+  ],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS"
