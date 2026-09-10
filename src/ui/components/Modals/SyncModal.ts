@@ -1,13 +1,16 @@
 import { SyncManagerInstance } from '../../../sync/syncManager';
-import { getActiveSyncRoom } from '../../../sync/syncApi';
+import { getActiveSyncRoom, getSyncToken, setSyncToken } from '../../../sync/syncApi';
 import { renderQrToCanvas } from '../../../labels/qrGenerator';
 import { copyText, toast } from '../../../utils/dom';
 import { esc } from '../../../utils/formatters';
 import { getLanguage, T } from '../../../i18n';
 
+let unsubscribeStatusListener: (() => void) | null = null;
+
 export function renderSyncModalHtml(): string {
   const isRu = getLanguage() === 'RU';
   const currentRoom = getActiveSyncRoom();
+  const syncToken = getSyncToken();
   const deviceId = SyncManagerInstance.deviceId;
 
   return `
@@ -80,6 +83,16 @@ export function renderSyncModalHtml(): string {
                 <div style="display:flex; gap:6px; margin-top:4px;">
                   <input id="syncRoomInput" type="text" value="${esc(currentRoom)}" style="flex:1; font-size:0.85rem; text-transform:uppercase; font-family:monospace; font-weight:bold;" required />
                   <button type="submit" class="btn" style="padding: 6px 14px; font-size:0.8rem;">${isRu ? 'Сохранить' : 'Switch'}</button>
+                </div>
+              </form>
+
+              <!-- Cloud Sync Bearer Token Form -->
+              <form id="syncTokenChangeForm" onsubmit="event.preventDefault(); window.handleSyncTokenChange();" style="margin-top: 4px;">
+                <label style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted);">${isRu ? 'Секретный токен синхронизации (Bearer Token):' : 'Cloud Sync Secret (Bearer Token):'}</label>
+                <div style="display:flex; gap:6px; margin-top:4px;">
+                  <input id="syncTokenInput" type="password" value="${esc(syncToken)}" style="flex:1; font-size:0.8rem; font-family:monospace; background:rgba(0,0,0,0.4); padding:6px 10px;" placeholder="Bearer Token" required />
+                  <button type="button" id="syncTokenToggleVisBtn" class="btn btn-secondary" style="padding: 6px 10px; font-size:0.8rem;" title="${isRu ? 'Показать / скрыть' : 'Toggle visibility'}">👁</button>
+                  <button type="submit" class="btn" style="padding: 6px 14px; font-size:0.8rem;">${isRu ? 'Сохранить' : 'Save'}</button>
                 </div>
               </form>
 
@@ -175,6 +188,16 @@ export function initSyncModalLogic(): void {
     };
   }
 
+  const toggleVisBtn = document.getElementById('syncTokenToggleVisBtn');
+  if (toggleVisBtn) {
+    toggleVisBtn.onclick = () => {
+      const tokenInput = document.getElementById('syncTokenInput') as HTMLInputElement;
+      if (tokenInput) {
+        tokenInput.type = tokenInput.type === 'password' ? 'text' : 'password';
+      }
+    };
+  }
+
   // Global window handler for room change form
   (window as any).handleSyncRoomChange = async () => {
     const input = document.getElementById('syncRoomInput') as HTMLInputElement;
@@ -185,16 +208,25 @@ export function initSyncModalLogic(): void {
     toast(`☁️ Room switched to: ${newRoom}`);
   };
 
+  // Global window handler for sync token change form
+  (window as any).handleSyncTokenChange = () => {
+    const input = document.getElementById('syncTokenInput') as HTMLInputElement;
+    if (!input) return;
+    const newToken = input.value.trim();
+    if (!newToken) return;
+    setSyncToken(newToken);
+    toast('🔑 ' + (getLanguage() === 'RU' ? 'Секретный токен синхронизации сохранён' : 'Sync secret token saved'));
+  };
+
   (window as any).openSyncModal = () => {
-    const modal = document.getElementById('syncModal');
-    if (modal) {
-      modal.classList.add('active');
-      updateModalContent();
-    }
+    SyncModal.open();
   };
 
   // Sync manager reactive listener updates modal if open
-  SyncManagerInstance.subscribeStatus(() => {
+  if (unsubscribeStatusListener) {
+    unsubscribeStatusListener();
+  }
+  unsubscribeStatusListener = SyncManagerInstance.subscribeStatus(() => {
     const modal = document.getElementById('syncModal');
     if (modal && modal.classList.contains('active')) {
       updateModalContent();
@@ -205,15 +237,14 @@ export function initSyncModalLogic(): void {
 export const SyncModal = {
   open: () => {
     let modal = document.getElementById('syncModal');
-    if (!modal) {
-      document.body.insertAdjacentHTML('beforeend', renderSyncModalHtml());
-      initSyncModalLogic();
-      modal = document.getElementById('syncModal');
+    if (modal) {
+      modal.remove();
     }
+    document.body.insertAdjacentHTML('beforeend', renderSyncModalHtml());
+    initSyncModalLogic();
+    modal = document.getElementById('syncModal');
     if (modal) {
       modal.classList.add('active');
-      const input = document.getElementById('syncRoomInput') as HTMLInputElement;
-      if (input) input.value = SyncManagerInstance.room;
     }
   },
   close: () => {

@@ -14,10 +14,11 @@ export class OpsMenuModal {
 
     public static open(): void {
         let modal = document.getElementById(this.modalId);
-        if (!modal) {
-            this.createModalDOM();
-            modal = document.getElementById(this.modalId);
+        if (modal) {
+            modal.remove();
         }
+        this.createModalDOM();
+        modal = document.getElementById(this.modalId);
         if (modal) {
             modal.classList.add('active');
             this.bindEvents(modal);
@@ -26,7 +27,9 @@ export class OpsMenuModal {
 
     public static close(): void {
         const modal = document.getElementById(this.modalId);
-        if (modal) modal.classList.remove('active');
+        if (modal) {
+            modal.classList.remove('active');
+        }
     }
 
     private static bindEvents(modal: HTMLElement): void {
@@ -76,6 +79,9 @@ export class OpsMenuModal {
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.id = this.modalId;
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) this.close();
+        });
 
         overlay.innerHTML = `
             <div class="modal narrow" style="max-width:440px;">
