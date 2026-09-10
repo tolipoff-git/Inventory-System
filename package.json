@@ -1,13 +1,15 @@
 {
   "name": "inventory-system",
   "private": true,
-  "version": "97.0.0",
+  "version": "98.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "deploy": "npm run build && npx wrangler deploy",
+    "deploy:prod": "npm run build && npx wrangler deploy --env production"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

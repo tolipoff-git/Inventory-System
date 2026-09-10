@@ -470,5 +470,9 @@ export const en: Record<string, string> = {
   "Expand All": "Expand All",
   "Collapse All": "Collapse All",
   "Update PWA": "Update PWA",
-  "Print Location Labels": "Print Location Labels"
+  "Print Location Labels": "Print Location Labels",
+  "NO_TOOLS_MATCH": "No tools match",
+  "OVERDUE": "OVERDUE",
+  "SERVICE": "SERVICE",
+  "tools": "tools"
 };

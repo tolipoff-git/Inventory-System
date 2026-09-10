@@ -100,14 +100,11 @@ export class AppUI {
                     } else {
                         GateModal.openLoginPrompt();
                     }
-                }
+                },
+                onOpenSystemMenu: () => SystemMenuModal.open(),
+                onOpenOpsMenu: () => OpsMenuModal.open()
             });
             this.header.render();
-
-            const sysBtn = headerContainer.querySelector('#sysMenuBtn');
-            const opsBtn = headerContainer.querySelector('#opsMenuBtn');
-            if (sysBtn) sysBtn.addEventListener('click', () => SystemMenuModal.open());
-            if (opsBtn) opsBtn.addEventListener('click', () => OpsMenuModal.open());
         }
 
         // 2. Mount Metrics Bar
@@ -404,6 +401,7 @@ export class AppUI {
 
     public refreshAll(): void {
         if (this.header) this.header.render();
+        if (this.filterBar) this.filterBar.render();
         if (this.metrics) this.metrics.update();
         if (this.charts) this.charts.update();
         if (this.toolGrid) {

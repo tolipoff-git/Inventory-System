@@ -28,6 +28,8 @@ export class GateModal {
         }
 
         this.ensureLoginModalDOM();
+
+        Auth.setPromptHandler(() => GateModal.openLoginPrompt());
     }
 
     public static openLoginPrompt(): void {
@@ -51,6 +53,7 @@ export class GateModal {
     public static closeLoginPrompt(): void {
         const modal = document.getElementById(this.loginModalId);
         if (modal) modal.classList.remove('active');
+        Auth.pendingAction = null;
     }
 
     private static createGateModalDOM(): void {

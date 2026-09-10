@@ -14,6 +14,8 @@ export interface HeaderCallbacks {
     onOpenFaq: () => void;
     onLock: () => void;
     onLoginClick: () => void;
+    onOpenSystemMenu: () => void;
+    onOpenOpsMenu: () => void;
 }
 
 export class HeaderComponent {
@@ -109,6 +111,16 @@ export class HeaderComponent {
 
         const authBtn = this.container.querySelector('#authStatusBtn');
         if (authBtn) authBtn.addEventListener('click', () => this.callbacks.onLoginClick());
+
+        const sysBtn = this.container.querySelector('#sysMenuBtn');
+        if (sysBtn) {
+            sysBtn.addEventListener('click', () => this.callbacks.onOpenSystemMenu());
+        }
+
+        const opsBtn = this.container.querySelector('#opsMenuBtn');
+        if (opsBtn) {
+            opsBtn.addEventListener('click', () => this.callbacks.onOpenOpsMenu());
+        }
 
         const verTag = this.container.querySelector('#appVersionTag');
         if (verTag) {

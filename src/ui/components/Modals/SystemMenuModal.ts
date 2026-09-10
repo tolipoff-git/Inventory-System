@@ -21,12 +21,79 @@ export class SystemMenuModal {
             this.createModalDOM();
             modal = document.getElementById(this.modalId);
         }
-        if (modal) modal.classList.add('active');
+        if (modal) {
+            modal.classList.add('active');
+            this.bindEvents(modal);
+        }
     }
 
     public static close(): void {
         const modal = document.getElementById(this.modalId);
         if (modal) modal.classList.remove('active');
+    }
+
+    private static bindEvents(modal: HTMLElement): void {
+        modal.querySelector('#sysMenuCloseBtn')?.addEventListener('click', () => this.close());
+
+        modal.querySelector('#sysAddToolBtn')?.addEventListener('click', () => {
+            this.close();
+            Auth.doAction('Tool Crib Manager', () => ToolModal.openAdd());
+        });
+
+        modal.querySelector('#sysRegistriesBtn')?.addEventListener('click', () => {
+            this.close();
+            Auth.doAction('Administrator', () => RegistryModal.open());
+        });
+
+        modal.querySelector('#sysBatchBtn')?.addEventListener('click', () => {
+            this.close();
+            Auth.doAction('Administrator', () => BatchRotationModal.open());
+        });
+
+        modal.querySelector('#sysArchiveBtn')?.addEventListener('click', () => {
+            this.close();
+            Auth.doAction('Administrator', () => AuditLogModal.openArchive());
+        });
+
+        modal.querySelector('#sysAuditLogBtn')?.addEventListener('click', () => {
+            this.close();
+            Auth.doAction('Administrator', () => AuditLogModal.openAuditLog());
+        });
+
+        modal.querySelector('#sysIntegrityBtn')?.addEventListener('click', () => {
+            this.close();
+            Auth.doAction('Administrator', () => IntegrityModal.open());
+        });
+
+        modal.querySelector('#sysBackupBtn')?.addEventListener('click', () => {
+            this.close();
+            Auth.doAction('Administrator', () => {
+                const data = JSON.stringify(Store.getStateSnapshot(), null, 2);
+                downloadText(`Inventory_Backup_${new Date().toISOString().split('T')[0]}.json`, data, 'application/json');
+            });
+        });
+
+        const restoreInput = modal.querySelector<HTMLInputElement>('#sysRestoreFileInput');
+        if (restoreInput) {
+            restoreInput.addEventListener('change', async () => {
+                this.close();
+                if (restoreInput.files && restoreInput.files[0]) {
+                    const text = await restoreInput.files[0].text();
+                    try {
+                        const parsed = JSON.parse(text);
+                        Store.applyLoadedData(parsed);
+                        await Store.save();
+                        toast('Backup successfully restored!', 'success');
+                    } catch (e: any) {
+                        toast(`Failed to restore backup: ${e.message}`, 'danger');
+                    }
+                }
+            });
+        }
+
+        modal.querySelector('#sysUpdateBtn')?.addEventListener('click', () => {
+            window.location.reload();
+        });
     }
 
     private static createModalDOM(): void {
@@ -58,67 +125,5 @@ export class SystemMenuModal {
         `;
 
         document.body.appendChild(overlay);
-
-        overlay.querySelector('#sysMenuCloseBtn')?.addEventListener('click', () => this.close());
-
-        overlay.querySelector('#sysAddToolBtn')?.addEventListener('click', () => {
-            this.close();
-            Auth.doAction('Tool Crib Manager', () => ToolModal.openAdd());
-        });
-
-        overlay.querySelector('#sysRegistriesBtn')?.addEventListener('click', () => {
-            this.close();
-            Auth.doAction('Administrator', () => RegistryModal.open());
-        });
-
-        overlay.querySelector('#sysBatchBtn')?.addEventListener('click', () => {
-            this.close();
-            Auth.doAction('Administrator', () => BatchRotationModal.open());
-        });
-
-        overlay.querySelector('#sysArchiveBtn')?.addEventListener('click', () => {
-            this.close();
-            Auth.doAction('Administrator', () => AuditLogModal.openArchive());
-        });
-
-        overlay.querySelector('#sysAuditLogBtn')?.addEventListener('click', () => {
-            this.close();
-            Auth.doAction('Administrator', () => AuditLogModal.openAuditLog());
-        });
-
-        overlay.querySelector('#sysIntegrityBtn')?.addEventListener('click', () => {
-            this.close();
-            Auth.doAction('Administrator', () => IntegrityModal.open());
-        });
-
-        overlay.querySelector('#sysBackupBtn')?.addEventListener('click', () => {
-            this.close();
-            Auth.doAction('Administrator', () => {
-                const data = JSON.stringify(Store.getStateSnapshot(), null, 2);
-                downloadText(`Inventory_Backup_${new Date().toISOString().split('T')[0]}.json`, data, 'application/json');
-            });
-        });
-
-        const restoreInput = overlay.querySelector<HTMLInputElement>('#sysRestoreFileInput');
-        if (restoreInput) {
-            restoreInput.addEventListener('change', async () => {
-                this.close();
-                if (restoreInput.files && restoreInput.files[0]) {
-                    const text = await restoreInput.files[0].text();
-                    try {
-                        const parsed = JSON.parse(text);
-                        Store.applyLoadedData(parsed);
-                        await Store.save();
-                        toast('Backup successfully restored!', 'success');
-                    } catch (e: any) {
-                        toast(`Failed to restore backup: ${e.message}`, 'danger');
-                    }
-                }
-            });
-        }
-
-        overlay.querySelector('#sysUpdateBtn')?.addEventListener('click', () => {
-            window.location.reload();
-        });
     }
 }

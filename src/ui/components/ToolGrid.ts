@@ -151,10 +151,10 @@ export class ToolGridComponent {
                 <div style="font-size:2rem; font-weight:bold; color:var(--text-main); line-height:1.1;">${perm.length}</div>
                 <div style="color:var(--text-muted); font-size:0.85rem; text-transform:uppercase;">${T('Total Permanent Tools:')}</div>
             </div>
-            ${row(`<span style="color:var(--success);">● Active</span>`, perm.filter(t => t.status === 'Active').length)}
-            ${row(`<span style="color:var(--primary-hover);">● Issued</span>`, perm.filter(t => t.status === 'Issued').length)}
-            ${row(`<span style="color:var(--warning);">● Maintenance</span>`, perm.filter(t => t.status === 'Maintenance').length)}
-            ${row(`<span style="color:var(--danger);">● Overdue</span>`, perm.filter(t => t.status === 'Overdue').length)}
+            ${row(`<span style="color:var(--success);">● ${esc(T('Active'))}</span>`, perm.filter(t => t.status === 'Active').length)}
+            ${row(`<span style="color:var(--primary-hover);">● ${esc(T('Issued'))}</span>`, perm.filter(t => t.status === 'Issued').length)}
+            ${row(`<span style="color:var(--warning);">● ${esc(T('Maintenance'))}</span>`, perm.filter(t => t.status === 'Maintenance').length)}
+            ${row(`<span style="color:var(--danger);">● ${esc(T('Overdue'))}</span>`, perm.filter(t => t.status === 'Overdue').length)}
             ${row(`⚗ ${T('Calibration due ≤14d')}`, permCal, permCal ? 'var(--warning)' : 'var(--success)')}
             ${row(`<a href="#" class="archive-link" style="color:var(--text-main); text-decoration:underline;">🗑 ${T('Decommissioned Assets Archive')}</a>`, Store.retiredTools().length, 'var(--text-muted)')}
         `;
@@ -243,7 +243,7 @@ export class ToolGridComponent {
         const mCal = maintQueue.filter(t => t.status !== 'Maintenance' && t.status !== 'Overdue').length;
         const urgent = maintQueue.slice(0, 3).map(t => row(
             `${esc(t.id)} — ${esc(t.name.split(' ').slice(0, 3).join(' '))}…`,
-            t.status === 'Overdue' ? 'OVERDUE' : t.status === 'Maintenance' ? 'SERVICE' : `CAL ${daysUntil(t.calDue)}d`,
+            t.status === 'Overdue' ? T('OVERDUE') : t.status === 'Maintenance' ? T('SERVICE') : `⚗ ${T('Calibration due')} ${daysUntil(t.calDue)}d`,
             t.status === 'Overdue' ? 'var(--danger)' : 'var(--warning)'
         )).join('');
 

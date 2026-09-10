@@ -1,8 +1,8 @@
 import { ToolClass, ToolGroup } from '../types/inventory';
 import { UserRole } from '../types/personnel';
 
-export const APP_VERSION = 'v97';
-export const BUILD_DATE = '2026-08-26';
+export const APP_VERSION = 'v98';
+export const BUILD_DATE = '2026-09-10';
 export const SCHEMA_VERSION = 4;
 export const CAL_WARNING_DAYS = 14;
 export const WEAR_RETIRE_PCT = 75;

@@ -470,5 +470,9 @@ export const ru: Record<string, string> = {
   "Expand All": "Развернуть все",
   "Collapse All": "Свернуть все",
   "Update PWA": "Обновить PWA",
-  "Print Location Labels": "Печать этикеток мест хранения"
+  "Print Location Labels": "Печать этикеток мест хранения",
+  "NO_TOOLS_MATCH": "Совпадений не найдено",
+  "OVERDUE": "ПРОСРОЧЕН",
+  "SERVICE": "ОБСЛУЖИВАНИЕ",
+  "tools": "инструментов"
 };

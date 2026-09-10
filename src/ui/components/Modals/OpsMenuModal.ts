@@ -18,12 +18,58 @@ export class OpsMenuModal {
             this.createModalDOM();
             modal = document.getElementById(this.modalId);
         }
-        if (modal) modal.classList.add('active');
+        if (modal) {
+            modal.classList.add('active');
+            this.bindEvents(modal);
+        }
     }
 
     public static close(): void {
         const modal = document.getElementById(this.modalId);
         if (modal) modal.classList.remove('active');
+    }
+
+    private static bindEvents(modal: HTMLElement): void {
+        modal.querySelector('#opsMenuCloseBtn')?.addEventListener('click', () => this.close());
+
+        modal.querySelector('#opsQuickScanBtn')?.addEventListener('click', () => {
+            this.close();
+            ScannerModal.open();
+        });
+
+        modal.querySelector('#ops5sReportBtn')?.addEventListener('click', () => {
+            this.close();
+            AuditModal.openReport();
+        });
+
+        modal.querySelector('#opsExportXlsxBtn')?.addEventListener('click', async () => {
+            this.close();
+            await exportFullInventoryExcel();
+        });
+
+        modal.querySelector('#opsProcureBtn')?.addEventListener('click', () => {
+            this.close();
+            OrderModal.openProcure();
+        });
+
+        modal.querySelector('#opsOrdersBtn')?.addEventListener('click', () => {
+            this.close();
+            OrderModal.openList();
+        });
+
+        modal.querySelector('#opsPostAuditBtn')?.addEventListener('click', () => {
+            this.close();
+            AuditModal.openPostAudit();
+        });
+
+        modal.querySelector('#opsStorageLabelsBtn')?.addEventListener('click', () => {
+            this.close();
+            LabelModal.openLocationLabels();
+        });
+
+        modal.querySelector('#opsUpdatePwaBtn')?.addEventListener('click', () => {
+            window.location.reload();
+        });
     }
 
     private static createModalDOM(): void {
@@ -51,46 +97,5 @@ export class OpsMenuModal {
         `;
 
         document.body.appendChild(overlay);
-
-        overlay.querySelector('#opsMenuCloseBtn')?.addEventListener('click', () => this.close());
-
-        overlay.querySelector('#opsQuickScanBtn')?.addEventListener('click', () => {
-            this.close();
-            ScannerModal.open();
-        });
-
-        overlay.querySelector('#ops5sReportBtn')?.addEventListener('click', () => {
-            this.close();
-            AuditModal.openReport();
-        });
-
-        overlay.querySelector('#opsExportXlsxBtn')?.addEventListener('click', async () => {
-            this.close();
-            await exportFullInventoryExcel();
-        });
-
-        overlay.querySelector('#opsProcureBtn')?.addEventListener('click', () => {
-            this.close();
-            OrderModal.openProcure();
-        });
-
-        overlay.querySelector('#opsOrdersBtn')?.addEventListener('click', () => {
-            this.close();
-            OrderModal.openList();
-        });
-
-        overlay.querySelector('#opsPostAuditBtn')?.addEventListener('click', () => {
-            this.close();
-            AuditModal.openPostAudit();
-        });
-
-        overlay.querySelector('#opsStorageLabelsBtn')?.addEventListener('click', () => {
-            this.close();
-            LabelModal.openLocationLabels();
-        });
-
-        overlay.querySelector('#opsUpdatePwaBtn')?.addEventListener('click', () => {
-            window.location.reload();
-        });
     }
 }

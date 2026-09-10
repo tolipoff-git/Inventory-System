@@ -6,10 +6,13 @@ import { toast } from '../utils/dom';
 import { esc } from '../utils/formatters';
 import { T } from '../i18n';
 
+export type AuthPromptHandler = () => void;
+
 class AuthManager {
   public current: UserSession = { username: 'operator', role: 'Operator' };
   public pendingAction: (() => void) | null = null;
   private _authListeners: Set<(session: UserSession) => void> = new Set();
+  private _promptHandler: AuthPromptHandler | null = null;
 
   constructor() {
     try {
@@ -106,22 +109,30 @@ class AuthManager {
     this._notify();
   }
 
+  public setPromptHandler(handler: AuthPromptHandler): void {
+    this._promptHandler = handler;
+  }
+
   public doAction(requiredRole: UserRole, callback: () => void): void {
     if (this.has(requiredRole)) {
       callback();
       return;
     }
     this.pendingAction = callback;
-    const loginModal = document.getElementById('loginModal');
-    if (loginModal) {
-      loginModal.classList.add('active');
-      const userEl = document.getElementById('loginUser') as HTMLInputElement;
-      const passEl = document.getElementById('loginPass') as HTMLInputElement;
-      const errEl = document.getElementById('loginError');
-      if (userEl) userEl.value = '';
-      if (passEl) passEl.value = '';
-      if (errEl) errEl.style.display = 'none';
-      setTimeout(() => userEl?.focus(), 50);
+    if (this._promptHandler) {
+      this._promptHandler();
+    } else {
+      const loginModal = document.getElementById('loginModal');
+      if (loginModal) {
+        loginModal.classList.add('active');
+        const userEl = document.getElementById('promptLoginUser') as HTMLInputElement;
+        const passEl = document.getElementById('promptLoginPass') as HTMLInputElement;
+        const errEl = document.getElementById('promptLoginError');
+        if (userEl) userEl.value = '';
+        if (passEl) passEl.value = '';
+        if (errEl) (errEl as HTMLElement).style.display = 'none';
+        setTimeout(() => userEl?.focus(), 50);
+      }
     }
   }
 }

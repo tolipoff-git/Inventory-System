@@ -24,6 +24,10 @@ export class FilterBarComponent {
     }
 
     public render(): void {
+        const prevSearch = this.container.querySelector<HTMLInputElement>('#globalSearch')?.value || '';
+        const prevFilterType = this.currentFilter.type;
+        const prevFilterValue = this.currentFilter.value;
+
         this.container.innerHTML = `
             <!-- Filter Indicator -->
             <div id="filterIndicator" style="display:none; margin-bottom:12px; padding:8px 14px; background:rgba(0, 210, 255, 0.15); border:1px solid var(--primary); border-radius:6px; justify-content:space-between; align-items:center;">
@@ -56,6 +60,15 @@ export class FilterBarComponent {
         `;
 
         this.bindEvents();
+
+        if (prevSearch) {
+            const searchInput = this.container.querySelector<HTMLInputElement>('#globalSearch');
+            if (searchInput) searchInput.value = prevSearch;
+        }
+
+        if (prevFilterType && prevFilterValue) {
+            this.setFilter(prevFilterType, prevFilterValue);
+        }
     }
 
     private bindEvents(): void {

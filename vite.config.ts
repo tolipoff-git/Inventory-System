@@ -3,13 +3,13 @@ import { execSync } from 'child_process';
 import { readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 
-let commitHash = 'v97-refactor';
+let commitHash = 'v98-refactor';
 try {
   commitHash = execSync('git rev-parse --short HEAD').toString().trim();
 } catch {}
 
 const buildTime = new Date().toISOString();
-const appVersion = 'v97';
+const appVersion = 'v98';
 
 const stampSwCache = {
   name: 'stamp-sw-cache',
