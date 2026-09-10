@@ -64,7 +64,7 @@ export class HeaderComponent {
             </div>
 
             <div class="toolbar" style="margin-top:10px;">
-                <button class="btn auth-admin" id="sysMenuBtn">⚙ <span>${T('System Management')}</span></button>
+                <button class="btn" id="sysMenuBtn">⚙ <span>${T('System Management')}</span></button>
                 <button class="btn btn-warning" id="opsMenuBtn">🎛 <span>${T('Operations & Reports')}</span></button>
             </div>
 

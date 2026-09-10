@@ -3,6 +3,9 @@
   "name": "inventory-system",
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-08-31",
+  "placement": {
+    "mode": "smart"
+  },
   "build": {
     "command": "npm run build"
   },

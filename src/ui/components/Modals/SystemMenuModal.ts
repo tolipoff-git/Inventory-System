@@ -4,7 +4,6 @@
 
 import { T } from '../../../i18n';
 import { Store } from '../../../storage/store';
-import { Auth } from '../../../auth/authManager';
 import { ToolModal } from './ToolModal';
 import { RegistryModal } from './RegistryModal';
 import { BatchRotationModal } from './BatchRotationModal';
@@ -37,40 +36,38 @@ export class SystemMenuModal {
 
         modal.querySelector('#sysAddToolBtn')?.addEventListener('click', () => {
             this.close();
-            Auth.doAction('Tool Crib Manager', () => ToolModal.openAdd());
+            ToolModal.openAdd();
         });
 
         modal.querySelector('#sysRegistriesBtn')?.addEventListener('click', () => {
             this.close();
-            Auth.doAction('Administrator', () => RegistryModal.open());
+            RegistryModal.open();
         });
 
         modal.querySelector('#sysBatchBtn')?.addEventListener('click', () => {
             this.close();
-            Auth.doAction('Administrator', () => BatchRotationModal.open());
+            BatchRotationModal.open();
         });
 
         modal.querySelector('#sysArchiveBtn')?.addEventListener('click', () => {
             this.close();
-            Auth.doAction('Administrator', () => AuditLogModal.openArchive());
+            AuditLogModal.openArchive();
         });
 
         modal.querySelector('#sysAuditLogBtn')?.addEventListener('click', () => {
             this.close();
-            Auth.doAction('Administrator', () => AuditLogModal.openAuditLog());
+            AuditLogModal.openAuditLog();
         });
 
         modal.querySelector('#sysIntegrityBtn')?.addEventListener('click', () => {
             this.close();
-            Auth.doAction('Administrator', () => IntegrityModal.open());
+            IntegrityModal.open();
         });
 
         modal.querySelector('#sysBackupBtn')?.addEventListener('click', () => {
             this.close();
-            Auth.doAction('Administrator', () => {
-                const data = JSON.stringify(Store.getStateSnapshot(), null, 2);
-                downloadText(`Inventory_Backup_${new Date().toISOString().split('T')[0]}.json`, data, 'application/json');
-            });
+            const data = JSON.stringify(Store.getStateSnapshot(), null, 2);
+            downloadText(`Inventory_Backup_${new Date().toISOString().split('T')[0]}.json`, data, 'application/json');
         });
 
         const restoreInput = modal.querySelector<HTMLInputElement>('#sysRestoreFileInput');
@@ -108,14 +105,14 @@ export class SystemMenuModal {
                     <button class="close-btn" id="sysMenuCloseBtn">&times;</button>
                 </div>
                 <div class="modal-body menu-stack">
-                    <button class="btn auth-manager" id="sysAddToolBtn">+ ${T('Add New Tool')}</button>
-                    <button class="btn auth-admin" id="sysRegistriesBtn">${T('System Registries')}</button>
-                    <button class="btn btn-warning auth-admin" id="sysBatchBtn">${T('Batch Rotation Operations')}</button>
-                    <button class="btn auth-admin" id="sysArchiveBtn">${T('Decommissioned Assets Archive')}</button>
-                    <button class="btn auth-admin" id="sysAuditLogBtn">${T('System Audit Log')}</button>
-                    <button class="btn auth-admin" id="sysIntegrityBtn">🩺 ${T('Integrity Check')}</button>
-                    <button class="btn auth-admin" id="sysBackupBtn">💾 ${T('Export Backup (.json)')}</button>
-                    <label class="btn auth-admin" style="cursor:pointer; text-align:center; margin:0;">
+                    <button class="btn" id="sysAddToolBtn">+ ${T('Add New Tool')}</button>
+                    <button class="btn" id="sysRegistriesBtn">${T('System Registries')}</button>
+                    <button class="btn btn-warning" id="sysBatchBtn">${T('Batch Rotation Operations')}</button>
+                    <button class="btn" id="sysArchiveBtn">${T('Decommissioned Assets Archive')}</button>
+                    <button class="btn" id="sysAuditLogBtn">${T('System Audit Log')}</button>
+                    <button class="btn" id="sysIntegrityBtn">🩺 ${T('Integrity Check')}</button>
+                    <button class="btn" id="sysBackupBtn">💾 ${T('Export Backup (.json)')}</button>
+                    <label class="btn" style="cursor:pointer; text-align:center; margin:0;">
                         <span>📥 ${T('Restore Backup (.json)')}</span>
                         <input type="file" accept=".json" id="sysRestoreFileInput" style="display:none;">
                     </label>
