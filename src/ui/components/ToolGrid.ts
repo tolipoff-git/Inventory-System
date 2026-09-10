@@ -188,7 +188,7 @@ export class ToolGridComponent {
         // 3. WS Hub
         const wsRows = Store.workstations.slice(0, 5).map(ws => {
             const count = active.filter(t => Store.workstationOf(t) === ws).length;
-            return row(`📍 ${esc(ws)}`, `${count} tools`, count > 0 ? 'var(--text-main)' : 'var(--text-muted)');
+            return row(`📍 ${esc(ws)}`, `${count} ${T('tools')}`, count > 0 ? 'var(--text-main)' : 'var(--text-muted)');
         }).join('');
 
         const wsBody = `
@@ -205,7 +205,7 @@ export class ToolGridComponent {
         });
         const consRows = Object.entries(consCats).slice(0, 5).map(([cat, wears]) => {
             const avg = Math.round(wears.reduce((a, b) => a + b, 0) / wears.length);
-            return row(esc(cat), `${wears.length} pcs · ${avg}% ${T('wear')}`,
+            return row(esc(cat), `${wears.length} ${T('items')} · ${avg}% ${T('wear')}`,
                 avg > CONFIG.WEAR_RETIRE_PCT ? 'var(--danger)' : avg > CONFIG.WEAR_WARN_PCT ? 'var(--warning)' : 'var(--success)');
         }).join('');
 
@@ -224,7 +224,8 @@ export class ToolGridComponent {
 
         const poLatest = [...plog].reverse().slice(0, 3).map(l => {
             const stColor = l.status === 'received' ? 'var(--success)' : l.status === 'cancelled' ? 'var(--danger)' : 'var(--warning)';
-            return row(`🛒 ${esc(l.name)}`, `<span style="color:${stColor};">${l.status || 'open'}</span> · $${(+l.total || 0).toFixed(0)}`);
+            const stLabel = l.status === 'received' ? T('ORDER_RECEIVED') : l.status === 'cancelled' ? T('ORDER_CANCELLED') : (l.status || 'open');
+            return row(`🛒 ${esc(l.name)}`, `<span style="color:${stColor};">${stLabel}</span> · $${(+l.total || 0).toFixed(0)}`);
         }).join('');
 
         const procBody = `
@@ -304,7 +305,7 @@ export class ToolGridComponent {
         if (!tools.length) {
             this.gridContainer.innerHTML = `
                 <div class="empty-state" style="grid-column:1/-1; text-align:center; padding:40px 20px;">
-                    <p style="color:var(--text-muted); font-size:1.1rem;">No tools match the current filter / search.</p>
+                    <p style="color:var(--text-muted); font-size:1.1rem;">${T('NO_TOOLS_MATCH')}</p>
                     <button class="btn" id="emptyResetFilterBtn" style="margin-top:15px;">${T('Reset Filter')}</button>
                 </div>
             `;
@@ -333,9 +334,9 @@ export class ToolGridComponent {
                 <div class="tool-header" data-action="tool-detail" data-id="${esc(tool.id)}" style="cursor:pointer;">
                     <div>
                         <div class="tool-title">${esc(tool.name)}</div>
-                        <div class="tool-id">${esc(tool.id)} · Qty: ${tool.qty || 1}</div>
+                        <div class="tool-id">${esc(tool.id)} · ${T('Qty')}: ${tool.qty || 1}</div>
                     </div>
-                    <div class="status-badge ${esc(tool.status)}">${esc(tool.status)}</div>
+                    <div class="status-badge ${esc(tool.status)}">${esc(T(tool.status))}</div>
                 </div>
                 <div class="tool-body" data-action="tool-detail" data-id="${esc(tool.id)}" style="cursor:pointer;">
                     <div class="tool-row"><span class="tool-label">${T('Location:')}</span><span class="tool-val" style="font-family:monospace;">${esc(tool.location)}${addrStr}</span></div>

@@ -11,6 +11,8 @@ export interface Env {
   ASSETS: WorkerFetcher;
   INVENTORY_KV?: WorkerKVNamespace;
   KV?: WorkerKVNamespace;
+  SYNC_SECRET?: string;
+  CORS_ORIGIN?: string;
 }
 
 // In-memory fallback cache across edge isolate invocations
@@ -20,10 +22,11 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const kv = env.INVENTORY_KV || env.KV;
+    const corsOrigin = env.CORS_ORIGIN || '*';
 
     // Security & Privacy Headers (Anti-indexing & strict isolation)
     const securityHeaders: Record<string, string> = {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': corsOrigin,
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Device-ID',
       'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet, noimageindex',
@@ -56,26 +59,36 @@ export default {
     if (photoMatch) {
       const rawRoom = photoMatch[1];
       const rawPhotoId = photoMatch[2];
-      const room = decodeURIComponent(rawRoom).trim();
-      const photoId = decodeURIComponent(rawPhotoId).trim();
+      const room = safeDecodeURIComponent(rawRoom);
+      const photoId = safeDecodeURIComponent(rawPhotoId);
 
-      if (!room || !photoId) {
+      if (room === null || photoId === null) {
+        return new Response(JSON.stringify({ error: 'Malformed URI encoding' }), {
+          status: 400,
+          headers: { ...securityHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const cleanRoom = room.trim();
+      const cleanPhotoId = photoId.trim();
+
+      if (!cleanRoom || !cleanPhotoId) {
         return new Response(JSON.stringify({ error: 'Missing room or photoId' }), {
           status: 400,
           headers: { ...securityHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      const isRaw = url.searchParams.has('raw') || url.searchParams.get('raw') === '1';
-      const isDownload = url.searchParams.has('download') || url.searchParams.get('download') === '1';
+      const isRaw = url.searchParams.get('raw') === '1' || url.searchParams.get('raw') === 'true';
+      const isDownload = url.searchParams.get('download') === '1' || url.searchParams.get('download') === 'true';
       const acceptHeader = request.headers.get('Accept') || '';
       const acceptsHtml = acceptHeader.includes('text/html');
       const wantsHtml = acceptsHtml && !isRaw && !isDownload;
 
       // KV key lookups
-      const cleanRoom = room.toUpperCase();
-      const primaryKey = `photo_${cleanRoom}_${photoId}`;
-      const fallbackKey = `photo_${room}_${photoId}`;
+      const upperRoom = cleanRoom.toUpperCase();
+      const primaryKey = `photo_${upperRoom}_${cleanPhotoId}`;
+      const fallbackKey = `photo_${cleanRoom}_${cleanPhotoId}`;
 
       let rawData: string | null = null;
       if (kv) {
@@ -95,7 +108,7 @@ export default {
 
       if (!rawData) {
         if (wantsHtml) {
-          return new Response(renderNotFoundHtml(room, photoId), {
+          return new Response(renderNotFoundHtml(cleanRoom, cleanPhotoId), {
             status: 404,
             headers: { ...securityHeaders, 'Content-Type': 'text/html; charset=utf-8' },
           });
@@ -103,8 +116,8 @@ export default {
         return new Response(
           JSON.stringify({
             error: 'Photo not found',
-            room,
-            photoId,
+            room: cleanRoom,
+            photoId: cleanPhotoId,
             message: 'The photo has not yet synced to the cloud from the station device or has expired after 7 days.',
           }),
           {
@@ -128,6 +141,14 @@ export default {
       const caption = payload.caption || '';
       const timestamp = payload.timestamp || '';
 
+      // Validate photoUrl format (XSS prevention)
+      if (!photoUrl || !/^(https?:\/\/|data:image\/)/i.test(photoUrl)) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or insecure photo URL format' }),
+          { status: 400, headers: { ...securityHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       // Return binary image directly if requested raw, download, or non-HTML request
       if (isRaw || isDownload || !acceptsHtml) {
         if (photoUrl.startsWith('data:')) {
@@ -146,19 +167,28 @@ export default {
             headers: {
               ...securityHeaders,
               'Content-Type': mimeType,
-              'Content-Disposition': `${disposition}; filename="${photoId}.${ext}"`,
-              'Cache-Control': 'public, max-age=604800, immutable',
+              'Content-Disposition': `${disposition}; filename="${cleanPhotoId}.${ext}"`,
+              'Cache-Control': 'public, max-age=604800',
             },
           });
         } else if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
-          return Response.redirect(photoUrl, 302);
+          try {
+            const parsedUrl = new URL(photoUrl);
+            if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
+              return Response.redirect(parsedUrl.toString(), 302);
+            } else {
+              return new Response('Invalid redirect protocol', { status: 400, headers: securityHeaders });
+            }
+          } catch {
+            return new Response('Invalid redirect URL', { status: 400, headers: securityHeaders });
+          }
         } else {
           return new Response('Image data empty or invalid', { status: 404, headers: securityHeaders });
         }
       }
 
       // Default browser request: return standalone responsive dark-mode HTML viewer
-      return new Response(renderViewerHtml(room, photoId, caption, timestamp, photoUrl), {
+      return new Response(renderViewerHtml(cleanRoom, cleanPhotoId, caption, timestamp, photoUrl), {
         status: 200,
         headers: {
           ...securityHeaders,
@@ -170,9 +200,44 @@ export default {
 
     // Real-time Sync API: /api/sync/:key
     if (url.pathname.startsWith('/api/sync/')) {
-      const key = decodeURIComponent(url.pathname.replace('/api/sync/', '')).trim();
+      if (request.method !== 'GET' && request.method !== 'POST') {
+        return new Response(JSON.stringify({ error: 'Method Not Allowed' }), {
+          status: 405,
+          headers: {
+            ...securityHeaders,
+            'Allow': 'GET, POST, OPTIONS',
+            'Content-Type': 'application/json',
+          },
+        });
+      }
 
-      if (!key) {
+      // Verify Bearer token if env.SYNC_SECRET is set
+      if (env.SYNC_SECRET) {
+        const authHeader = request.headers.get('Authorization') || '';
+        if (authHeader !== `Bearer ${env.SYNC_SECRET}`) {
+          return new Response(
+            JSON.stringify({ error: 'Unauthorized: missing or invalid Bearer token' }),
+            {
+              status: 401,
+              headers: { ...securityHeaders, 'Content-Type': 'application/json' },
+            }
+          );
+        }
+      }
+
+      const rawKey = url.pathname.replace('/api/sync/', '');
+      const key = safeDecodeURIComponent(rawKey);
+
+      if (key === null) {
+        return new Response(JSON.stringify({ error: 'Malformed URI encoding' }), {
+          status: 400,
+          headers: { ...securityHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const cleanKey = key.trim();
+
+      if (!cleanKey) {
         return new Response(JSON.stringify({ error: 'Missing sync key' }), {
           status: 400,
           headers: { ...securityHeaders, 'Content-Type': 'application/json' },
@@ -185,18 +250,18 @@ export default {
 
         if (kv) {
           try {
-            rawData = await kv.get(key);
+            rawData = await kv.get(cleanKey);
           } catch (e) {
             console.error('KV read error:', e);
           }
         }
 
         if (!rawData) {
-          rawData = memoryStore.get(key) || null;
+          rawData = memoryStore.get(cleanKey) || null;
         }
 
         if (!rawData) {
-          return new Response(JSON.stringify({ notFound: true, key }), {
+          return new Response(JSON.stringify({ notFound: true, key: cleanKey }), {
             status: 404,
             headers: { ...securityHeaders, 'Content-Type': 'application/json' },
           });
@@ -223,19 +288,19 @@ export default {
           if (kv) {
             try {
               // 7 days expiration TTL
-              await kv.put(key, bodyText, { expirationTtl: 604800 });
+              await kv.put(cleanKey, bodyText, { expirationTtl: 604800 });
             } catch (e) {
               console.error('KV write error:', e);
             }
           }
 
           // Always update in-memory fallback
-          memoryStore.set(key, bodyText);
+          memoryStore.set(cleanKey, bodyText);
 
           return new Response(
             JSON.stringify({
               success: true,
-              key,
+              key: cleanKey,
               timestamp: new Date().toISOString(),
             }),
             {
@@ -273,6 +338,14 @@ export default {
     return new Response('Asset fetcher not available in this isolate', { status: 404 });
   },
 };
+
+function safeDecodeURIComponent(str: string): string | null {
+  try {
+    return decodeURIComponent(str);
+  } catch {
+    return null;
+  }
+}
 
 function escapeHtml(str: string): string {
   return str
@@ -388,6 +461,7 @@ function renderViewerHtml(room: string, photoId: string, caption: string, timest
   const safeId = escapeHtml(photoId);
   const safeCaption = escapeHtml(caption || 'Inspection / Tool Photo');
   const safeTime = escapeHtml(timestamp ? new Date(timestamp).toLocaleString() : 'N/A');
+  const safePhotoUrl = escapeHtml(photoUrl);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -507,7 +581,7 @@ function renderViewerHtml(room: string, photoId: string, caption: string, timest
       <span class="meta-tag">Room: ${safeRoom} · ${safeTime}</span>
     </div>
     <div class="img-wrap">
-      <img src="${photoUrl}" alt="${safeCaption}">
+      <img src="${safePhotoUrl}" alt="${safeCaption}">
     </div>
     <div class="footer">
       <div class="caption">

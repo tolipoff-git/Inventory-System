@@ -1,5 +1,15 @@
 import { SyncPayload, SyncPing, SyncPhoto } from '../types/sync';
-import { DEFAULT_SYNC_ROOM } from '../config/constants';
+import { DEFAULT_SYNC_ROOM, DEFAULT_SYNC_SECRET } from '../config/constants';
+
+export function getSyncToken(): string {
+  if (typeof window === 'undefined') return DEFAULT_SYNC_SECRET;
+  return localStorage.getItem('inv_sync_token') || DEFAULT_SYNC_SECRET;
+}
+
+export function setSyncToken(token: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('inv_sync_token', token.trim());
+}
 
 export function getOrCreateDeviceId(): string {
   if (typeof window === 'undefined') return 'server';
@@ -72,6 +82,7 @@ export async function pushSyncPayload(room: string, payload: SyncPayload): Promi
       headers: {
         'Content-Type': 'application/json',
         'X-Device-ID': payload.deviceId,
+        'Authorization': `Bearer ${getSyncToken()}`,
       },
       body: payloadString,
       signal: controller.signal,
@@ -124,7 +135,10 @@ export async function pullSyncPayload(room: string): Promise<SyncPayload | null>
 
     const response = await fetch(`${getWorkerSyncUrl(cleanRoom)}?t=${Date.now()}`, {
       method: 'GET',
-      headers: { 'Cache-Control': 'no-cache' },
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Authorization': `Bearer ${getSyncToken()}`,
+      },
       signal: controller.signal,
     });
 
@@ -154,7 +168,10 @@ export async function pushPhotoToCloud(room: string, photo: SyncPhoto): Promise<
       `/api/sync/photo_${encodeURIComponent(cleanRoom)}_${encodeURIComponent(photo.id)}`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getSyncToken()}`,
+        },
         body: JSON.stringify(photo),
         signal: controller.signal,
       }
@@ -177,7 +194,14 @@ export async function pullPhotoFromCloud(room: string, photoId: string): Promise
 
     const res = await fetch(
       `/api/sync/photo_${encodeURIComponent(cleanRoom)}_${encodeURIComponent(photoId)}?t=${Date.now()}`,
-      { method: 'GET', headers: { 'Cache-Control': 'no-cache' }, signal: controller.signal }
+      {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Authorization': `Bearer ${getSyncToken()}`,
+        },
+        signal: controller.signal,
+      }
     );
     clearTimeout(timeoutId);
 

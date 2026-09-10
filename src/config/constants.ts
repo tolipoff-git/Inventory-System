@@ -12,6 +12,7 @@ export const SCAN_KEY_TIMEOUT_MS = 50;
 export const DAY_MS = 86400000;
 
 export const DEFAULT_SYNC_ROOM = 'INV-MAIN';
+export const DEFAULT_SYNC_SECRET = 'dedc4419b654d82f4ca2f6981025eecfc92b55e7fdc4316751cfbf4221702494';
 
 export const ROLES: Record<UserRole, number> = {
   'Administrator': 3,
@@ -175,6 +176,7 @@ export const CONFIG = {
   SCAN_KEY_TIMEOUT_MS,
   DAY_MS,
   DEFAULT_SYNC_ROOM,
+  DEFAULT_SYNC_SECRET,
   ROLES,
   STATUS_COLORS,
   TOOL_CLASSES,
