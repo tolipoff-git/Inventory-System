@@ -10,6 +10,7 @@ export interface WorkerKVNamespace {
 export interface Env {
   ASSETS: WorkerFetcher;
   INVENTORY_KV?: WorkerKVNamespace;
+  KV?: WorkerKVNamespace;
 }
 
 // In-memory fallback cache across edge isolate invocations
@@ -18,6 +19,7 @@ const memoryStore = new Map<string, string>();
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    const kv = env.INVENTORY_KV || env.KV;
 
     // Security & Privacy Headers (Anti-indexing & strict isolation)
     const securityHeaders: Record<string, string> = {
@@ -41,7 +43,7 @@ export default {
           status: 'ok',
           service: 'inventory-system',
           time: new Date().toISOString(),
-          hasKv: Boolean(env.INVENTORY_KV),
+          hasKv: Boolean(kv),
         }),
         {
           headers: { ...securityHeaders, 'Content-Type': 'application/json' },
@@ -76,11 +78,11 @@ export default {
       const fallbackKey = `photo_${room}_${photoId}`;
 
       let rawData: string | null = null;
-      if (env.INVENTORY_KV) {
+      if (kv) {
         try {
-          rawData = await env.INVENTORY_KV.get(primaryKey);
+          rawData = await kv.get(primaryKey);
           if (!rawData && primaryKey !== fallbackKey) {
-            rawData = await env.INVENTORY_KV.get(fallbackKey);
+            rawData = await kv.get(fallbackKey);
           }
         } catch (e) {
           console.error('KV photo read error:', e);
@@ -181,9 +183,9 @@ export default {
       if (request.method === 'GET') {
         let rawData: string | null = null;
 
-        if (env.INVENTORY_KV) {
+        if (kv) {
           try {
-            rawData = await env.INVENTORY_KV.get(key);
+            rawData = await kv.get(key);
           } catch (e) {
             console.error('KV read error:', e);
           }
@@ -218,10 +220,10 @@ export default {
           // Validate JSON payload
           JSON.parse(bodyText);
 
-          if (env.INVENTORY_KV) {
+          if (kv) {
             try {
               // 7 days expiration TTL
-              await env.INVENTORY_KV.put(key, bodyText, { expirationTtl: 604800 });
+              await kv.put(key, bodyText, { expirationTtl: 604800 });
             } catch (e) {
               console.error('KV write error:', e);
             }
