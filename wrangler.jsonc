@@ -3,6 +3,9 @@
   "name": "inventory-system",
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-08-31",
+  "build": {
+    "command": "npm run build"
+  },
   "kv_namespaces": [
     {
       "binding": "INVENTORY_KV",
