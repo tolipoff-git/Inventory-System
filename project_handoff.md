@@ -276,3 +276,41 @@ An external "improvement patches" document (XSS / quota / salting / partial rend
 ## File Navigation TOC (2026-08-21, non-release docs change)
 - Added a `СОДЕРЖАНИЕ ФАЙЛА` comment block at the top of `index.html` (after the header comment): maps vendor scripts, all `<style>` blocks, markup regions and all 14 JS module banners (`МОДУЛЬ: X`) with line anchors. Comment-only change — no `APP_VERSION` bump. Keep the TOC in sync when adding/moving sections.
 - Line numbers cited in this document are as of v95, before the TOC insert (+~45 lines after it).
+
+---
+
+## Modular TypeScript Refactoring & Distributed Cloud Sync Release (v98 - September 2026)
+
+### 1. Monolith Deconstruction & Modular Architecture
+- **Monolith Preserved:** Original 12,116-line single-file monolith permanently backed up to `index.monolith.v97.html` (`1,856,480` bytes).
+- **Vite 6 + TypeScript 5.6 Pipeline:** Transitioned to modern modular build architecture with strict typing (`strict: true`, `noUnusedLocals: true`, `noUnusedParameters: true`).
+- **Codebase Modularization:** Decomposed into 14 isolated, cleanly exported submodules:
+  - `src/types/`: Strict TypeScript domain interfaces for `inventory.ts`, `procurement.ts`, `personnel.ts`, `audit.ts`, and `sync.ts`.
+  - `src/config/`: `constants.ts` with typed categories, 5S rubrics, and application configuration.
+  - `src/i18n/`: Bilingual dictionaries (`ru.ts`, `en.ts`) with 472 keys each and 100% parity.
+  - `src/storage/`: IndexedDB `AppDB` storage with auto-migration from `localStorage` and quota management for photo blobs.
+  - `src/auth/`: RBAC access control with salted SHA-256 password hashing.
+  - `src/operations/`: Granular domain logic for tool operations (`toolOps.ts`), purchase order line-item receiving (`orderOps.ts`), and 5S post audits (`auditOps.ts`).
+  - `src/labels/`: Canvas/SVG QR generation via `qrcode` and precision Avery 5161/5163/5366 print layouts.
+  - `procure/`: Integrated procurement cart and native ExcelJS REQ-003 purchase requisition generator.
+  - `reports/`: Warehouse KPI engine, SVG 5S culture radar charts, and Excel export suite.
+  - `ui/`: Decoupled stylesheets (`base.css`, `components.css`, `tron-theme.css`, `print.css`) and 19 specialized modal dialogs.
+
+### 2. Distributed Cloud Synchronization (EHS Walkthrough Pattern)
+- **Cloudflare Edge Worker (`src/worker/index.ts`):**
+  - Authoritative Cloudflare KV namespace persistence (`INVENTORY_KV`) with in-memory fallback.
+  - Endpoints:
+    - `GET /api/health`: Health status and KV binding detection.
+    - `GET /api/sync/:key`: State retrieval with `Cache-Control: no-cache`.
+    - `POST /api/sync/:key`: Validates and commits state with 7-day TTL.
+    - `GET /api/photo/:room/:photoId`: Serves raw binary images (`?raw=1` / `Accept: image/*`) or renders responsive dark-mode HTML viewer.
+    - `POST /api/photo/:room/:photoId`: Uploads photo binary directly into KV.
+- **Zero-Data Public Relay Signaling:** Real-time push/pull coordination via `ntfy.sh` SSE relay (`https://ntfy.sh/inv-room-{ROOM}/sse`). Only lightweight, data-free pings are transmitted; all sensitive data travels strictly through the Cloudflare Worker API.
+- **Client Synchronization Engine (`src/sync/`):** Persistent `deviceId`, room switching, debounced push (1200ms), automatic periodic poll fallback (15s), and Last-Write-Wins (LWW) entity reconciliation.
+- **Sync UI (`SyncModal.ts`):** Real-time status badge in header (🟢 Synced / 🟡 Syncing / 🔵 Pending Push / 🔴 Offline), pairing QR code, shareable room links, and manual push/pull controls.
+
+### 3. QA & Automated Verification
+- Full TypeScript check (`tsc --noEmit`): 0 errors.
+- Production build (`vite build`): clean bundle with vendor chunk splitting (ExcelJS, QRCode, jsQR).
+- Automated Worker test suite: 12 passing test assertions covering all sync, health, photo, and security scenarios.
+
