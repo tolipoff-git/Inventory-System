@@ -6,6 +6,8 @@ import { T } from '../../i18n';
 import { Auth } from '../../auth/authManager';
 import { SyncManagerInstance } from '../../sync/syncManager';
 import { SyncModal } from './Modals/SyncModal';
+import { Store } from '../../storage/store';
+import { printQueueLabels } from '../../labels/labelPrint';
 
 export interface HeaderCallbacks {
     onToggleMode: () => void;
@@ -23,6 +25,7 @@ export class HeaderComponent {
     private callbacks: HeaderCallbacks;
     private syncUnsub: (() => void) | null = null;
     private authUnsub: (() => void) | null = null;
+    private storeUnsub: (() => void) | null = null;
 
     constructor(container: HTMLElement, callbacks: HeaderCallbacks) {
         this.container = container;
@@ -41,6 +44,9 @@ export class HeaderComponent {
                 <button class="btn btn-muted" id="syncStatusBtn" title="Sync Status & Relay Pairing">
                     <span id="syncPulseDot" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#00e5ff; margin-right:6px;"></span>
                     <span id="syncBtnLabel">Sync</span>
+                </button>
+                <button class="btn btn-secondary" id="headerQueueBtn" title="Print Queued Labels" style="${(Store.labelQueue?.length || 0) > 0 ? '' : 'display:none;'}">
+                    🏷 <span id="headerQueueBadge">${Store.labelQueue?.length || 0}</span>
                 </button>
 
                 <div class="header-title-block">
@@ -76,6 +82,7 @@ export class HeaderComponent {
 
         this.bindEvents();
         this.updateSyncStatus();
+        this.updateQueueDisplay();
 
         // Listen for sync status changes
         if (this.syncUnsub) this.syncUnsub();
@@ -87,6 +94,12 @@ export class HeaderComponent {
         if (this.authUnsub) this.authUnsub();
         this.authUnsub = Auth.subscribe(() => {
             this.updateAuthDisplay();
+        });
+
+        // Listen for store changes (label queue updates)
+        if (this.storeUnsub) this.storeUnsub();
+        this.storeUnsub = Store.subscribe(() => {
+            this.updateQueueDisplay();
         });
     }
 
@@ -102,6 +115,11 @@ export class HeaderComponent {
 
         const syncBtn = this.container.querySelector('#syncStatusBtn');
         if (syncBtn) syncBtn.addEventListener('click', () => SyncModal.open());
+
+        const qBtn = this.container.querySelector('#headerQueueBtn');
+        if (qBtn) {
+            qBtn.addEventListener('click', () => printQueueLabels());
+        }
 
         const faqBtn = this.container.querySelector('#faqBtn');
         if (faqBtn) faqBtn.addEventListener('click', () => this.callbacks.onOpenFaq());
@@ -141,6 +159,16 @@ export class HeaderComponent {
         if (roleEl) roleEl.textContent = role;
     }
 
+    public updateQueueDisplay(): void {
+        const qBtn = this.container.querySelector<HTMLElement>('#headerQueueBtn');
+        const badge = this.container.querySelector<HTMLElement>('#headerQueueBadge');
+        const count = Store.labelQueue?.length || 0;
+        if (badge) badge.textContent = String(count);
+        if (qBtn) {
+            qBtn.style.display = count > 0 ? '' : 'none';
+        }
+    }
+
     public updateSyncStatus(): void {
         const status = SyncManagerInstance.getStatus();
         const dot = this.container.querySelector<HTMLElement>('#syncPulseDot');
@@ -167,5 +195,6 @@ export class HeaderComponent {
     public destroy(): void {
         if (this.syncUnsub) this.syncUnsub();
         if (this.authUnsub) this.authUnsub();
+        if (this.storeUnsub) this.storeUnsub();
     }
 }

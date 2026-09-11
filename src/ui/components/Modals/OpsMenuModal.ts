@@ -8,6 +8,8 @@ import { AuditModal } from './AuditModal';
 import { OrderModal } from './OrderModal';
 import { LabelModal } from './LabelModal';
 import { exportFullInventoryExcel } from '../../../reports/reportExports';
+import { printQueueLabels } from '../../../labels/labelPrint';
+import { Store } from '../../../storage/store';
 
 export class OpsMenuModal {
     private static modalId = 'opsMenuModal';
@@ -70,6 +72,11 @@ export class OpsMenuModal {
             LabelModal.openLocationLabels();
         });
 
+        modal.querySelector('#opsPrintQueueBtn')?.addEventListener('click', async () => {
+            this.close();
+            await printQueueLabels();
+        });
+
         modal.querySelector('#opsUpdatePwaBtn')?.addEventListener('click', () => {
             window.location.reload();
         });
@@ -82,6 +89,8 @@ export class OpsMenuModal {
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) this.close();
         });
+
+        const qLen = Store.labelQueue?.length || 0;
 
         overlay.innerHTML = `
             <div class="modal narrow" style="max-width:440px;">
@@ -97,6 +106,7 @@ export class OpsMenuModal {
                     <button class="btn" id="opsOrdersBtn">📦 ${T('Purchase Orders')}</button>
                     <button class="btn" id="opsPostAuditBtn">📋 ${T('5S Post Audit')}</button>
                     <button class="btn btn-warning" id="opsStorageLabelsBtn">🖨 ${T('Print Storage Labels')}</button>
+                    <button class="btn btn-secondary" id="opsPrintQueueBtn" style="${qLen > 0 ? '' : 'display:none;'}">🏷 ${T('Print Label Queue')} (${qLen})</button>
                     <button class="btn btn-danger" id="opsUpdatePwaBtn">🔄 ${T('Update PWA')}</button>
                 </div>
             </div>

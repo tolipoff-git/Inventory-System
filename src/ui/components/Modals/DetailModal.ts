@@ -11,7 +11,7 @@ import { Tool } from '../../../types/inventory';
 import { LabelModal } from './LabelModal';
 import { ToolModal } from './ToolModal';
 import { generateQrDataUrl, toolDeeplink } from '../../../labels/qrGenerator';
-import { printHtml } from '../../../utils/dom';
+import { printHtml, toast } from '../../../utils/dom';
 
 export class DetailModal {
     private static modalId = 'detailModal';
@@ -29,6 +29,12 @@ export class DetailModal {
         }
 
         this.populate(tool);
+        const qBtn = document.getElementById('detQueueBtn');
+        if (qBtn) {
+            const inQueue = Store.isInLabelQueue(toolId);
+            qBtn.innerText = inQueue ? '✓ In Queue' : `+ 🏷 ${T('Add to Queue')}`;
+            qBtn.className = inQueue ? 'btn btn-warning' : 'btn';
+        }
         if (modal) modal.classList.add('active');
     }
 
@@ -58,6 +64,7 @@ export class DetailModal {
                         <div style="display:flex; gap:8px;">
                             <button class="btn btn-warning" id="detPrintBtn">🖨 ${T('Print Sticker / Label')}</button>
                             <button class="btn btn-secondary" id="detPassportBtn">📄 ${T('Tool Passport')}</button>
+                            <button class="btn" id="detQueueBtn">+ 🏷 ${T('Add to Queue')}</button>
                             <button class="btn" id="detEditBtn">✏️ ${T('Edit Tool')}</button>
                             <label class="btn" style="cursor:pointer; margin:0;">
                                 📷 <span>${T('Add Photo')}</span>
@@ -116,6 +123,19 @@ export class DetailModal {
         overlay.querySelector('#detPassportBtn')?.addEventListener('click', () => {
             if (this.currentToolId) {
                 this.printPassport(this.currentToolId);
+            }
+        });
+
+        overlay.querySelector('#detQueueBtn')?.addEventListener('click', () => {
+            if (this.currentToolId) {
+                Store.toggleLabelQueue(this.currentToolId);
+                const inQueue = Store.isInLabelQueue(this.currentToolId);
+                const btn = document.getElementById('detQueueBtn');
+                if (btn) {
+                    btn.innerText = inQueue ? '✓ In Queue' : `+ 🏷 ${T('Add to Queue')}`;
+                    btn.className = inQueue ? 'btn btn-warning' : 'btn';
+                }
+                toast(inQueue ? `Added ${this.currentToolId} to print queue.` : `Removed ${this.currentToolId} from queue.`, 'info');
             }
         });
 

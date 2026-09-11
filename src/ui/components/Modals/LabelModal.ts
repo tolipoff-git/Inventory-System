@@ -6,7 +6,7 @@ import { T } from '../../../i18n';
 import { Store } from '../../../storage/store';
 import { esc } from '../../../utils/formatters';
 import { generateQrDataUrl } from '../../../labels/qrGenerator';
-import { printLabelsHtml, LabelFormat } from '../../../labels/labelPrint';
+import { printLabelsHtml, printQueueLabels, LabelFormat } from '../../../labels/labelPrint';
 import { toast, printHtml } from '../../../utils/dom';
 
 export class LabelModal {
@@ -27,6 +27,7 @@ export class LabelModal {
         }
 
         await this.updatePreview(tool);
+        this.updateQueueState();
         if (modal) modal.classList.add('active');
     }
 
@@ -50,6 +51,10 @@ export class LabelModal {
     public static closeLocationLabels(): void {
         const modal = document.getElementById(this.locModalId);
         if (modal) modal.classList.remove('active');
+    }
+
+    public static async openQueuePrint(): Promise<void> {
+        await printQueueLabels(this.selectedFormat);
     }
 
     private static createPrintModalDOM(): void {
@@ -88,6 +93,8 @@ export class LabelModal {
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-muted" id="printModalCancelBtn">${T('Close')}</button>
+                    <button class="btn btn-secondary" id="modalQueueToggleBtn">+ ${T('Add to Queue')}</button>
+                    <button class="btn btn-primary" id="modalPrintQueueBtn" style="display:none;">🖨 ${T('Print Queue')}</button>
                     <button class="btn btn-success" id="printModalExecuteBtn">🖨 ${T('Print Now')}</button>
                 </div>
             </div>
@@ -97,6 +104,20 @@ export class LabelModal {
 
         overlay.querySelector('#printModalCloseBtn')?.addEventListener('click', () => this.closeToolLabel());
         overlay.querySelector('#printModalCancelBtn')?.addEventListener('click', () => this.closeToolLabel());
+
+        overlay.querySelector('#modalQueueToggleBtn')?.addEventListener('click', () => {
+            if (this.currentToolId) {
+                Store.toggleLabelQueue(this.currentToolId);
+                this.updateQueueState();
+                const inQueue = Store.isInLabelQueue(this.currentToolId);
+                toast(inQueue ? `Added ${this.currentToolId} to print queue.` : `Removed ${this.currentToolId} from queue.`, 'info');
+            }
+        });
+
+        overlay.querySelector('#modalPrintQueueBtn')?.addEventListener('click', async () => {
+            await printQueueLabels(this.selectedFormat);
+            this.closeToolLabel();
+        });
 
         const formatSelect = overlay.querySelector<HTMLSelectElement>('#labelFormatSelect');
         if (formatSelect) {
@@ -110,6 +131,21 @@ export class LabelModal {
         }
 
         overlay.querySelector('#printModalExecuteBtn')?.addEventListener('click', () => this.executePrint());
+    }
+
+    private static updateQueueState(): void {
+        const qBtn = document.getElementById('modalQueueToggleBtn');
+        if (qBtn && this.currentToolId) {
+            const inQueue = Store.isInLabelQueue(this.currentToolId);
+            qBtn.innerText = inQueue ? '✓ In Queue' : `+ ${T('Add to Queue')}`;
+            qBtn.className = inQueue ? 'btn btn-warning' : 'btn btn-secondary';
+        }
+        const qPrintBtn = document.getElementById('modalPrintQueueBtn');
+        const qLen = Store.labelQueue.length;
+        if (qPrintBtn) {
+            qPrintBtn.style.display = qLen > 0 ? 'inline-block' : 'none';
+            qPrintBtn.innerText = `🖨 ${T('Print Queue')} (${qLen})`;
+        }
     }
 
     private static async updatePreview(tool: any): Promise<void> {
@@ -177,15 +213,18 @@ export class LabelModal {
                     <div class="form-row">
                         <div class="form-group">
                             <label>${T('Rack Letter:')}</label>
-                            <input type="text" id="locRackInput" class="form-control" value="A" placeholder="e.g. A">
+                            <input type="text" id="locRackInput" class="form-control" value="A" placeholder="e.g. A" list="locRackList">
+                            <datalist id="locRackList"></datalist>
                         </div>
                         <div class="form-group">
                             <label>${T('Shelf Range:')}</label>
-                            <input type="text" id="locShelfInput" class="form-control" value="1-4" placeholder="e.g. 1-4 or 1">
+                            <input type="text" id="locShelfInput" class="form-control" value="1-4" placeholder="e.g. 1-4 or 1" list="locShelfList">
+                            <datalist id="locShelfList"></datalist>
                         </div>
                         <div class="form-group">
                             <label>${T('Bin Range:')}</label>
-                            <input type="text" id="locBinInput" class="form-control" value="1-12" placeholder="e.g. 1-12">
+                            <input type="text" id="locBinInput" class="form-control" value="1-12" placeholder="e.g. 1-12" list="locBinList">
+                            <datalist id="locBinList"></datalist>
                         </div>
                     </div>
 
@@ -193,9 +232,12 @@ export class LabelModal {
                         <label>${T('Responsible Person / Lead:')}</label>
                         <input type="text" id="locRespInput" class="form-control" placeholder="e.g. Lead Tech John D.">
                     </div>
+
+                    <div id="locPreviewCard" style="background:#e2e8f0; padding:15px; border-radius:8px; margin-top:12px; display:flex; justify-content:center;"></div>
                 </div>
                 <div class="modal-footer spread">
                     <button class="btn btn-muted" id="locModalCancelBtn">${T('Cancel')}</button>
+                    <button class="btn btn-secondary" id="btnLocQueue">+ ${T('Add to Queue')}</button>
                     <button class="btn btn-warning" id="locModalPrintBtn">🖨 ${T('Generate & Print Labels')}</button>
                 </div>
             </div>
@@ -206,6 +248,21 @@ export class LabelModal {
         overlay.querySelector('#locModalCloseBtn')?.addEventListener('click', () => this.closeLocationLabels());
         overlay.querySelector('#locModalCancelBtn')?.addEventListener('click', () => this.closeLocationLabels());
         overlay.querySelector('#locModalPrintBtn')?.addEventListener('click', () => this.executeLocationPrint());
+        overlay.querySelector('#btnLocQueue')?.addEventListener('click', () => {
+            const type = (document.getElementById('locTypeSelect') as HTMLSelectElement)?.value || 'RACK';
+            const zone = (document.getElementById('locZoneSelect') as HTMLSelectElement)?.value || 'Line 1';
+            const rack = (document.getElementById('locRackInput') as HTMLInputElement)?.value.trim() || 'A';
+            const shelf = (document.getElementById('locShelfInput') as HTMLInputElement)?.value.trim() || '1';
+            const bin = (document.getElementById('locBinInput') as HTMLInputElement)?.value.trim() || '1';
+            const locId = `LOC:${type}:${zone}:${rack}:${shelf}:${bin}`;
+            Store.addToLabelQueue(locId);
+            toast(`Added storage location ${locId} to print queue.`, 'success');
+        });
+
+        ['locTypeSelect', 'locZoneSelect', 'locRackInput', 'locShelfInput', 'locBinInput', 'locRespInput'].forEach(id => {
+            overlay.querySelector(`#${id}`)?.addEventListener('input', () => this.updateLocationPreview());
+            overlay.querySelector(`#${id}`)?.addEventListener('change', () => this.updateLocationPreview());
+        });
     }
 
     private static populateLocationForm(): void {
@@ -213,6 +270,54 @@ export class LabelModal {
         if (zoneSelect) {
             zoneSelect.innerHTML = Store.workstations.map(ws => `<option value="${esc(ws)}">${esc(ws)}</option>`).join('');
         }
+
+        const racks = new Set<string>();
+        const shelves = new Set<string>();
+        const bins = new Set<string>();
+        Store.tools.forEach(t => {
+            if (t.address) {
+                if (t.address.rack) racks.add(t.address.rack);
+                if (t.address.shelf) shelves.add(t.address.shelf);
+                if (t.address.bin) bins.add(t.address.bin);
+            }
+            if (t.location && t.location.includes('-')) {
+                const parts = t.location.split('-');
+                if (parts[1]) racks.add(parts[1]);
+                if (parts[2]) shelves.add(parts[2]);
+            }
+        });
+
+        const rList = document.getElementById('locRackList');
+        if (rList) rList.innerHTML = Array.from(racks).sort().map(r => `<option value="${esc(r)}"></option>`).join('');
+        const sList = document.getElementById('locShelfList');
+        if (sList) sList.innerHTML = Array.from(shelves).sort().map(s => `<option value="${esc(s)}"></option>`).join('');
+        const bList = document.getElementById('locBinList');
+        if (bList) bList.innerHTML = Array.from(bins).sort().map(b => `<option value="${esc(b)}"></option>`).join('');
+
+        this.updateLocationPreview();
+    }
+
+    private static async updateLocationPreview(): Promise<void> {
+        const card = document.getElementById('locPreviewCard');
+        if (!card) return;
+        const type = (document.getElementById('locTypeSelect') as HTMLSelectElement)?.value || 'RACK';
+        const zone = (document.getElementById('locZoneSelect') as HTMLSelectElement)?.value || 'Line 1';
+        const rack = (document.getElementById('locRackInput') as HTMLInputElement)?.value.trim() || 'A';
+        const shelf = (document.getElementById('locShelfInput') as HTMLInputElement)?.value.trim() || '1';
+        const bin = (document.getElementById('locBinInput') as HTMLInputElement)?.value.trim() || '1';
+        const resp = (document.getElementById('locRespInput') as HTMLInputElement)?.value.trim() || 'Plant Operations';
+        const code = `LOC:${type}:${zone}:${rack}:${shelf}:${bin}`;
+        const qrUrl = await generateQrDataUrl(code);
+        card.innerHTML = `
+            <div style="background:#fff; color:#000; border:2px solid #000; border-radius:6px; padding:10px 14px; display:flex; align-items:center; gap:12px; width:340px; box-shadow:0 2px 8px rgba(0,0,0,0.1); font-family:var(--font-mono);">
+                <img src="${qrUrl}" style="width:72px; height:72px; flex-shrink:0;">
+                <div style="line-height:1.3; overflow:hidden;">
+                    <div style="font-weight:bold; font-size:1.05rem;">📍 ${esc(type)} ${esc(rack)}</div>
+                    <div style="font-size:0.85rem;">${esc(zone)} · Sh ${esc(shelf)} · B ${esc(bin)}</div>
+                    <div style="font-size:0.72rem; color:#64748b; margin-top:2px;">Resp: ${esc(resp)}</div>
+                </div>
+            </div>
+        `;
     }
 
     private static async executeLocationPrint(): Promise<void> {

@@ -256,6 +256,27 @@ export function printLabelViaIframe(container: HTMLElement, stockKey: string = '
 
 export type LabelFormat = 'avery5161' | 'avery5163' | 'avery5366' | 'brady' | 'genericA' | 'genericB' | 'genericC';
 
+import { toast } from '../utils/dom';
+
+export async function printQueueLabels(format?: LabelFormat): Promise<void> {
+  const queueIds = Store.labelQueue || [];
+  if (queueIds.length === 0) {
+    toast('Label queue is empty — nothing to print.', 'info');
+    return;
+  }
+  const toolsToPrint: Tool[] = [];
+  for (const id of queueIds) {
+    const tool = Store.getTool(id);
+    if (tool) toolsToPrint.push(tool);
+  }
+  if (toolsToPrint.length === 0) {
+    toast('No matching tools found in label queue.', 'warning');
+    return;
+  }
+  await printLabelsHtml(toolsToPrint, format || 'avery5161');
+  toast(`Printed ${toolsToPrint.length} label${toolsToPrint.length > 1 ? 's' : ''} from queue.`, 'success');
+}
+
 export async function printLabelsHtml(tools: Tool[], format: LabelFormat = 'avery5161'): Promise<void> {
   const container = document.createElement('div');
   container.className = 'sheet-mode';
