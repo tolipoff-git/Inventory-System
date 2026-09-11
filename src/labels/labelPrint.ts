@@ -57,6 +57,19 @@ export const STOCKS: Record<string, StockDefinition> = {
   genC: {
     brand: 'Generic', pn: 'Type C (100×50mm)', kind: 'single', legacy: 'C', w: 100, h: 50, info: 'Shelf & bin label',
   },
+  brady: {
+    brand: 'Brady', pn: 'THT-119-427-2.5', kind: 'roll', w: 38.1, h: 12.7,
+    info: 'Printable 38.1×12.7mm — tools: Code 39 + ID',
+  },
+  genericA: {
+    brand: 'Generic', pn: 'Type A (70×36mm)', kind: 'single', legacy: 'A', w: 70, h: 36, info: 'Tool item sticker',
+  },
+  genericB: {
+    brand: 'Generic', pn: 'Type B (100×50mm)', kind: 'single', legacy: 'B', w: 100, h: 50, info: 'A-Frame / cabinet sticker',
+  },
+  genericC: {
+    brand: 'Generic', pn: 'Type C (100×50mm)', kind: 'single', legacy: 'C', w: 100, h: 50, info: 'Shelf & bin label',
+  },
 };
 
 export function addrLine(tool: Tool): string {
@@ -76,6 +89,7 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
 
     switch (stockKey) {
       case 'genA':
+      case 'genericA':
         return `
           <div class="label-details" style="padding:4px; font-size:10px;">
             <div style="font-weight:bold;">${short(tool.name, 35)} | ${esc(tool.id)}</div>
@@ -85,6 +99,7 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
             <canvas class="lbl-qr" data-qr-text="${esc(qrUrl)}" style="width:24mm; height:24mm;"></canvas>
           </div>`;
       case 'genB':
+      case 'genericB':
         return `
           <div style="display:flex; width:100%; height:100%; gap:8px; padding:4px;">
             <div style="flex:1; border:2px dashed #000; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:2mm;">
@@ -106,7 +121,34 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
               </div>
             </div>
           </div>`;
+      case 'genC':
+      case 'genericC':
+        return `
+          <div style="display:flex; width:100%; height:100%; align-items:center; justify-content:space-between; padding:3mm 5mm; box-sizing:border-box;">
+            <div style="flex:1; overflow:hidden; font-family:sans-serif; line-height:1.3;">
+              <div style="font-size:13px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(tool.name)}</div>
+              <div style="font-size:12px; font-family:monospace; font-weight:900; margin:2px 0;">${esc(tool.id)}</div>
+              <div style="font-size:10px; color:#444;">${esc(addrLine(tool))}</div>
+            </div>
+            <div style="width:24mm; height:24mm; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+              <canvas class="lbl-qr" data-qr-text="${esc(qrUrl)}" style="width:22mm; height:22mm;"></canvas>
+            </div>
+          </div>`;
+      case 'brady':
+      case 'brady119':
+        return `
+          <div style="display:flex; width:100%; height:100%; align-items:center; justify-content:space-between; padding:1mm 2mm; box-sizing:border-box;">
+            <div style="flex:1; overflow:hidden; font-family:monospace; line-height:1.1;">
+              <div style="font-size:10px; font-weight:900;">${esc(tool.id)}</div>
+              <div style="font-size:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(tool.name)}</div>
+            </div>
+            <div style="width:11mm; height:11mm; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+              <canvas class="lbl-qr" data-qr-text="${esc(qrUrl)}" style="width:10mm; height:10mm;"></canvas>
+            </div>
+          </div>`;
       case 'avery5161':
+      case 'avery5163':
+      case 'avery5366':
       default:
         return `
           <div style="display:flex; width:100%; height:100%; align-items:center; justify-content:space-between; padding:2mm 4mm; box-sizing:border-box;">
