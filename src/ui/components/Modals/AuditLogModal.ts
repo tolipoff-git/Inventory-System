@@ -5,7 +5,9 @@
 import { T } from '../../../i18n';
 import { Store } from '../../../storage/store';
 import { esc, fmtDate } from '../../../utils/formatters';
-import { toast, downloadText } from '../../../utils/dom';
+import ExcelJS from 'exceljs';
+import { toast, downloadText, downloadBuffer } from '../../../utils/dom';
+import { datedName } from '../../../utils/formatters';
 
 export class AuditLogModal {
     private static auditModalId = 'auditLogModal';
@@ -58,6 +60,7 @@ export class AuditLogModal {
                     <div style="display:flex; justify-content:space-between; margin-bottom:12px; gap:10px; flex-wrap:wrap;">
                         <input type="text" id="auditLogSearch" class="form-control" placeholder="Search log entries…" style="max-width:300px;">
                         <button class="btn btn-success" id="exportAuditLogCsvBtn">📊 ${T('Export (.csv)')}</button>
+                        <button class="btn btn-primary" id="exportAuditLogXlsxBtn">📊 ${T('Export (.xlsx)')}</button>
                     </div>
                     <div class="table-scroll">
                         <table>
@@ -84,6 +87,7 @@ export class AuditLogModal {
         overlay.querySelector('#auditLogCloseBtn')?.addEventListener('click', () => this.closeAuditLog());
         overlay.querySelector('#auditLogFooterCloseBtn')?.addEventListener('click', () => this.closeAuditLog());
         overlay.querySelector('#exportAuditLogCsvBtn')?.addEventListener('click', () => this.exportCsv());
+        overlay.querySelector('#exportAuditLogXlsxBtn')?.addEventListener('click', () => this.exportXlsx());
 
         const searchInput = overlay.querySelector<HTMLInputElement>('#auditLogSearch');
         if (searchInput) {
@@ -127,6 +131,52 @@ export class AuditLogModal {
             .concat(logs.map(l => `"${l.ts}","${(l.user || '').replace(/"/g, '""')}","${(l.action || '').replace(/"/g, '""')}","${(l.details || '').replace(/"/g, '""')}"`))
             .join('\n');
         downloadText(`Inventory_Audit_Log_${new Date().toISOString().split('T')[0]}.csv`, csv, 'text/csv');
+    }
+
+    private static async exportXlsx(): Promise<void> {
+        const logs = Store.auditLog || [];
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = '5S Tool Command Center';
+        workbook.created = new Date();
+        workbook.modified = new Date();
+
+        const worksheet = workbook.addWorksheet('Audit Log', {
+            views: [{ state: 'frozen', ySplit: 1 }],
+        });
+
+        worksheet.columns = [
+            { header: 'Timestamp', key: 'timestamp', width: 22 },
+            { header: 'User', key: 'user', width: 18 },
+            { header: 'Role', key: 'role', width: 18 },
+            { header: 'Action', key: 'action', width: 22 },
+            { header: 'Details', key: 'details', width: 80 },
+        ];
+
+        const headerRow = worksheet.getRow(1);
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
+        headerRow.height = 24;
+
+        const reversedLogs = [...logs].reverse();
+        reversedLogs.forEach((l, i) => {
+            const row = worksheet.addRow({
+                timestamp: l.ts || '',
+                user: l.user || '',
+                role: (l as any).role || '',
+                action: l.action || '',
+                details: l.details || '',
+            });
+            if (i % 2 === 1) {
+                row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EAF2' } };
+            }
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        downloadBuffer(
+            datedName('Inventory_Audit_Log', 'xlsx'),
+            buffer as ArrayBuffer,
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        );
     }
 
     private static createArchiveModalDOM(): void {
