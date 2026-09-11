@@ -53,7 +53,7 @@ export class GateModal {
     public static closeLoginPrompt(): void {
         const modal = document.getElementById(this.loginModalId);
         if (modal) modal.classList.remove('active');
-        Auth.pendingAction = null;
+        Auth.clearPendingAction();
     }
 
     private static createGateModalDOM(): void {
@@ -150,8 +150,13 @@ export class GateModal {
                 this.closeLoginPrompt();
                 if (Auth.pendingAction) {
                     const action = Auth.pendingAction;
-                    Auth.pendingAction = null;
-                    action();
+                    const reqRole = Auth.pendingRole;
+                    Auth.clearPendingAction();
+                    if (!reqRole || Auth.has(reqRole)) {
+                        action();
+                    } else {
+                        toast('Insufficient permissions for this action', 'danger');
+                    }
                 }
             } else {
                 if (err) err.style.display = 'block';

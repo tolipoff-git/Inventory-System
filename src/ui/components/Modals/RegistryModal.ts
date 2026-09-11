@@ -385,7 +385,7 @@ export class RegistryModal {
         wsList.querySelectorAll('[data-reg-ws-add]').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const prog = (e.currentTarget as HTMLElement).dataset.regWsAdd!;
-                const input = wsList.querySelector<HTMLInputElement>(`#newWsInput_${prog}`);
+                const input = (e.currentTarget as HTMLElement).closest('li')?.querySelector<HTMLInputElement>('input');
                 if (input && input.value.trim()) {
                     const wsName = input.value.trim();
                     if (!Store.workstations.includes(wsName)) {
@@ -406,10 +406,35 @@ export class RegistryModal {
             });
         });
 
+        wsList.querySelectorAll('[data-reg-prog-del]').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const prog = (e.currentTarget as HTMLElement).dataset.regProgDel!;
+                if (confirm(`Delete program ${prog}?`)) {
+                    Store.removeProgram(prog);
+                    await Store.save();
+                    toast(`Program ${prog} deleted!`, 'warning');
+                    this.renderWs();
+                }
+            });
+        });
+
         wsList.querySelectorAll('[data-reg-ws-rename]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const ws = (e.currentTarget as HTMLElement).dataset.regWsRename!;
                 this.openRegEdit('workstations', ws);
+            });
+        });
+
+        wsList.querySelectorAll('[data-reg-ws-del]').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const ws = (e.currentTarget as HTMLElement).dataset.regWsDel!;
+                if (confirm(`Delete station ${ws}?`)) {
+                    Store.workstations = Store.workstations.filter(w => w !== ws);
+                    delete Store.wsProgram[ws];
+                    await Store.save();
+                    toast(`Station ${ws} deleted!`, 'warning');
+                    this.renderWs();
+                }
             });
         });
     }

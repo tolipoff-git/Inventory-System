@@ -348,7 +348,11 @@ export class ToolGridComponent {
                         <button class="btn btn-success wide" data-action="receive-order" data-id="${esc(tool.id)}">${T('Mark as Received')}</button>
                         <button class="btn btn-muted wide" data-action="cancel-order" data-id="${esc(tool.id)}">${T('Cancel Order')}</button>
                     ` : `
-                        <button class="btn" data-action="assign" data-id="${esc(tool.id)}">${T('[Assign Person]')}</button>
+                        ${tool.status === 'Issued' || tool.assigneeId ? `
+                            <button class="btn btn-warning" data-action="return" data-id="${esc(tool.id)}">↩ ${T('Return Tool')}</button>
+                        ` : `
+                            <button class="btn" data-action="assign" data-id="${esc(tool.id)}">${T('[Assign Person]')}</button>
+                        `}
                         <button class="btn" data-action="transfer" data-id="${esc(tool.id)}">${T('[Transfer / Move]')}</button>
                         ${maintBtn}
                         <button class="btn btn-warning wide" data-action="procure" data-id="${esc(tool.id)}">${T('[Procure / Order]')}</button>

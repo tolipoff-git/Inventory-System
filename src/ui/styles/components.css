@@ -428,3 +428,21 @@ details[open] .faq-summary::before { transform: rotate(90deg); }
 /* Компенсация фаски: отступ контента от скошенного левого угла */
 .chart-card h3, .kpi-card .kpi-label { padding-left: 14px; }
 .tool-header h3 { padding-left: 10px; }
+
+/* ==========================================================================
+   Work Mode Rules
+   ========================================================================== */
+.work-only { display: none !important; }
+body.work-mode .kpi-container,
+body.mode-work .kpi-container,
+body.work-mode .dashboard-charts,
+body.mode-work .dashboard-charts,
+body.work-mode .storage-note,
+body.mode-work .storage-note,
+body.work-mode .work-hide,
+body.mode-work .work-hide { display: none !important; }
+
+body.work-mode .work-only,
+body.mode-work .work-only { display: block !important; }
+select.work-only.form-control { max-width: 190px; }
+

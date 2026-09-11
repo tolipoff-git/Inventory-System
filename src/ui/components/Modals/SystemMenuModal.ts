@@ -10,6 +10,7 @@ import { BatchRotationModal } from './BatchRotationModal';
 import { AuditLogModal } from './AuditLogModal';
 import { IntegrityModal } from './IntegrityModal';
 import { downloadText, toast } from '../../../utils/dom';
+import { Auth } from '../../../auth/authManager';
 
 export class SystemMenuModal {
     private static modalId = 'systemMenuModal';
@@ -39,55 +40,59 @@ export class SystemMenuModal {
 
         modal.querySelector('#sysAddToolBtn')?.addEventListener('click', () => {
             this.close();
-            ToolModal.openAdd();
+            Auth.doAction('Administrator', () => ToolModal.openAdd());
         });
 
         modal.querySelector('#sysRegistriesBtn')?.addEventListener('click', () => {
             this.close();
-            RegistryModal.open();
+            Auth.doAction('Administrator', () => RegistryModal.open());
         });
 
         modal.querySelector('#sysBatchBtn')?.addEventListener('click', () => {
             this.close();
-            BatchRotationModal.open();
+            Auth.doAction('Administrator', () => BatchRotationModal.open());
         });
 
         modal.querySelector('#sysArchiveBtn')?.addEventListener('click', () => {
             this.close();
-            AuditLogModal.openArchive();
+            Auth.doAction('Administrator', () => AuditLogModal.openArchive());
         });
 
         modal.querySelector('#sysAuditLogBtn')?.addEventListener('click', () => {
             this.close();
-            AuditLogModal.openAuditLog();
+            Auth.doAction('Administrator', () => AuditLogModal.openAuditLog());
         });
 
         modal.querySelector('#sysIntegrityBtn')?.addEventListener('click', () => {
             this.close();
-            IntegrityModal.open();
+            Auth.doAction('Administrator', () => IntegrityModal.open());
         });
 
         modal.querySelector('#sysBackupBtn')?.addEventListener('click', () => {
             this.close();
-            const data = JSON.stringify(Store.getStateSnapshot(), null, 2);
-            downloadText(`Inventory_Backup_${new Date().toISOString().split('T')[0]}.json`, data, 'application/json');
+            Auth.doAction('Administrator', () => {
+                const data = JSON.stringify(Store.getStateSnapshot(), null, 2);
+                downloadText(`Inventory_Backup_${new Date().toISOString().split('T')[0]}.json`, data, 'application/json');
+            });
         });
 
         const restoreInput = modal.querySelector<HTMLInputElement>('#sysRestoreFileInput');
         if (restoreInput) {
             restoreInput.addEventListener('change', async () => {
                 this.close();
-                if (restoreInput.files && restoreInput.files[0]) {
-                    const text = await restoreInput.files[0].text();
-                    try {
-                        const parsed = JSON.parse(text);
-                        Store.applyLoadedData(parsed);
-                        await Store.save();
-                        toast('Backup successfully restored!', 'success');
-                    } catch (e: any) {
-                        toast(`Failed to restore backup: ${e.message}`, 'danger');
+                Auth.doAction('Administrator', async () => {
+                    if (restoreInput.files && restoreInput.files[0]) {
+                        const text = await restoreInput.files[0].text();
+                        try {
+                            const parsed = JSON.parse(text);
+                            Store.applyLoadedData(parsed);
+                            await Store.save();
+                            toast('Backup successfully restored!', 'success');
+                        } catch (e: any) {
+                            toast(`Failed to restore backup: ${e.message}`, 'danger');
+                        }
                     }
-                }
+                });
             });
         }
 

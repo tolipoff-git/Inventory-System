@@ -8,6 +8,8 @@ import { esc, fmtDate, durationStr, isAutoSn, nowISO } from '../../../utils/form
 import { Auth } from '../../../auth/authManager';
 import { Photos } from '../../../utils/photos';
 import { Tool } from '../../../types/inventory';
+import { LabelModal } from './LabelModal';
+import { ToolModal } from './ToolModal';
 
 export class DetailModal {
     private static modalId = 'detailModal';
@@ -101,6 +103,18 @@ export class DetailModal {
 
         overlay.querySelector('#detCloseBtn')?.addEventListener('click', () => this.close());
         overlay.querySelector('#detFooterCloseBtn')?.addEventListener('click', () => this.close());
+
+        overlay.querySelector('#detPrintBtn')?.addEventListener('click', () => {
+            if (this.currentToolId) {
+                Auth.doAction('Tool Crib Manager', () => LabelModal.openToolLabel(this.currentToolId!));
+            }
+        });
+
+        overlay.querySelector('#detEditBtn')?.addEventListener('click', () => {
+            if (this.currentToolId) {
+                Auth.doAction('Administrator', () => ToolModal.openEdit(this.currentToolId!));
+            }
+        });
 
         const photoInput = overlay.querySelector<HTMLInputElement>('#detPhotoInput');
         if (photoInput) {
