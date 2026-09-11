@@ -11,6 +11,7 @@ export type AuthPromptHandler = () => void;
 class AuthManager {
   public current: UserSession = { username: 'operator', role: 'Operator' };
   public pendingAction: (() => void) | null = null;
+  public pendingRole: UserRole | null = null;
   private _authListeners: Set<(session: UserSession) => void> = new Set();
   private _promptHandler: AuthPromptHandler | null = null;
 
@@ -113,15 +114,21 @@ class AuthManager {
     this._promptHandler = handler;
   }
 
+  public clearPendingAction(): void {
+    this.pendingAction = null;
+    this.pendingRole = null;
+  }
+
   public doAction(requiredRole: UserRole, callback: () => void): void {
     if (this.has(requiredRole)) {
       callback();
       return;
     }
+    this.pendingRole = requiredRole;
     this.pendingAction = callback;
     if (this._promptHandler) {
       this._promptHandler();
-    } else {
+    } else if (typeof document !== 'undefined') {
       const loginModal = document.getElementById('loginModal');
       if (loginModal) {
         loginModal.classList.add('active');

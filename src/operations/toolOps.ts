@@ -239,6 +239,7 @@ export async function completeMaintenance(
 ): Promise<boolean> {
   const tool = Store.getTool(toolId);
   if (!tool) return false;
+  if (tool.status !== 'Maintenance' && tool.status !== 'Overdue') return false;
 
   tool.status = 'Active';
   if (nextCalDate) {

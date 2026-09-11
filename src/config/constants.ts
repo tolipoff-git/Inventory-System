@@ -12,7 +12,7 @@ export const SCAN_KEY_TIMEOUT_MS = 50;
 export const DAY_MS = 86400000;
 
 export const DEFAULT_SYNC_ROOM = 'INV-MAIN';
-export const DEFAULT_SYNC_SECRET = 'dedc4419b654d82f4ca2f6981025eecfc92b55e7fdc4316751cfbf4221702494';
+export const DEFAULT_SYNC_SECRET = (typeof process !== 'undefined' && (process as any).env?.SYNC_SECRET) ? (process as any).env.SYNC_SECRET : (typeof (globalThis as any).SYNC_SECRET !== 'undefined' ? (globalThis as any).SYNC_SECRET : '');
 
 export const ROLES: Record<UserRole, number> = {
   'Administrator': 3,

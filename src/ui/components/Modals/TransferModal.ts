@@ -121,7 +121,7 @@ export class TransferModal {
             wsSelect.innerHTML = Store.workstations.map(ws => `<option value="${esc(ws)}">${esc(ws)}</option>`).join('');
             const wsp = Store.workstationAndPostOf(tool);
             if (wsp.ws) wsSelect.value = wsp.ws;
-            this.updatePostSelect(wsSelect.value);
+            this.updatePostSelect(wsSelect.value, wsp.post);
         }
 
         if (rackSelect) {
@@ -151,12 +151,12 @@ export class TransferModal {
         (document.getElementById('transNotes') as HTMLInputElement).value = '';
     }
 
-    private static updatePostSelect(ws: string): void {
+    private static updatePostSelect(ws: string, selectedPost?: string): void {
         const postSelect = document.getElementById('transPostSelect') as HTMLSelectElement;
         if (!postSelect) return;
         const posts = Store.postsForZone(ws);
         postSelect.innerHTML = `<option value="">-- Main Station --</option>` +
-            posts.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+            posts.map(p => `<option value="${esc(p)}" ${selectedPost === p ? 'selected' : ''}>${esc(p)}</option>`).join('');
     }
 
     private static async submit(): Promise<void> {

@@ -423,6 +423,14 @@ export class OrderModal {
         overlay.querySelector('#procureAddItemBtn')?.addEventListener('click', () => this.addCartItem());
         overlay.querySelector('#procureExcelBtn')?.addEventListener('click', () => this.exportExcel());
         overlay.querySelector('#procureSubmitBtn')?.addEventListener('click', () => this.submitOrder());
+
+        const wsSelect = overlay.querySelector<HTMLSelectElement>('#procureWs');
+        const wpSelect = overlay.querySelector<HTMLSelectElement>('#procureWp');
+        if (wsSelect && wpSelect) {
+            wsSelect.addEventListener('change', () => {
+                wpSelect.innerHTML = Store.postsForZone(wsSelect.value).map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+            });
+        }
     }
 
     private static resetProcureForm(toolId?: string): void {

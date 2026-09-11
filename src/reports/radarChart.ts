@@ -175,14 +175,19 @@ export function renderDonutSvg(
 
     // Legend on the right side
     const legendColor = (CONFIG.STATUS_COLORS as any)[key] || '#999';
-    svg.appendChild(createSvgEl('rect', {
+    const legendRect = createSvgEl('rect', {
       x: 180,
       y: legendY,
       width: 10,
       height: 10,
       fill: legendColor,
       rx: 2,
-    }));
+      style: onFilterStatus ? 'cursor: pointer;' : '',
+    });
+    if (onFilterStatus) {
+      legendRect.onclick = () => onFilterStatus(key);
+    }
+    svg.appendChild(legendRect);
 
     const label = createSvgEl('text', {
       x: 196,
@@ -190,8 +195,12 @@ export function renderDonutSvg(
       fill: '#cbd5e1',
       'font-size': '11px',
       'font-weight': '500',
+      style: onFilterStatus ? 'cursor: pointer;' : '',
     });
     label.textContent = `${T(key)}: ${val}`;
+    if (onFilterStatus) {
+      label.onclick = () => onFilterStatus(key);
+    }
     svg.appendChild(label);
 
     angle += slice;
@@ -242,8 +251,12 @@ export function renderBarSvg(
       'font-size': '10px',
       'text-anchor': 'end',
       transform: `rotate(-35, ${x + bw / 2}, 138)`,
+      style: onFilterWs ? 'cursor: pointer;' : '',
     });
     label.textContent = key;
+    if (onFilterWs) {
+      label.onclick = () => onFilterWs(key);
+    }
     svg.appendChild(label);
 
     // Value text above bar
@@ -254,8 +267,12 @@ export function renderBarSvg(
       'font-size': '10px',
       'text-anchor': 'middle',
       'font-weight': 'bold',
+      style: onFilterWs ? 'cursor: pointer;' : '',
     });
     valText.textContent = String(val);
+    if (onFilterWs) {
+      valText.onclick = () => onFilterWs(key);
+    }
     svg.appendChild(valText);
   });
 }

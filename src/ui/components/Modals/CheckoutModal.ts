@@ -118,7 +118,11 @@ export class CheckoutModal {
         }
 
         try {
-            await checkoutTool(this.currentToolId, empId, returnDate || 1, 1, 'OP', ws || 'Tool Gage', '', notes || '');
+            const res = await checkoutTool(this.currentToolId, empId, returnDate || 1, 1, 'OP', ws || 'Tool Gage', '', notes || '');
+            if (!res.success) {
+                toast(res.error || 'Checkout failed', 'danger');
+                return;
+            }
             if (ws) {
                 const tool = Store.getTool(this.currentToolId);
                 if (tool) {

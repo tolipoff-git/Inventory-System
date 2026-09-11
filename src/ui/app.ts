@@ -28,8 +28,11 @@ import { GateModal } from './components/Modals/GateModal';
 import { SopModal } from './components/Modals/SopModal';
 import { SystemMenuModal } from './components/Modals/SystemMenuModal';
 import { OpsMenuModal } from './components/Modals/OpsMenuModal';
+import { EmployeeProfileModal } from './components/Modals/EmployeeProfileModal';
 import { isPermanentTool, isConsumableTool } from '../operations/toolOps';
+import { receiveFullOrder, cancelOrder, receiveOrderItem, rejectOrderItem } from '../operations/orderOps';
 import { daysUntil } from '../utils/formatters';
+import { toast } from '../utils/dom';
 
 export class AppUI {
     private header: HeaderComponent | null = null;
@@ -48,6 +51,7 @@ export class AppUI {
         this.mountComponents();
         this.bindGlobalKeyboard();
         this.bindBackdropAndEscape();
+        this.bindGlobalActionDelegation();
         this.attachGlobalWindowApi();
 
         // Subscribe to Store state changes
@@ -101,7 +105,7 @@ export class AppUI {
                         GateModal.openLoginPrompt();
                     }
                 },
-                onOpenSystemMenu: () => SystemMenuModal.open(),
+                onOpenSystemMenu: () => Auth.doAction('Administrator', () => SystemMenuModal.open()),
                 onOpenOpsMenu: () => OpsMenuModal.open()
             });
             this.header.render();
@@ -277,7 +281,7 @@ export class AppUI {
 
         const emp = Store.getEmp(code);
         if (emp) {
-            this.setFilter('status', 'Issued');
+            EmployeeProfileModal.open(emp.id);
             return;
         }
 
@@ -293,6 +297,9 @@ export class AppUI {
         switch (action) {
             case 'tool-detail':
                 DetailModal.open(id);
+                break;
+            case 'emp-profile':
+                EmployeeProfileModal.open(id);
                 break;
             case 'assign':
                 CheckoutModal.open(id);
@@ -327,6 +334,45 @@ export class AppUI {
                     const ws = extra?.dataset.ws;
                     AuditModal.openPostAudit(ws, id);
                 });
+                break;
+            case 'receive-order':
+                Auth.doAction('Tool Crib Manager', async () => {
+                    await receiveFullOrder(id);
+                    toast(T('ORDER_RECEIVED'), 'success');
+                    this.refreshAll();
+                });
+                break;
+            case 'cancel-order':
+                Auth.doAction('Tool Crib Manager', async () => {
+                    if (confirm(T('ORDER_CANCEL') + '?')) {
+                        await cancelOrder(id);
+                        toast(T('ORDER_CANCELLED'), 'danger');
+                        this.refreshAll();
+                    }
+                });
+                break;
+            case 'receive-order-item':
+                Auth.doAction('Tool Crib Manager', async () => {
+                    const itemId = extra?.dataset.item || '';
+                    await receiveOrderItem(id, itemId, 1);
+                    toast('Item received!', 'success');
+                    this.refreshAll();
+                });
+                break;
+            case 'reject-order-item':
+                Auth.doAction('Tool Crib Manager', async () => {
+                    const itemId = extra?.dataset.item || '';
+                    const reason = prompt('Rejection reason:');
+                    if (reason) {
+                        await rejectOrderItem(id, itemId, reason);
+                        toast('Item rejected.', 'warning');
+                        this.refreshAll();
+                    }
+                });
+                break;
+            case 'recv-item':
+            case 'reject-item':
+                // Handled directly in OrderModal
                 break;
             default:
                 console.log('Action unhandled:', action, id);
@@ -385,6 +431,9 @@ export class AppUI {
         document.addEventListener('mousedown', (e) => {
             const target = e.target as HTMLElement;
             if (target.classList && target.classList.contains('modal-overlay')) {
+                if (target.id === 'loginModal') {
+                    Auth.clearPendingAction();
+                }
                 target.classList.remove('active');
             }
         });
@@ -393,8 +442,25 @@ export class AppUI {
             if (e.key === 'Escape') {
                 const openModals = document.querySelectorAll('.modal-overlay.active');
                 if (openModals.length > 0) {
-                    openModals[openModals.length - 1].classList.remove('active');
+                    const topModal = openModals[openModals.length - 1];
+                    if (topModal.id === 'loginModal') {
+                        Auth.clearPendingAction();
+                    }
+                    topModal.classList.remove('active');
                 }
+            }
+        });
+    }
+
+    private bindGlobalActionDelegation(): void {
+        document.addEventListener('click', (e) => {
+            const target = e.target as HTMLElement;
+            const actionEl = target.closest<HTMLElement>('[data-action]');
+            if (!actionEl) return;
+            const action = actionEl.dataset.action;
+            const id = actionEl.dataset.id || '';
+            if (action) {
+                this.handleAction(action, id, actionEl);
             }
         });
     }

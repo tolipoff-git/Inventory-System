@@ -139,16 +139,6 @@ export class SopModal {
     private static renderFaqContent(): void {
         const body = document.getElementById('faqModalBody');
         if (!body) return;
-
-        body.innerHTML = `
-            <h4>1. What is the 5S Tool Command Center?</h4>
-            <p>An enterprise modular inventory and visual workplace control platform engineered according to Toyota Production System 5S principles (Sort, Set in Order, Shine, Standardize, Sustain).</p>
-
-            <h4>2. How does Distributed Cloudflare Worker + SSE Sync work?</h4>
-            <p>Data is stored authoritatively in browser IndexedDB with real-time peer relay via Cloudflare Workers KV and server-sent event (SSE) broadcast pings on <code>ntfy.sh</code>. Instant updates synchronize across tablets, phones, and workstation displays with zero central database downtime.</p>
-
-            <h4>3. Hardware Barcode Scanner Support</h4>
-            <p>Any USB or Bluetooth barcode scanner acting as a keyboard wedge is supported. Just scan any label or tool code: rapid inputs (&lt;30ms) instantly look up tools, workstations, or storage bins.</p>
-        `;
+        body.innerHTML = T('FAQ_BODY');
     }
 }

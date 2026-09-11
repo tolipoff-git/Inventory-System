@@ -74,8 +74,12 @@ export class FilterBarComponent {
     private bindEvents(): void {
         const searchInput = this.container.querySelector<HTMLInputElement>('#globalSearch');
         if (searchInput) {
+            let searchTimeout: any = null;
             searchInput.addEventListener('input', () => {
-                this.callbacks.onSearch(searchInput.value.trim().toLowerCase());
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    this.callbacks.onSearch(searchInput.value.trim().toLowerCase());
+                }, 150);
             });
         }
 
@@ -90,6 +94,9 @@ export class FilterBarComponent {
         if (resetBtn) {
             resetBtn.addEventListener('click', () => {
                 this.clearFilter();
+                const searchInput = this.container.querySelector<HTMLInputElement>('#globalSearch');
+                if (searchInput) searchInput.value = '';
+                this.callbacks.onSearch('');
                 this.callbacks.onResetFilter();
             });
         }

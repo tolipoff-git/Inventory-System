@@ -68,7 +68,7 @@ class StoreManager {
       auditLog: this.auditLog,
       procurementLog: this.procurementLog,
       workstations: this.workstations,
-      workposts: this.workposts.map(p => (typeof p === 'string' ? p : p.name)),
+      workposts: this.workposts.map(p => (typeof p === 'string' ? { name: p, ws: null } : { name: p.name, ws: p.ws || null })),
       programs: this.programs,
       wsProgram: this.wsProgram,
       audits5s: this.audits5s,
@@ -129,7 +129,7 @@ class StoreManager {
       auditLog: this.auditLog,
       procurementLog: this.procurementLog,
       workstations: this.workstations,
-      workposts: this.workposts.map(p => p.name),
+      workposts: this.workposts.map(p => ({ name: p.name, ws: p.ws || null })),
       programs: this.programs,
       wsProgram: this.wsProgram,
       audits5s: this.audits5s,
@@ -239,7 +239,7 @@ class StoreManager {
   public activeTools(): Tool[] {
     if (!this._activeTools) {
       this._activeTools = this.tools.filter(
-        t => t.status !== 'Decommissioned' && (t.status as any) !== 'Retired' && (t.status as any) !== 'retired' && t.status !== 'Pending Delivery' as any
+        t => t.status !== 'Decommissioned' && (t.status as any) !== 'Retired' && (t.status as any) !== 'retired'
       );
     }
     return this._activeTools;
@@ -263,7 +263,7 @@ class StoreManager {
   public recomputeStatuses(): void {
     const now = Date.now();
     this.tools.forEach(t => {
-      if ((t.status as any) === 'Retired' || (t.status as any) === 'retired' || t.status === 'Decommissioned' || t.status === 'Maintenance') return;
+      if ((t.status as any) === 'Retired' || (t.status as any) === 'retired' || t.status === 'Decommissioned' || t.status === 'Maintenance' || t.status === 'Pending Delivery') return;
       const lateReturn = t.dueReturn && d(t.dueReturn) && (d(t.dueReturn)!.getTime() < now);
       const lateCal = t.calDue && d(t.calDue) && (d(t.calDue)!.getTime() < now);
       if (lateReturn || lateCal) t.status = 'Overdue';

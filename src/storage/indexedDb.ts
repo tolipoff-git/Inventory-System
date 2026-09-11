@@ -12,7 +12,7 @@ export interface DBState {
   auditLog: AuditLogEntry[];
   procurementLog: PurchaseOrder[];
   workstations: string[];
-  workposts: string[];
+  workposts: (string | { name: string; ws?: string | null })[];
   programs: string[];
   wsProgram: Record<string, string>;
   audits5s: Audit5S[];
