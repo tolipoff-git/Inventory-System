@@ -9,12 +9,28 @@
   "build": {
     "command": "npm run build"
   },
+  // The real KV namespace id is NOT stored in git. Before deploying, either
+  // export INVENTORY_KV_BINDING=<id> (substituted by wrangler at deploy time
+  // from the environment) or run `wrangler kv namespace create INVENTORY_KV`
+  // and paste the resulting id here locally (do not commit it).
+  //   set via CLOUDFLARE secret: `export INVENTORY_KV_BINDING=<namespace-id>`
   "kv_namespaces": [
     {
       "binding": "INVENTORY_KV",
-      "id": "bcaf03c4670a45b696abdeebe98b4977"
+      "id": "$INVENTORY_KV_BINDING"
     }
   ],
+  // Worker variables injected from the deployment environment (Cloudflare
+  // Pages/Workers dashboard or `wrangler secret put`). Never hardcode secrets.
+  "vars": {
+    // CORS allowlist for the PWA origin(s), e.g. "https://inventory.pages.dev"
+    "ALLOWED_ORIGIN": "$ALLOWED_ORIGIN"
+  },
+  // SYNC_SECRET and ALLOWED_ORIGIN are set at deploy time:
+  //   wrangler secret put SYNC_SECRET
+  "secrets": {
+    "required": ["SYNC_SECRET"]
+  },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS"

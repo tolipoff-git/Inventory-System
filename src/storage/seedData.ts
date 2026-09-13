@@ -1,21 +1,29 @@
 import { Tool } from "../types/inventory";
 import { SystemUser } from "../types/personnel";
 
+/**
+ * Seed accounts. NO precomputed password hashes are shipped in source — each
+ * account starts with `needsPinSetup` and an empty `pwHash`; the very first
+ * login forces an Administrator PIN-set before any access is granted.
+ */
 export const SEED_USERS: SystemUser[] = [
   {
     "username": "admin",
-    "pwHash": "4813494d137e1631bba301d5acab6e7bb7aa74ce1185d456565ef51d737677b2",
-    "role": "Administrator"
+    "pwHash": "",
+    "role": "Administrator",
+    "needsPinSetup": true
   },
   {
     "username": "operator",
-    "pwHash": "e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446",
-    "role": "Operator"
+    "pwHash": "",
+    "role": "Operator",
+    "needsPinSetup": true
   },
   {
     "username": "crib_tech",
-    "pwHash": "0ff9e07cc1b519286a5575a350808f735f35cd7219448f1be98f78ea11ca5e8a",
-    "role": "Tool Crib Manager"
+    "pwHash": "",
+    "role": "Tool Crib Manager",
+    "needsPinSetup": true
   }
 ];
 

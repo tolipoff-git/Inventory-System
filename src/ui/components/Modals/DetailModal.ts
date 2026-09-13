@@ -12,6 +12,7 @@ import { LabelModal } from './LabelModal';
 import { ToolModal } from './ToolModal';
 import { generateQrDataUrl, toolDeeplink } from '../../../labels/qrGenerator';
 import { printHtml, toast } from '../../../utils/dom';
+import { windowConfirm } from '../../../utils/dialogCompat';
 
 export class DetailModal {
     private static modalId = 'detailModal';
@@ -258,7 +259,7 @@ export class DetailModal {
                 btn.addEventListener('click', async (e) => {
                     e.stopPropagation();
                     const idx = +(e.currentTarget as HTMLElement).dataset.idx!;
-                    if (confirm('Delete photo?')) {
+                    if (windowConfirm('Delete photo?')) {
                         await Photos.removePhoto(tool.id, idx);
                         const updatedTool = Store.getTool(tool.id);
                         if (updatedTool) this.populate(updatedTool);

@@ -5397,10 +5397,10 @@ const Store = {
    ============================================================================ */
 const Seed = {
     users: () => ([
-        // Пароли хранятся только как SHA-256 хэши
-        { username: 'admin',    pwHash: '4813494d137e1631bba301d5acab6e7bb7aa74ce1185d456565ef51d737677b2', role: 'Administrator' },
-        { username: 'operator', pwHash: 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', role: 'Operator' },
-        { username: 'crib_tech', pwHash: '0ff9e07cc1b519286a5575a350808f735f35cd7219448f1be98f78ea11ca5e8a', role: 'Tool Crib Manager' }
+        // No precomputed hashes: PIN is set interactively on first login.
+        { username: 'admin',    pwHash: '', needsPinSetup: true, role: 'Administrator' },
+        { username: 'operator', pwHash: '', needsPinSetup: true, role: 'Operator' },
+        { username: 'crib_tech', pwHash: '', needsPinSetup: true, role: 'Tool Crib Manager' }
     ]),
     workstations: () => ['Tool Gage', 'Machine Shop'],
     workposts: () => [],

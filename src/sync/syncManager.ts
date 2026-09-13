@@ -10,7 +10,6 @@ import {
 import { subscribeToLiveCloudStream } from './liveRelay';
 import { mergeSyncPayloads } from './conflictResolver';
 import { Store } from '../storage/store';
-import { DBState } from '../storage/indexedDb';
 
 export type SyncStatusListener = (status: SyncStatus, lastSynced: Date | null, room: string) => void;
 
@@ -37,7 +36,7 @@ class SyncManager {
     if (typeof window !== 'undefined') {
       window.addEventListener('online', () => {
         this.setStatus('pending');
-        this.triggerPull().catch(e => console.warn('Online pull failed:', e));
+        this.triggerPull().catch(e => console.error('Online pull failed:', e));
       });
       window.addEventListener('offline', () => {
         this.setStatus('offline');
@@ -54,13 +53,13 @@ class SyncManager {
     this._startPolling();
 
     // Hook into Store updates to auto-push debounced changes
-    Store.subscribe((state) => {
-      this._onStoreMutated(state);
+    Store.subscribe(() => {
+      this._onStoreMutated();
     });
 
     // Initial pull on start
     setTimeout(() => {
-      this.triggerPull().catch(e => console.warn('Initial sync pull failed:', e));
+      this.triggerPull().catch(e => console.error('Initial sync pull failed:', e));
     }, 500);
   }
 
@@ -133,10 +132,10 @@ class SyncManager {
       return;
     }
     // Pull immediately upon peer notification
-    this.triggerPull().catch(e => console.warn('Peer ping pull failed:', e));
+    this.triggerPull().catch(e => console.error('Peer ping pull failed:', e));
   }
 
-  private _onStoreMutated(_state: DBState): void {
+  private _onStoreMutated(): void {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       this.setStatus('offline');
       return;
@@ -145,7 +144,7 @@ class SyncManager {
     this.setStatus('pending');
     clearTimeout(this._pushDebounceTimer);
     this._pushDebounceTimer = setTimeout(() => {
-      this.triggerPush().catch(e => console.warn('Debounced push failed:', e));
+      this.triggerPush().catch(e => console.error('Debounced push failed:', e));
     }, 1200);
   }
 

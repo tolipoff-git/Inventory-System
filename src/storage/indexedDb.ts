@@ -304,7 +304,9 @@ export const AppDB = {
     let rawDb: string | null = null;
     try {
       rawDb = localStorage.getItem('inv_inventory_db');
-    } catch {}
+    } catch (e) {
+      console.error('[AppDB:migrateFromLocalStorage] Failed to read legacy localStorage db', e);
+    }
     if (rawDb) {
       try {
         const db = JSON.parse(rawDb);
@@ -326,7 +328,9 @@ export const AppDB = {
           await this.saveAll(state);
           try {
             localStorage.removeItem('inv_inventory_db');
-          } catch {}
+          } catch (e) {
+            console.error('[AppDB:migrateFromLocalStorage] Failed to remove legacy localStorage db after migration', e);
+          }
           return true;
         }
       } catch (e) {

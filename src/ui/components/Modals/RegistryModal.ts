@@ -5,8 +5,9 @@
 import { T } from '../../../i18n';
 import { Store } from '../../../storage/store';
 import { esc } from '../../../utils/formatters';
-import { hashPw } from '../../../utils/crypto';
+import { hashSecret } from '../../../utils/crypto';
 import { toast } from '../../../utils/dom';
+import { windowConfirm } from '../../../utils/dialogCompat';
 import { UserRole } from '../../../types/personnel';
 
 export class RegistryModal {
@@ -257,7 +258,7 @@ export class RegistryModal {
         tbody.querySelectorAll('[data-reg-action="del-emp"]').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const id = (e.currentTarget as HTMLElement).dataset.id!;
-                if (confirm(`Remove employee ${id}?`)) {
+                if (windowConfirm(`Remove employee ${id}?`)) {
                     Store.personnel = Store.personnel.filter(p => p.id !== id);
                     await Store.save();
                     this.renderPersonnel();
@@ -350,7 +351,7 @@ export class RegistryModal {
         const wsList = document.getElementById('regWsList');
         if (!wsList) return;
 
-        let html = Store.programs.map(prog => {
+        const html = Store.programs.map(prog => {
             const stations = Store.wsOfProgram(prog);
             return `
             <li class="history-item" style="flex-direction:column; align-items:stretch; border-left:3px solid var(--primary); margin-bottom:10px;">
@@ -409,7 +410,7 @@ export class RegistryModal {
         wsList.querySelectorAll('[data-reg-prog-del]').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const prog = (e.currentTarget as HTMLElement).dataset.regProgDel!;
-                if (confirm(`Delete program ${prog}?`)) {
+                if (windowConfirm(`Delete program ${prog}?`)) {
                     Store.removeProgram(prog);
                     await Store.save();
                     toast(`Program ${prog} deleted!`, 'warning');
@@ -428,7 +429,7 @@ export class RegistryModal {
         wsList.querySelectorAll('[data-reg-ws-del]').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const ws = (e.currentTarget as HTMLElement).dataset.regWsDel!;
-                if (confirm(`Delete station ${ws}?`)) {
+                if (windowConfirm(`Delete station ${ws}?`)) {
                     Store.workstations = Store.workstations.filter(w => w !== ws);
                     delete Store.wsProgram[ws];
                     await Store.save();
@@ -477,7 +478,7 @@ export class RegistryModal {
             btn.addEventListener('click', async (e) => {
                 const name = (e.currentTarget as HTMLElement).dataset.regWpDel!;
                 const ws = (e.currentTarget as HTMLElement).dataset.ws || '';
-                if (confirm(`Delete post ${name}?`)) {
+                if (windowConfirm(`Delete post ${name}?`)) {
                     Store.workposts = Store.workposts.filter(p => !(p.name === name && p.ws === (ws || null)));
                     await Store.save();
                     this.renderWp();
@@ -506,7 +507,7 @@ export class RegistryModal {
         tbody.querySelectorAll('[data-reg-user-del]').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const user = (e.currentTarget as HTMLElement).dataset.regUserDel!;
-                if (confirm(`Remove user ${user}?`)) {
+                if (windowConfirm(`Remove user ${user}?`)) {
                     Store.users = Store.users.filter(u => u.username !== user);
                     await Store.save();
                     this.renderRbac();
@@ -525,7 +526,7 @@ export class RegistryModal {
             return;
         }
 
-        const pwHash = await hashPw(pass);
+        const pwHash = await hashSecret(pass);
         Store.users.push({
             username: user,
             pwHash,

@@ -6,6 +6,7 @@ import { T } from '../../../i18n';
 import { Store } from '../../../storage/store';
 import { esc } from '../../../utils/formatters';
 import { toast } from '../../../utils/dom';
+import { windowConfirm } from '../../../utils/dialogCompat';
 
 export class BatchRotationModal {
     private static modalId = 'batchRotationModal';
@@ -108,7 +109,7 @@ export class BatchRotationModal {
             return;
         }
 
-        if (confirm(`Rotate ${toolsToRotate.length} tools from ${src} to ${tgt}?`)) {
+        if (windowConfirm(`Rotate ${toolsToRotate.length} tools from ${src} to ${tgt}?`)) {
             toolsToRotate.forEach(t => {
                 t.location = tgt;
                 if (t.address) t.address.zone = tgt;

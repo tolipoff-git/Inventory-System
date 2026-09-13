@@ -1,4 +1,5 @@
 import { SyncPayload, SyncPing, SyncPhoto } from '../types/sync';
+import { AbortController } from './abortController';
 import { DEFAULT_SYNC_ROOM, DEFAULT_SYNC_SECRET } from '../config/constants';
 
 export function getSyncToken(): string {
@@ -90,7 +91,7 @@ export async function pushSyncPayload(room: string, payload: SyncPayload): Promi
     clearTimeout(timeoutId);
     workerOk = res.ok;
   } catch (err) {
-    console.warn('Sync push to Worker API failed:', err);
+    console.error('Sync push to Worker API failed:', err);
   }
 
   // Broadcast a data-free ping to notify peers to pull
@@ -150,7 +151,9 @@ export async function pullSyncPayload(room: string): Promise<SyncPayload | null>
         return data;
       }
     }
-  } catch {}
+  } catch (e) {
+    console.error(`[syncApi:pullSyncPayload] Pull failed for room ${cleanRoom}:`, e);
+  }
 
   return null;
 }
@@ -211,6 +214,8 @@ export async function pullPhotoFromCloud(room: string, photoId: string): Promise
         return data as SyncPhoto;
       }
     }
-  } catch {}
+  } catch (e) {
+    console.error(`[syncApi:pullPhotoFromCloud] Failed to fetch photo ${photoId} for room ${cleanRoom}:`, e);
+  }
   return null;
 }

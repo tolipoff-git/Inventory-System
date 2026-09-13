@@ -53,8 +53,8 @@ export class ToolGridComponent {
             this.cardState[key] = collapsed ? 1 : 0;
             try {
                 localStorage.setItem('inv_cards', JSON.stringify(this.cardState));
-            } catch {
-                // Ignore
+            } catch (e) {
+                console.error('[ToolGrid:setCardCollapsed] Failed to persist card state:', e);
             }
         }
     }

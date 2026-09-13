@@ -1,4 +1,5 @@
 import { SyncPing } from '../types/sync';
+import { AbortController } from './abortController';
 import { DEFAULT_SYNC_ROOM } from '../config/constants';
 import { getCloudTopic } from './syncApi';
 
@@ -36,7 +37,7 @@ export function subscribeToLiveCloudStream(
       // EventSource automatically reconnects with backoff
     };
   } catch (err) {
-    console.warn('SSE stream error:', err);
+    console.error('SSE stream error:', err);
   }
 
   return () => {
@@ -70,5 +71,7 @@ export async function broadcastPing(room: string, deviceId: string, updatedAt: s
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
-  } catch {}
+  } catch (e) {
+    console.error('[liveRelay:broadcastPing] Relay ping broadcast failed:', e);
+  }
 }

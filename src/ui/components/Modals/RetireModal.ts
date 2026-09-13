@@ -7,6 +7,7 @@ import { Store } from '../../../storage/store';
 import { decommissionTool } from '../../../operations/toolOps';
 import { esc } from '../../../utils/formatters';
 import { toast } from '../../../utils/dom';
+import { windowConfirm } from '../../../utils/dialogCompat';
 
 export class RetireModal {
     private static modalId = 'retireModal';
@@ -93,7 +94,7 @@ export class RetireModal {
         const reason = (document.getElementById('retireReasonSelect') as HTMLSelectElement).value;
         const notes = (document.getElementById('retireNotesInput') as HTMLInputElement).value.trim();
 
-        if (confirm(`Are you sure you want to decommission tool ${this.currentToolId}? This will move it to the Retired Assets Archive.`)) {
+        if (windowConfirm(`Are you sure you want to decommission tool ${this.currentToolId}? This will move it to the Retired Assets Archive.`)) {
             try {
                 await decommissionTool(this.currentToolId, 100, reason, 'Admin', notes || '');
                 toast(`Tool ${this.currentToolId} decommissioned.`, 'warning');

@@ -93,7 +93,7 @@ export async function generateReq003Workbook(
   headerRow.height = 24;
 
   // Populate data rows
-  let startRow = 7;
+  const startRow = 7;
   items.forEach((item, idx) => {
     const row = sheet.getRow(startRow + idx);
     row.values = [

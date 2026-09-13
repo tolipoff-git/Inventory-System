@@ -419,7 +419,9 @@ class StoreManager {
         tools: this.tools,
         audits5s: this.audits5s,
       }));
-    } catch {}
+    } catch (e) {
+      console.error('[store:snapshot] Failed to capture rollback snapshot:', e);
+    }
   }
 
   public migrate(): void {
@@ -441,6 +443,14 @@ class StoreManager {
         if (!t.minQty) t.minQty = 5;
       }
       if (!t.location) t.location = 'Main Store';
+    });
+    // Users: any account without a real verifier must go through PIN setup
+    // before it can authenticate. This covers both brand-new seed accounts
+    // (shipped with an empty pwHash) and stored rows that predate the flag.
+    this.users.forEach(u => {
+      if (!u || typeof u.pwHash !== 'string' || u.pwHash === '') {
+        u.needsPinSetup = true;
+      }
     });
     this.meta.schemaVersion = CONFIG.SCHEMA_VERSION;
   }

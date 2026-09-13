@@ -50,7 +50,7 @@ export const Photos = {
       try {
         await AppDB.put(AppDB.STORES.photos, photoRecord);
       } catch (err) {
-        console.warn('Failed to store photo blob in IndexedDB:', err);
+        console.error('Failed to store photo blob in IndexedDB:', err);
       }
     }
 
@@ -70,7 +70,7 @@ export const Photos = {
     try {
       await SyncManagerInstance.pushPhoto(id, dataUrl);
     } catch (e) {
-      console.warn('Sync photo push queued or failed:', e);
+      console.error('Sync photo push queued or failed:', e);
     }
 
     return photoRecord;
@@ -88,7 +88,7 @@ export const Photos = {
       try {
         await AppDB.delete(AppDB.STORES.photos, photo.id);
       } catch (e) {
-        console.warn('Failed to delete photo from DB:', e);
+        console.error('Failed to delete photo from DB:', e);
       }
     }
   },

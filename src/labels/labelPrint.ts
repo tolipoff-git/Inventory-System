@@ -165,7 +165,7 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
   } else {
     // Location Label
     const qrUrl = locationDeeplink(entityId);
-    let parts = entityId.replace(/^LOC:[^:]*:/, '').split(':').filter(Boolean);
+    const parts = entityId.replace(/^LOC:[^:]*:/, '').split(':').filter(Boolean);
     const labelTitle = parts.join(' | ') || entityId;
 
     return `
