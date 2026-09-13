@@ -5,7 +5,7 @@ import { datedName, fmtDate, esc, nowISO } from '../utils/formatters';
 import { Audit5S } from '../types/audit';
 import { S5_RUBRICS, WEAR_RETIRE_PCT, WEAR_WARN_PCT, TOOL_CLASSES } from '../config/constants';
 import { Auth } from '../auth/authManager';
-import { hashPw } from '../utils/crypto';
+import { sha256Hex } from '../utils/crypto';
 import { careOf } from '../operations/toolOps';
 import { T } from '../i18n';
 
@@ -46,7 +46,7 @@ export async function exportFullInventoryExcel(): Promise<void> {
   const totalQty = permQty + consQty;
 
   const hashPayload = active.map(t => `${t.id}|${t.name}|${t.type}|${parseInt(String(t.qty)) || 1}|${t.status}|${t.sn || t.serialNumber || ''}`).join(';') + `::${exportSerial}::${author}`;
-  const checksum = await hashPw(hashPayload);
+  const checksum = await sha256Hex(hashPayload);
 
   Store.log('INVENTORY_EXPORT', `Serial: ${exportSerial} | SKU: ${active.length} | Perm: ${permQty} pcs | Cons: ${consQty} pcs | Total: ${totalQty} units | Author: ${author} | SHA-256: ${checksum}`);
 

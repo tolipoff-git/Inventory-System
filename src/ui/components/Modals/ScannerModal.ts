@@ -121,7 +121,7 @@ export class ScannerModal {
             await video.play();
             this.scanFrame();
         } catch (err: any) {
-            console.warn('Camera access denied or unavailable:', err);
+            console.error('Camera access denied or unavailable:', err);
             toast('Camera unavailable. Use manual entry or barcode wedge.', 'warning');
         }
     }
@@ -205,8 +205,9 @@ export class ScannerModal {
             if (navigator.vibrate) {
                 navigator.vibrate(60);
             }
-        } catch {
-            // Ignore audio context errors
+        } catch (e) {
+            // Audio/vibration feedback is best-effort; haptics unavailable is not a failure
+            console.error('[ScannerModal:playBeep] Audio feedback error:', e);
         }
     }
 

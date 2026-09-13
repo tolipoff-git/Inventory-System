@@ -188,8 +188,7 @@ export async function transferTool(
   zone: string,
   rackOrPost: string = '',
   shelfOrAddress: any = '',
-  binOrNotes: string = '',
-  _extraNotes?: string
+  binOrNotes: string = ''
 ): Promise<boolean> {
   const tool = Store.getTool(toolId);
   if (!tool) return false;

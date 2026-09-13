@@ -8,6 +8,7 @@ import { S5_RUBRICS } from '../../../config/constants';
 import { submit5SAudit, get5SRubricExplanation } from '../../../operations/auditOps';
 import { esc, fmtDate } from '../../../utils/formatters';
 import { toast, printHtml } from '../../../utils/dom';
+import { exportCertificatePdf, CertificatePdfRow } from '../../../reports/certPdf';
 
 export class AuditModal {
     private static postAuditModalId = 'postAuditModal';
@@ -294,6 +295,7 @@ export class AuditModal {
                 </div>
                 <div class="modal-body" style="max-height:75vh; overflow-y:auto;" id="report5sContent"></div>
                 <div class="modal-footer">
+                    <button class="btn btn-primary" id="report5sExportPdfBtn">⬇ ${T('Export PDF')}</button>
                     <button class="btn btn-warning" id="report5sPrintBtn">🖨 ${T('Print Certificate')}</button>
                     <button class="btn btn-muted" id="report5sFooterCloseBtn">${T('Close')}</button>
                 </div>
@@ -307,6 +309,48 @@ export class AuditModal {
         overlay.querySelector('#report5sPrintBtn')?.addEventListener('click', () => {
             const content = document.getElementById('report5sContent')?.innerHTML;
             if (content) printHtml(content);
+        });
+        overlay.querySelector('#report5sExportPdfBtn')?.addEventListener('click', () => {
+            this.exportReportPdf();
+        });
+    }
+
+    private static exportReportPdf(): void {
+        const content = document.getElementById('report5sContent');
+        if (!content) return;
+
+        const audits = Store.audits5s || [];
+        const latest = [...audits].reverse()[0];
+
+        const pillarKeys = ['sort', 'setOrder', 'shine', 'standardize', 'sustain'];
+        const pillarNames = ['1S — Sort', '2S — Set in Order', '3S — Shine', '4S — Standardize', '5S — Sustain'];
+
+        const rows: CertificatePdfRow[] = pillarKeys.map((p, idx) => {
+            const score = latest && latest.scores ? (latest.scores[p] || 0) : ((document.getElementById(`auditSlider_${p}`) as HTMLInputElement)?.value || 4);
+            return { id: String(idx + 1), name: pillarNames[idx], score: +score };
+        });
+
+        const namedDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const today = new Date();
+        const dateStr = latest ? latest.date : `${namedDays[today.getDay()]}, ${today.getDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][today.getMonth()]} ${today.getFullYear()}`;
+
+        const wsValue = latest?.ws || latest?.zone || (document.getElementById('auditWsSelect') as HTMLSelectElement)?.value || '—';
+        const postValue = latest?.post || '';
+        const auditorValue = latest?.auditor || latest?.inspector || (document.getElementById('auditInspector') as HTMLInputElement)?.value || '—';
+        const notesValue = latest?.notes || (document.getElementById('auditKaizenNotes') as HTMLTextAreaElement)?.value || '';
+
+        const compliancePct: number = latest?.totalScore ?? 100;
+
+        exportCertificatePdf({
+            title: T('CERT_TITLE'),
+            subtitle: T('CERT_SUBTITLE'),
+            station: wsValue,
+            post: postValue,
+            date: dateStr,
+            auditor: auditorValue,
+            compliance: `${compliancePct}%`,
+            rows,
+            notes: notesValue
         });
     }
 

@@ -34,7 +34,7 @@ async function bootstrap(): Promise<void> {
         if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
             navigator.serviceWorker.register('/sw.js')
                 .then(reg => console.log('[5S Command Center] ServiceWorker registered with scope:', reg.scope))
-                .catch(err => console.warn('[5S Command Center] ServiceWorker registration skipped/failed:', err));
+                .catch(err => console.error('[5S Command Center] ServiceWorker registration skipped/failed:', err));
         }
     } catch (err) {
         console.error('[5S Command Center] Critical bootstrap error:', err);

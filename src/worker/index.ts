@@ -12,7 +12,8 @@ export interface Env {
   INVENTORY_KV?: WorkerKVNamespace;
   KV?: WorkerKVNamespace;
   SYNC_SECRET?: string;
-  CORS_ORIGIN?: string;
+  /** Space or comma separated list of allowed browser origins (CORS). */
+  ALLOWED_ORIGIN?: string;
 }
 
 // In-memory fallback cache across edge isolate invocations
@@ -22,11 +23,25 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const kv = env.INVENTORY_KV || env.KV;
-    const corsOrigin = env.CORS_ORIGIN || '*';
+
+    // CORS origin policy: only explicit allowlisted origins are reflected back.
+    // Requests without an Origin header (curl, server-side clients, same-origin
+    // navigation) are unaffected; disallowed origins are rejected with 403.
+    const originHeader = request.headers.get('Origin');
+    const allowedOrigin = originIsAllowed(originHeader, env.ALLOWED_ORIGIN);
+    if (originHeader && !allowedOrigin) {
+      return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
+        status: 403,
+        headers: {
+          'Access-Control-Allow-Origin': 'null',
+          'Content-Type': 'application/json',
+        },
+      });
+    }
 
     // Security & Privacy Headers (Anti-indexing & strict isolation)
     const securityHeaders: Record<string, string> = {
-      'Access-Control-Allow-Origin': corsOrigin,
+      'Access-Control-Allow-Origin': allowedOrigin || 'null',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Device-ID',
       'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet, noimageindex',
@@ -158,6 +173,16 @@ export default {
           }
           const mimeType = match[1];
           const base64Str = match[2];
+
+          // Sanity guard: only raster image MIME types are served; anything
+          // else (HTML, SVG-as-XML, scripts) is rejected outright.
+          if (!/^image\/(png|jpe?g|webp|gif|bmp|avif)$/i.test(mimeType)) {
+            return new Response('Unsupported image content type', { status: 415, headers: securityHeaders });
+          }
+          // Decoded payload must stay under 5 MiB to bound worker memory.
+          if (base64Str.length > MAX_PHOTO_BASE64_CHARS) {
+            return new Response('Image exceeds 5 MiB limit', { status: 413, headers: securityHeaders });
+          }
           const bytes = base64ToUint8Array(base64Str);
           const ext = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg';
           const disposition = isDownload ? 'attachment' : 'inline';
@@ -214,7 +239,7 @@ export default {
       // Verify Bearer token if env.SYNC_SECRET is set
       if (env.SYNC_SECRET) {
         const authHeader = request.headers.get('Authorization') || '';
-        if (authHeader !== `Bearer ${env.SYNC_SECRET}`) {
+        if (!constantTimeEq(authHeader, `Bearer ${env.SYNC_SECRET}`)) {
           return new Response(
             JSON.stringify({ error: 'Unauthorized: missing or invalid Bearer token' }),
             {
@@ -338,6 +363,37 @@ export default {
     return new Response('Asset fetcher not available in this isolate', { status: 404 });
   },
 };
+
+/** Max base64 chars for a 5 MiB photo: 5 * 1024 * 1024 bytes * 4/3 + slack. */
+const MAX_PHOTO_BASE64_CHARS = 5 * 1024 * 1024 * 4 / 3 + 4096;
+
+/**
+ * Timing-safe string comparison (fixed-length XOR scan). Length leaks, contents don't.
+ */
+function constantTimeEq(a: string, b: string): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+/**
+ * Returns the reflected CORS origin when the request Origin is allowlisted
+ * (env.ALLOWED_ORIGIN as space/comma separated list), else null.
+ * No Origin header is allowed through (server-side / same-origin calls).
+ */
+function originIsAllowed(origin: string | null, allowlist: string | undefined): string | null {
+  if (!origin) return null;
+  if (!allowlist || !allowlist.trim()) return null;
+  const allowed = allowlist
+    .split(/[\s,]+/)
+    .map(s => s.trim().toLowerCase())
+    .filter(Boolean);
+  return allowed.includes(origin.toLowerCase()) ? origin : null;
+}
 
 function safeDecodeURIComponent(str: string): string | null {
   try {

@@ -1,5 +1,6 @@
 import { esc } from './formatters';
 import { T, getLanguage } from '../i18n';
+import { windowPrompt } from './dialogCompat';
 
 let toastTimer: any = null;
 
@@ -80,7 +81,7 @@ function copyFallback(text: string): void {
     const preview = text.length > 32 ? text.slice(0, 16) + '…' + text.slice(-8) : text;
     toast(`📋 <b>${esc(preview)}</b> ${T('COPIED')}`);
   } catch {
-    prompt('Copy text:', text);
+    windowPrompt('Copy text:', text);
   }
   ta.remove();
 }

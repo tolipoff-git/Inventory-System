@@ -33,6 +33,7 @@ import { isPermanentTool, isConsumableTool } from '../operations/toolOps';
 import { receiveFullOrder, cancelOrder, receiveOrderItem, rejectOrderItem } from '../operations/orderOps';
 import { daysUntil } from '../utils/formatters';
 import { toast } from '../utils/dom';
+import { windowConfirm, windowPrompt } from '../utils/dialogCompat';
 
 export class AppUI {
     private header: HeaderComponent | null = null;
@@ -78,8 +79,9 @@ export class AppUI {
             if (this.isWorkMode) {
                 document.body.classList.add('work-mode');
             }
-        } catch {
-            // Ignore
+        } catch (e) {
+            // Fall back to defaults if preferences are unreadable
+            console.error('[app:setupThemeAndMode] Failed to read theme/mode preferences:', e);
         }
     }
 
@@ -152,7 +154,7 @@ export class AppUI {
             mainContainer.appendChild(filterBarDiv);
         }
         this.filterBar = new FilterBarComponent(filterBarDiv, {
-            onSearch: (_query) => this.filterAndRenderGrid(),
+            onSearch: () => this.filterAndRenderGrid(),
             onStatusFilterChange: (status) => this.setFilter('status', status),
             onResetFilter: () => this.clearFilter(),
             onScanClick: () => ScannerModal.open((code) => this.handleScanResult(code)),
@@ -344,7 +346,7 @@ export class AppUI {
                 break;
             case 'cancel-order':
                 Auth.doAction('Tool Crib Manager', async () => {
-                    if (confirm(T('ORDER_CANCEL') + '?')) {
+                    if (windowConfirm(T('ORDER_CANCEL') + '?')) {
                         await cancelOrder(id);
                         toast(T('ORDER_CANCELLED'), 'danger');
                         this.refreshAll();
@@ -362,7 +364,7 @@ export class AppUI {
             case 'reject-order-item':
                 Auth.doAction('Tool Crib Manager', async () => {
                     const itemId = extra?.dataset.item || '';
-                    const reason = prompt('Rejection reason:');
+                    const reason = windowPrompt('Rejection reason:');
                     if (reason) {
                         await rejectOrderItem(id, itemId, reason);
                         toast('Item rejected.', 'warning');
@@ -384,7 +386,10 @@ export class AppUI {
         document.body.classList.toggle('work-mode', this.isWorkMode);
         try {
             localStorage.setItem('inv_mode', this.isWorkMode ? 'work' : 'desk');
-        } catch {}
+        } catch (e) {
+            console.error('[app:toggleWorkMode] Failed to persist work mode:', e);
+            toast(T('PREF_SAVE_FAILED'), 'warning');
+        }
         const btnText = document.getElementById('modeBtnText');
         if (btnText) btnText.textContent = this.isWorkMode ? T('Desk Mode') : T('Work Mode');
     }
@@ -398,7 +403,10 @@ export class AppUI {
         }
         try {
             localStorage.setItem('inv_theme', this.isLightMode ? 'light' : 'dark');
-        } catch {}
+        } catch (e) {
+            console.error('[app:toggleTheme] Failed to persist theme:', e);
+            toast(T('PREF_SAVE_FAILED'), 'warning');
+        }
         const btn = document.getElementById('themeToggleBtn');
         if (btn) btn.textContent = this.isLightMode ? '🌙 Dark' : '☀️ Light';
     }

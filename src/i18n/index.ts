@@ -8,7 +8,9 @@ try {
   if (saved === 'RU' || saved === 'ENG') {
     activeLang = saved;
   }
-} catch {}
+} catch (e) {
+  console.error('[i18n:index] Failed to read language preference', e);
+}
 
 export const translations: Record<SupportedLanguage, Record<string, string>> = {
   ENG: en,
@@ -27,7 +29,9 @@ export function setLanguage(lang: SupportedLanguage): void {
   activeLang = lang;
   try {
     localStorage.setItem('inv_lang', lang);
-  } catch {}
+  } catch (e) {
+    console.error('[i18n:setLanguage] Failed to persist language preference', e);
+  }
   applyLanguage();
 }
 

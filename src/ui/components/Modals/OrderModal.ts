@@ -6,6 +6,7 @@ import { T } from '../../../i18n';
 import { Store } from '../../../storage/store';
 import { esc, fmtDate } from '../../../utils/formatters';
 import { toast } from '../../../utils/dom';
+import { windowConfirm, windowPrompt } from '../../../utils/dialogCompat';
 import { receiveOrderItem, rejectOrderItem, receiveFullOrder, cancelOrder, addOrderComment } from '../../../operations/orderOps';
 import { ProcureManager } from '../../../procure/procure';
 import { exportReq003Workbook } from '../../../procure/req003';
@@ -286,7 +287,7 @@ export class OrderModal {
         body.querySelectorAll('[data-action="reject-item"]').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const itemId = (e.currentTarget as HTMLElement).dataset.itemId!;
-                const reason = prompt('Rejection reason:');
+                const reason = windowPrompt('Rejection reason:');
                 if (reason) {
                     await rejectOrderItem(order.orderId, itemId, reason);
                     toast('Item rejected.', 'warning');
@@ -304,7 +305,7 @@ export class OrderModal {
         });
 
         body.querySelector('#cancelOrderBtn')?.addEventListener('click', async () => {
-            if (confirm('Cancel this purchase order?')) {
+            if (windowConfirm('Cancel this purchase order?')) {
                 await cancelOrder(order.orderId);
                 toast('Order cancelled.', 'danger');
                 const updated = Store.procurementLog.find(p => p.orderId === order.orderId);
