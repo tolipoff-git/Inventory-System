@@ -6,10 +6,13 @@ the full feature history (v49 → current), and the audit log of past multi-agen
 Do not re-audit or re-document what is already recorded there; append to it instead.
 
 ## Project layout
-- `index.html` — the entire application: a single-file offline-first PWA monolith
-  (~11,000 lines: markup, CSS, all JS modules as plain objects — `Store`, `Ops`,
-  `Reports`, `Charts`, `Auth`, `Utils`, `Procure`, plus inlined vendor bundles
-  ExcelJS/JSZip/QRious). There is no build step for the app itself.
+- `src/` — modular TypeScript PWA (entry `src/main.ts` → `src/ui/app.ts`):
+  auth, config, i18n (en/ru), labels, operations, procure, reports, storage,
+  sync, types, ui/components, ui/Modals, utils, + `src/worker/index.ts`
+  (Cloudflare Worker: sync API + photo route). Build: Vite (`npm run build`).
+- `index.html` — 85-line app shell only.
+- `index.monolith.v97.html` — legacy single-file monolith (~12k lines), kept
+  for reference only; NOT the active app.
   A `СОДЕРЖАНИЕ ФАЙЛА` comment block at the top maps all sections with line
   anchors — keep it in sync when adding or moving modules (`МОДУЛЬ: X` banners).
 - `sw.js` — service worker; `CACHE_VERSION` is generated, do not hand-edit.
@@ -18,14 +21,17 @@ Do not re-audit or re-document what is already recorded there; append to it inst
 - `_headers` — Cloudflare Pages CDN cache rules.
 
 ## Conventions
-- **Versioning:** `CONFIG.APP_VERSION` in `index.html` is the single source of truth.
-  Every release: bump it (and the `<b>vNN</b>` badge mentions in both FAQ bodies),
-  update `project_handoff.md`, commit, run `bash build.sh`, commit `sw.js` separately.
+- **Versioning:** single source = `package.json` `version` + build-time
+  substitution into the built bundle (`CONFIG.APP_VERSION` in src/config).
+  Every release: bump version, update `project_handoff.md`, run `bash build.sh`,
+  commit (sw.js cache version refreshes via build.sh — do not hand-edit).
 - **Commit style:** conventional commits — `feat(scope): ... vNN release`,
   `fix(scope): ...`, followed by `chore(pwa): refresh sw.js cache version for vNN`.
 - **i18n:** every user-facing string must exist in BOTH `translations.ENG` and
   `translations.RU` with identical key sets (100% parity). Verify parity after edits.
-- **Storage:** LocalStorage (`inv_inventory_db`) only; no cloud sync (removed by design).
+- **Storage:** IndexedDB (`inv_inventory_db` + photo blobs) is the source of
+  truth; localStorage only for prefs. Optional cloud sync: Cloudflare Worker +
+  KV + ntfy SSE (room-token authed, best-effort).
 - **Deploy:** push to `main` → Cloudflare Pages auto-deploys via `bash build.sh`.
 
 ## Verification before committing
