@@ -6,6 +6,20 @@ const headers = {
   'X-Device-ID': 'dev_test',
 };
 
+// Photo endpoints now require the same Bearer/token auth as sync.
+const photoEnv = {
+  ASSETS: { fetch: () => new Response('x') },
+  ALLOWED_ORIGIN: 'https://inventory.pages.dev',
+  SYNC_SECRET: 'topsecret',
+  INVENTORY_KV: {} as Record<string, never>,
+};
+
+function photoReq(path: string, extra?: Record<string, string>) {
+  return new Request(`https://inv.workers.dev${path}`, {
+    headers: { Origin: 'https://inventory.pages.dev', ...extra },
+  });
+}
+
 describe('worker security surface', () => {
   it('rejects disallowed Origin with 403', async () => {
     const req = new Request('https://inv.workers.dev/api/health', {
@@ -53,72 +67,109 @@ describe('worker security surface', () => {
     expect(res.status).toBe(401);
   });
 
-  it('rejects non-image data URL in photo route (mime guard)', async () => {
-    const req = new Request('https://inv.workers.dev/api/photo/ROOM/ph1?raw=1', {
-      headers: { Origin: 'https://inventory.pages.dev' },
+  it('fails closed with 503 when SYNC_SECRET is unset', async () => {
+    const req = new Request('https://inv.workers.dev/api/sync/inv_room_X', {
+      method: 'POST',
+      headers: { ...headers, Origin: 'https://inventory.pages.dev' },
+      body: JSON.stringify({ tools: [] }),
     });
+    const res = await worker.fetch(req, {
+      ASSETS: { fetch: () => new Response('x') },
+      ALLOWED_ORIGIN: 'https://inventory.pages.dev',
+    });
+    expect(res.status).toBe(503);
+  });
+
+  it('rejects photo GET without auth with 401', async () => {
+    const res = await worker.fetch(photoReq('/api/photo/ROOM/ph1?raw=1'), photoEnv);
+    expect(res.status).toBe(401);
+  });
+
+  it('serves valid photo when authorized via Bearer header', async () => {
+    const b64 = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).toString('base64');
+    const req = photoReq('/api/photo/ROOM/ph3?raw=1', { Authorization: 'Bearer topsecret' });
+    const kv = {
+      get: async () => JSON.stringify({ url: `data:image/png;base64,${b64}` }),
+      put: async () => {},
+    };
+    const res = await worker.fetch(req, { ...photoEnv, INVENTORY_KV: kv });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('image/png');
+  });
+
+  it('rejects non-image data URL in photo route (mime guard)', async () => {
+    const req = photoReq('/api/photo/ROOM/ph1?raw=1', { Authorization: 'Bearer topsecret' });
     const kv = {
       get: async () => JSON.stringify({ url: 'data:text/html;base64,PGh0bW9v' }),
       put: async () => {},
     };
-    const res = await worker.fetch(req, {
-      ASSETS: { fetch: () => new Response('x') },
-      ALLOWED_ORIGIN: 'https://inventory.pages.dev',
-      INVENTORY_KV: kv,
-    });
+    const res = await worker.fetch(req, { ...photoEnv, INVENTORY_KV: kv });
     // data:text/html fails the stricter scheme check with 400 (XSS guard) —
     // an image/* but unsupported MIME reaches the 415 instead.
     expect([400, 415]).toContain(res.status);
   });
 
-  it('rejects unsupported image/* MIME (415) after scheme check', async () => {
-    const req = new Request('https://inv.workers.dev/api/photo/ROOM/ph1?raw=1', {
-      headers: { Origin: 'https://inventory.pages.dev' },
-    });
+  it('rejects unsupported image/* MIME (data: scheme check rejects SVG)', async () => {
+    const req = photoReq('/api/photo/ROOM/ph1?raw=1', { Authorization: 'Bearer topsecret' });
     const kv = {
       get: async () => JSON.stringify({ url: 'data:image/svg+xml;base64,PHN0bW9v' }),
       put: async () => {},
     };
-    const res = await worker.fetch(req, {
-      ASSETS: { fetch: () => new Response('x') },
-      ALLOWED_ORIGIN: 'https://inventory.pages.dev',
-      INVENTORY_KV: kv,
-    });
-    expect(res.status).toBe(415);
+    const res = await worker.fetch(req, { ...photoEnv, INVENTORY_KV: kv });
+    // The tightened isSafePhotoUrl rejects any non-raster data: MIME at the
+    // scheme-validation stage with 400 (SVG-as-XML/script SSRF+XSS guard).
+    expect(res.status).toBe(400);
   });
 
   it('rejects oversized base64 photo (413)', async () => {
     const huge = 'data:image/png;base64,' + 'A'.repeat(7 * 1024 * 1024);
-    const req = new Request('https://inv.workers.dev/api/photo/ROOM/ph2?raw=1', {
-      headers: { Origin: 'https://inventory.pages.dev' },
-    });
+    const req = photoReq('/api/photo/ROOM/ph2?raw=1', { Authorization: 'Bearer topsecret' });
     const kv = {
       get: async () => JSON.stringify({ url: huge }),
       put: async () => {},
     };
-    const res = await worker.fetch(req, {
-      ASSETS: { fetch: () => new Response('x') },
-      ALLOWED_ORIGIN: 'https://inventory.pages.dev',
-      INVENTORY_KV: kv,
-    });
+    const res = await worker.fetch(req, { ...photoEnv, INVENTORY_KV: kv });
     expect(res.status).toBe(413);
   });
 
-  it('serves a valid small image (200, image/png)', async () => {
+  it('accepts ?token= query param for browser image access', async () => {
     const b64 = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).toString('base64');
-    const req = new Request('https://inv.workers.dev/api/photo/ROOM/ph3?raw=1', {
-      headers: { Origin: 'https://inventory.pages.dev' },
-    });
+    const req = photoReq('/photo/ROOM/ph4?raw=1&token=topsecret');
     const kv = {
       get: async () => JSON.stringify({ url: `data:image/png;base64,${b64}` }),
       put: async () => {},
     };
-    const res = await worker.fetch(req, {
-      ASSETS: { fetch: () => new Response('x') },
-      ALLOWED_ORIGIN: 'https://inventory.pages.dev',
-      INVENTORY_KV: kv,
-    });
+    const res = await worker.fetch(req, { ...photoEnv, INVENTORY_KV: kv });
     expect(res.status).toBe(200);
-    expect(res.headers.get('content-type')).toBe('image/png');
+  });
+
+  it('rejects SSRF-prone internal/private http photo URL', async () => {
+    for (const bad of [
+      'http://127.0.0.1/x.png',
+      'http://10.0.0.5/x.png',
+      'http://192.168.1.1/x.png',
+      'http://172.16.0.1/x.png',
+      'http://169.254.169.254/x.png',
+      'http://localhost/x.png',
+      'http://0x7f000001/x.png',
+    ]) {
+      const req = photoReq('/api/photo/ROOM/ph5?raw=1', { Authorization: 'Bearer topsecret' });
+      const kv = {
+        get: async () => JSON.stringify({ url: bad }),
+        put: async () => {},
+      };
+      const res = await worker.fetch(req, { ...photoEnv, INVENTORY_KV: kv });
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it('allows public http photo URL', async () => {
+    const req = photoReq('/api/photo/ROOM/ph6?raw=1', { Authorization: 'Bearer topsecret' });
+    const kv = {
+      get: async () => JSON.stringify({ url: 'https://cdn.example.com/photos/a.png' }),
+      put: async () => {},
+    };
+    const res = await worker.fetch(req, { ...photoEnv, INVENTORY_KV: kv });
+    expect(res.status).toBe(302);
   });
 });
