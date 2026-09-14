@@ -80,7 +80,12 @@ class AuthManager {
       u => u.role === 'Administrator' && !u.needsPinSetup && typeof u.pwHash === 'string' && u.pwHash !== ''
     );
     const isFirstAdmin = user.role === 'Administrator' && !adminConfigured;
-    if (!isFirstAdmin) return false; // only the bootstrap Administrator adopts a PIN
+    if (!isFirstAdmin) {
+      if (user.role === 'Administrator' && adminConfigured) {
+        toast(T('BOOTSTRAP_ADMIN_EXISTS')); // the initial PIN was already claimed
+      }
+      return false; // only the bootstrap Administrator adopts a PIN
+    }
 
     user.pwHash = await hashSecret(passphrase);
     user.needsPinSetup = false;

@@ -28,6 +28,7 @@ export class GateModal {
         }
 
         this.ensureLoginModalDOM();
+        this.refreshBootstrapHint();
 
         Auth.setPromptHandler(() => GateModal.openLoginPrompt());
     }
@@ -45,6 +46,7 @@ export class GateModal {
             if (userInp) userInp.value = '';
             if (passInp) passInp.value = '';
             if (errEl) errEl.style.display = 'none';
+            this.refreshBootstrapHint();
             modal.classList.add('active');
             setTimeout(() => userInp?.focus(), 50);
         }
@@ -54,6 +56,15 @@ export class GateModal {
         const modal = document.getElementById(this.loginModalId);
         if (modal) modal.classList.remove('active');
         Auth.clearPendingAction();
+    }
+
+    /**
+     * Show/hide the first-run bootstrap hint in the gate modal based on whether
+     * any account still needs its initial PIN configured.
+     */
+    private static refreshBootstrapHint(): void {
+        const hint = document.getElementById('gateBootstrapHint');
+        if (hint) hint.style.display = Auth.hasUnsetPins() ? 'block' : 'none';
     }
 
     private static createGateModalDOM(): void {
@@ -72,6 +83,7 @@ export class GateModal {
                     <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">Authentication required to access plant inventory.</div>
                     <input type="text" id="gateLoginUser" class="form-control" placeholder="${T('Username')}" style="text-align:center;">
                     <input type="password" id="gateLoginPass" class="form-control" placeholder="${T('Password')}" style="text-align:center;">
+                    <div id="gateBootstrapHint" class="bootstrap-hint" style="display:none; color:var(--warning); font-size:0.85rem; margin-top:10px; padding:8px; border:1px solid var(--warning); border-radius:6px;">${T('BOOTSTRAP_HINT')}</div>
                     <div id="gateLoginError" style="color:var(--danger); font-size:0.85rem; display:none; margin-top:6px;">${T('Invalid credentials')}</div>
                     <button class="btn btn-primary wide" id="gateLoginSubmitBtn" style="margin-top:14px; font-weight:bold; font-size:1.05rem;">${T('Authorize Access')}</button>
                 </div>

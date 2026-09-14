@@ -282,6 +282,8 @@ export const en: Record<string, string> = {
   "Assign Tool": "Assign Tool",
   "Authentication Required": "Authentication Required",
   "BARCODE_HINT": "Code from an existing physical label (5S00xxx). Scanning it opens this tool. Leave empty if the label shows the ID.",
+  "BOOTSTRAP_ADMIN_EXISTS": "Administrator already configured — this account must be provisioned by an admin.",
+  "BOOTSTRAP_HINT": "First-run setup: no PIN is configured yet. The credentials you enter now will become the Administrator master password.",
   "Batch Rotation Operations": "Batch Rotation Operations",
   "Brady CSV (all tools)": "Brady CSV (all tools)",
   "Calibration": "Calibration",
