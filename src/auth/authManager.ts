@@ -82,7 +82,7 @@ class AuthManager {
     const isFirstAdmin = user.role === 'Administrator' && !adminConfigured;
     if (!isFirstAdmin) {
       if (user.role === 'Administrator' && adminConfigured) {
-        toast(T('BOOTSTRAP_ADMIN_EXISTS')); // the initial PIN was already claimed
+        toast(T('BOOTSTRAP_ADMIN_EXISTS'), 'warning'); // the initial PIN was already claimed
       }
       return false; // only the bootstrap Administrator adopts a PIN
     }
