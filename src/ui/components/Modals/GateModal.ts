@@ -70,8 +70,8 @@ export class GateModal {
                 </div>
                 <div class="modal-body menu-stack">
                     <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">Authentication required to access plant inventory.</div>
-                    <input type="text" id="gateLoginUser" class="form-control" placeholder="${T('Username')}" value="admin" style="text-align:center;">
-                    <input type="password" id="gateLoginPass" class="form-control" placeholder="${T('Password')}" value="" style="text-align:center;">
+                    <input type="text" id="gateLoginUser" class="form-control" placeholder="${T('Username')}" style="text-align:center;">
+                    <input type="password" id="gateLoginPass" class="form-control" placeholder="${T('Password')}" style="text-align:center;">
                     <div id="gateLoginError" style="color:var(--danger); font-size:0.85rem; display:none; margin-top:6px;">${T('Invalid credentials')}</div>
                     <button class="btn btn-primary wide" id="gateLoginSubmitBtn" style="margin-top:14px; font-weight:bold; font-size:1.05rem;">${T('Authorize Access')}</button>
                 </div>

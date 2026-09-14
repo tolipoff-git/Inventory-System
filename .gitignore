@@ -24,3 +24,6 @@ dist/
 Thumbs.db
 *.swp
 *.swo
+
+# e2e screenshots & logs
+.e2e/

@@ -72,6 +72,24 @@ export default {
     // Cloudflare Worker Photo Viewing Endpoint: /photo/:room/:photoId and /api/photo/:room/:photoId
     const photoMatch = url.pathname.match(/^\/(?:api\/)?photo\/([^/]+)\/([^/]+)\/?$/);
     if (photoMatch) {
+      // Photo endpoints require the same Bearer auth as sync. Browsers cannot
+      // set the Authorization header on navigation or <img> requests, so the
+      // token is also accepted as a ?token= query param (used by the PWA and
+      // the standalone HTML photo viewer).
+      const acceptsHtmlRequest = (request.headers.get('Accept') || '').includes('text/html');
+      if (!isAuthorized(request, env.SYNC_SECRET, url)) {
+        const body = acceptsHtmlRequest
+          ? renderUnauthorizedHtml()
+          : JSON.stringify({ error: 'Unauthorized: missing or invalid token' });
+        return new Response(body, {
+          status: 401,
+          headers: {
+            ...securityHeaders,
+            'Content-Type': acceptsHtmlRequest ? 'text/html; charset=utf-8' : 'application/json',
+          },
+        });
+      }
+
       const rawRoom = photoMatch[1];
       const rawPhotoId = photoMatch[2];
       const room = safeDecodeURIComponent(rawRoom);
@@ -156,8 +174,10 @@ export default {
       const caption = payload.caption || '';
       const timestamp = payload.timestamp || '';
 
-      // Validate photoUrl format (XSS prevention)
-      if (!photoUrl || !/^(https?:\/\/|data:image\/)/i.test(photoUrl)) {
+      // Validate photoUrl (XSS + SSRF prevention): http(s) must point to a
+      // public host (no loopback / RFC1918 / link-local / bare hostnames) and
+      // data: URLs must be real raster images.
+      if (!isSafePhotoUrl(photoUrl)) {
         return new Response(
           JSON.stringify({ error: 'Invalid or insecure photo URL format' }),
           { status: 400, headers: { ...securityHeaders, 'Content-Type': 'application/json' } }
@@ -213,7 +233,7 @@ export default {
       }
 
       // Default browser request: return standalone responsive dark-mode HTML viewer
-      return new Response(renderViewerHtml(cleanRoom, cleanPhotoId, caption, timestamp, photoUrl), {
+      return new Response(renderViewerHtml(cleanRoom, cleanPhotoId, caption, timestamp, photoUrl, url.searchParams.get('token') || ''), {
         status: 200,
         headers: {
           ...securityHeaders,
@@ -236,18 +256,26 @@ export default {
         });
       }
 
-      // Verify Bearer token if env.SYNC_SECRET is set
-      if (env.SYNC_SECRET) {
-        const authHeader = request.headers.get('Authorization') || '';
-        if (!constantTimeEq(authHeader, `Bearer ${env.SYNC_SECRET}`)) {
-          return new Response(
-            JSON.stringify({ error: 'Unauthorized: missing or invalid Bearer token' }),
-            {
-              status: 401,
-              headers: { ...securityHeaders, 'Content-Type': 'application/json' },
-            }
-          );
-        }
+      // Fail-closed auth: sync endpoints require env.SYNC_SECRET to be set. If
+      // the secret is missing the endpoints return 503 and never pass through.
+      if (!env.SYNC_SECRET) {
+        return new Response(
+          JSON.stringify({ error: 'SYNC_SECRET not configured' }),
+          {
+            status: 503,
+            headers: { ...securityHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      if (!constantTimeEq(request.headers.get('Authorization') || '', `Bearer ${env.SYNC_SECRET}`)) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized: missing or invalid Bearer token' }),
+          {
+            status: 401,
+            headers: { ...securityHeaders, 'Content-Type': 'application/json' },
+          }
+        );
       }
 
       const rawKey = url.pathname.replace('/api/sync/', '');
@@ -378,6 +406,174 @@ function constantTimeEq(a: string, b: string): boolean {
     diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   }
   return diff === 0;
+}
+
+/**
+ * Photo endpoints are guarded with the same secret as sync. Browsers cannot set
+ * the Authorization header on navigation or <img> requests, so the token is also
+ * accepted as a ?token= query parameter (used by the PWA and standalone viewer).
+ */
+function isAuthorized(request: Request, syncSecret: string | undefined, url: URL): boolean {
+  if (!syncSecret) return false;
+  const headerToken = request.headers.get('Authorization') || '';
+  const queryToken = url.searchParams.get('token') || '';
+  return constantTimeEq(headerToken, `Bearer ${syncSecret}`) || constantTimeEq(queryToken, syncSecret);
+}
+
+/**
+ * Validates that a stored photoUrl is safe to serve (XSS + SSRF guard):
+ * - http(s): must have a DNS hostname and a publicly routable, non-reserved IP
+ *   (no loopback, RFC1918, link-local, IPv4-mapped IPv6, bare numeric or single
+ *   label hosts). Pure CF Workers: no DNS lookup, so private IP checks cover the
+ *   obvious SSRF vectors and bare hostnames (which could resolve to internal
+ *   hosts / cloud metadata) are rejected outright.
+ * - data: must be a base64 raster image of an allowed MIME type.
+ */
+function isSafePhotoUrl(photoUrl: string): boolean {
+  if (!photoUrl) return false;
+  if (/^data:/i.test(photoUrl)) {
+    const match = photoUrl.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
+    return !!match && /^image\/(png|jpe?g|webp|gif|bmp|avif)$/i.test(match[1]);
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(photoUrl);
+  } catch {
+    return false;
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+  if (!parsed.hostname) return false;
+
+  const host = parsed.hostname.toLowerCase().replace(/\.$/, '');
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/i.test(host)) return false;
+  if (host === 'localhost' || host.endsWith('.localhost')) return false;
+
+  // Require a DNS-style hostname with at least two labels (avoids single-label
+  // hosts that could resolve to internal networks / cloud metadata).
+  const labels = host.split('.');
+  if (labels.length < 2) return false;
+
+  // Reject bare IPv4 / bracketed IPv6 literal addresses (no DNS name resolution).
+  const literal = parsed.hostname.startsWith('[') ? parsed.hostname : host;
+  if (isIpv4(literal) || isIpv6(literal)) return false;
+
+  if (isIpv4(host)) return false; // IPv4 literal in DNS label form (e.g. "0x7f000001")
+  const normalized = normalizeIpv4(host);
+  if (normalized) {
+    return !isPrivateIpv4(normalized);
+  }
+
+  return true;
+}
+
+function isIpv4(s: string): boolean {
+  const parts = s.split('.');
+  if (parts.length !== 4) return false;
+  return parts.every(p => /^(0|[1-9]\d{0,2})$/.test(p) && Number(p) <= 255);
+}
+
+function isIpv6(s: string): boolean {
+  const c = s.trim();
+  return c.includes(':');
+}
+
+/** Resolves hex / octal / leading-zero IPv4 forms to dotted decimal, else null. */
+function normalizeIpv4(s: string): string | null {
+  const m = s.match(/^(.+)\.(.+)\.(.+)\.(.+)$/);
+  if (!m) return null;
+  const parts = m.slice(1).map(parseIpv4Part);
+  if (parts.some(n => n === null || n < 0 || n > 255)) return null;
+  return (parts as number[]).join('.');
+}
+
+/** Parses a dotted-octet component allowing decimal, hex (0x..) and octal (0..) forms. */
+function parseIpv4Part(s: string): number | null {
+  if (!/^\d+$/.test(s) && !/^0x[0-9a-f]+$/i.test(s)) return null;
+  const n = Number(s);
+  return Number.isInteger(n) ? n : null;
+}
+
+function isPrivateIpv4(ip: string): boolean {
+  const [a, b] = ip.split('.').map(Number);
+  return a === 10
+    || (a === 172 && b >= 16 && b <= 31)
+    || (a === 192 && b === 168)
+    || (a === 169 && b === 254)
+    || (a === 127)
+    || (a === 0)
+    || (a === 100 && b >= 64 && b <= 127);
+}
+
+/** Minimal dark-mode 401 page for browser navigation to a protected photo. */
+function renderUnauthorizedHtml(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unauthorized | 5S Tool Command Center</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #05080e;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: #0d1527;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      padding: 36px 28px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    }
+    .icon { font-size: 48px; margin-bottom: 16px; }
+    h1 { font-size: 20px; font-weight: 700; color: #f1f5f9; margin-bottom: 12px; }
+    p { font-size: 14px; color: #94a3b8; line-height: 1.6; margin-bottom: 16px; }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      border: 1px solid transparent;
+      margin-top: 20px;
+    }
+    .btn-primary { background: #00d2ff; color: #05080e; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🔒</div>
+    <h1>Unauthorized</h1>
+    <p>Access to this photo requires a valid access token.</p>
+    <div class="badge">Authentication Required</div>
+    <div><a href="/" class="btn btn-primary">Return to System</a></div>
+  </div>
+</body>
+</html>`;
 }
 
 /**
@@ -512,12 +708,13 @@ function renderNotFoundHtml(room: string, photoId: string): string {
 </html>`;
 }
 
-function renderViewerHtml(room: string, photoId: string, caption: string, timestamp: string, photoUrl: string): string {
+function renderViewerHtml(room: string, photoId: string, caption: string, timestamp: string, photoUrl: string, token: string): string {
   const safeRoom = escapeHtml(room);
   const safeId = escapeHtml(photoId);
   const safeCaption = escapeHtml(caption || 'Inspection / Tool Photo');
   const safeTime = escapeHtml(timestamp ? new Date(timestamp).toLocaleString() : 'N/A');
   const safePhotoUrl = escapeHtml(photoUrl);
+  const downloadLink = `/api/photo/${encodeURIComponent(room)}/${encodeURIComponent(photoId)}?download=1${token ? `&token=${encodeURIComponent(token)}` : ''}`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -644,7 +841,7 @@ function renderViewerHtml(room: string, photoId: string, caption: string, timest
         <strong>Notes:</strong> ${safeCaption}
       </div>
       <div class="actions">
-        <a href="/api/photo/${encodeURIComponent(room)}/${encodeURIComponent(photoId)}?download=1" class="btn btn-secondary">💾 Download</a>
+        <a href="${downloadLink}" class="btn btn-secondary">💾 Download</a>
         <a href="/" class="btn btn-primary">Return to System</a>
       </div>
     </div>
