@@ -52,7 +52,7 @@ export class HeaderComponent {
                 <div class="header-title-block">
                     <h1 class="header-title">
                         <span>${T('Dashboard')}</span>
-                        <sup id="appVersionTag" title="Click to force reload/update PWA" style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none; cursor:pointer;">v98</sup>
+                        <sup id="appVersionTag" title="Click to force reload/update PWA" style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none; cursor:pointer;">v100</sup>
                     </h1>
                     <div class="header-subtitle">${T('Tools Inventory')}</div>
                     <div class="brand-credit"><b>Igor Tolipov</b> <i>by Design</i></div>

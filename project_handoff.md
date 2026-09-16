@@ -2,15 +2,25 @@
 
 ## Overview
 - **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v97` (Version string managed centrally via `CONFIG.APP_VERSION`)
+- **Current Version:** `v100` (Version string managed centrally via `CONFIG.APP_VERSION`)
 - **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~12,000+ lines). 
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v97)
+## Recent Accomplishments (v49 – v100)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. IndexedDB Invariant Hardening, Security & Edge Case Fixes (v97 Release)
+### 0. Official REQ-003 Expense Request Restored (v100 Release)
+- **Regression:** the modular TypeScript migration replaced the official corporate REQ-003 export with an ExcelJS "from scratch" workbook, producing a wrong, non-corporate form (dark title banner, `#`/Item/Qty/Unit Cost columns) instead of the real `REQ_Expense_Request_<date>.xlsx`.
+- **Fix:** `src/procure/req003.ts` now patches the official template cell-by-cell, exactly like the legacy monolith implementation:
+  - `src/procure/req003Template.ts` — the corporate workbook (`Form` + `FSE Code` sheets) embedded as base64, **ZIP_STORED (method 0)**.
+  - `src/procure/zipStore.ts` — minimal STORED ZIP reader/writer + `patchCell`/`patchFormula` helpers (ported from the monolith). All other archive parts (styles, theme, `FSE Code` dropdown `G7:G22`, merged `A1:D4`, formulas, print setup) are copied byte-for-byte, so formatting is preserved 100%.
+  - Cell mapping: `F3` = requestor full name (resolved from personnel initials), `B<row>` = supplier URL, `C<row>` = item name, `D<row>` = qty, `E<row>` = unit cost, `F<row>` = `D*E` (formula + cached value), `H<row>` = reason, `F23` = `SUM(F7:F22)`. Rows 7..21 = 15 line items max (`REQ003_MAX_ITEMS`).
+  - Filename is `REQ_Expense_Request_<YYYY-MM-DD>.xlsx`.
+- **Template validity fix:** the previously embedded base64 template had three corrupt XML parts (`docProps/custom.xml` shifted by one byte, `xl/styles.xml` and `xl/theme/theme1.xml` truncated). The embedded template is now rebuilt from the clean `template.zip`, so the downloaded workbook is a valid OOXML file (Excel no longer warns about recovery).
+- **UI:** `OrderModal.exportExcel` enforces the 15-item limit and surfaces `REQ_LIMIT` / `REQ_FAILED` / `NO_ITEMS_EXPORT` via toasts.
+
+### 0.1. IndexedDB Invariant Hardening, Security & Edge Case Fixes (v97 Release)
 - **IndexedDB `onabort` Handlers (`AppDB`):** Added explicit `tx.onabort = () => reject(...)` handlers across all transaction operations (`put`, `delete`, `clear`, `setAll`, `saveAll`, `loadAll`), preventing promise hang on transaction abortion.
 - **Empty Database Seed Resurrection Fix (`Store.load`):** Fixed race/lifecycle condition where an empty database with initialized metadata/users would trigger demo data re-seeding. Added initialization check `isInitialized = !!(data.meta?.schemaVersion) || (Array.isArray(data.users) && data.users.length > 0)`.
 - **RBAC Enforcement on Registry & State Mutations:** Enforced strict `Auth.has('Administrator')` checks in `Store.removeWorkstation`, `Store.removeWorkpost`, `Store.rollback`, `addRegistryRbac`, and `removeRbacUser`.
@@ -292,7 +302,7 @@ An external "improvement patches" document (XSS / quota / salting / partial rend
   - `src/auth/`: RBAC access control with salted SHA-256 password hashing.
   - `src/operations/`: Granular domain logic for tool operations (`toolOps.ts`), purchase order line-item receiving (`orderOps.ts`), and 5S post audits (`auditOps.ts`).
   - `src/labels/`: Canvas/SVG QR generation via `qrcode` and precision Avery 5161/5163/5366 print layouts.
-  - `procure/`: Integrated procurement cart and native ExcelJS REQ-003 purchase requisition generator.
+  - `procure/`: Integrated procurement cart and official REQ-003 template patcher (`req003.ts` + `zipStore.ts` + base64 `req003Template.ts`).
   - `reports/`: Warehouse KPI engine, SVG 5S culture radar charts, and Excel export suite.
   - `ui/`: Decoupled stylesheets (`base.css`, `components.css`, `tron-theme.css`, `print.css`) and 19 specialized modal dialogs.
 

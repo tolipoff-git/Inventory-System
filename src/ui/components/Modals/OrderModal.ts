@@ -9,7 +9,7 @@ import { toast } from '../../../utils/dom';
 import { windowConfirm, windowPrompt } from '../../../utils/dialogCompat';
 import { receiveOrderItem, rejectOrderItem, receiveFullOrder, cancelOrder, addOrderComment } from '../../../operations/orderOps';
 import { ProcureManager } from '../../../procure/procure';
-import { exportReq003Workbook } from '../../../procure/req003';
+import { exportReq003Workbook, REQ003_MAX_ITEMS } from '../../../procure/req003';
 import { PurchaseOrder } from '../../../types/procurement';
 
 export class OrderModal {
@@ -527,16 +527,25 @@ export class OrderModal {
         const items = ProcureManager.getCart();
 
         if (!items.length) {
-            toast('Cart is empty. Add items first.', 'warning');
+            toast(T('NO_ITEMS_EXPORT'), 'warning');
+            return;
+        }
+        if (items.length > REQ003_MAX_ITEMS) {
+            toast(T('REQ_LIMIT'), 'warning');
             return;
         }
 
-        await exportReq003Workbook(items as any, {
-            ws,
-            wp: '',
-            initials,
-            date: new Date().toISOString().split('T')[0]
-        });
+        try {
+            await exportReq003Workbook(items as any, {
+                ws,
+                wp: '',
+                initials,
+                date: new Date().toISOString().split('T')[0]
+            });
+        } catch (e) {
+            console.error('Expense Request generation failed', e);
+            toast(T('REQ_FAILED'), 'danger');
+        }
     }
 
     private static async submitOrder(): Promise<void> {
