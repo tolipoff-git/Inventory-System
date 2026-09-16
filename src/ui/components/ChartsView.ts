@@ -8,6 +8,7 @@ import { CONFIG, S5_RUBRICS } from '../../config/constants';
 import { esc } from '../../utils/formatters';
 import { showTooltip, hideTooltip } from '../../utils/tooltip';
 import { get5SRubricExplanation } from '../../operations/auditOps';
+import { workstationAndPostOf } from '../../operations/toolOps';
 import { renderDonutSvg, renderBarSvg, renderRadarSvg, RadarPoint } from '../../reports/radarChart';
 
 export interface ChartsCallbacks {
@@ -118,6 +119,8 @@ export class ChartsViewComponent {
     }
 
     public update(): void {
+        // Work mode hides all analytics — skip the computation (monolith parity)
+        if (document.body.classList.contains('work-mode') || document.body.classList.contains('mode-work')) return;
         this.renderStatusChart();
         this.renderWsChart();
         this.renderCultureChart();
@@ -129,11 +132,13 @@ export class ChartsViewComponent {
         const counts: Record<string, number> = {
             Active: 0,
             Issued: 0,
+            Backup: 0,
             Maintenance: 0,
             Overdue: 0
         };
         active.forEach(t => {
             if (counts[t.status] !== undefined) counts[t.status]++;
+            else counts.Backup++;
         });
 
         renderDonutSvg('chart1', counts, (status) => {
@@ -147,10 +152,8 @@ export class ChartsViewComponent {
         Store.workstations.forEach(ws => { wsCounts[ws] = 0; });
 
         active.forEach(t => {
-            const ws = Store.workstationOf(t);
-            if (ws && wsCounts[ws] !== undefined) {
-                wsCounts[ws]++;
-            }
+            const ws = workstationAndPostOf(t).ws || 'Unknown';
+            wsCounts[ws] = (wsCounts[ws] || 0) + 1;
         });
 
         renderBarSvg('chart2', wsCounts, (ws) => {
@@ -235,7 +238,7 @@ export class ChartsViewComponent {
         const groups: Record<string, { ws: string; post: string; tools: any[] }> = {};
 
         active.forEach(t => {
-            const loc = Store.workstationAndPostOf(t);
+            const loc = workstationAndPostOf(t);
             const key = `${loc.ws} | ${loc.post}`;
             if (!groups[key]) groups[key] = { ws: loc.ws, post: loc.post, tools: [] };
             groups[key].tools.push(t);
@@ -296,7 +299,7 @@ export class ChartsViewComponent {
 
         const maintTools = Store.activeTools().filter(t => t.status === 'Maintenance');
         const maintCards = maintTools.map(t => {
-            const loc = Store.workstationAndPostOf(t);
+            const loc = workstationAndPostOf(t);
             const history = t.history || [];
             const reason = history.length ? history[history.length - 1] : T('Routine Service');
             const progs = (t as any).program || Store.wsProgram[loc.ws] || 'N/A';
@@ -325,7 +328,7 @@ export class ChartsViewComponent {
         const wearRows = consumables.map(t => {
             const wear = Store.wearOf(t);
             const color = wear > CONFIG.WEAR_RETIRE_PCT ? 'var(--danger)' : wear > CONFIG.WEAR_WARN_PCT ? 'var(--warning)' : 'var(--success)';
-            const loc = Store.workstationAndPostOf(t);
+            const loc = workstationAndPostOf(t);
             const progs = (t as any).program || Store.wsProgram[loc.ws] || 'N/A';
             const emp = t.assigneeId ? Store.getEmp(t.assigneeId) : null;
             const persona = emp ? emp.name : (t.assigneeId || 'Unassigned / Team');

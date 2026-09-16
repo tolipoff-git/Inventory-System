@@ -29,7 +29,7 @@ import { SopModal } from './components/Modals/SopModal';
 import { SystemMenuModal } from './components/Modals/SystemMenuModal';
 import { OpsMenuModal } from './components/Modals/OpsMenuModal';
 import { EmployeeProfileModal } from './components/Modals/EmployeeProfileModal';
-import { isPermanentTool, isConsumableTool } from '../operations/toolOps';
+import { isPermanentTool, isConsumableTool, workstationAndPostOf } from '../operations/toolOps';
 import { receiveFullOrder, cancelOrder, receiveOrderItem, rejectOrderItem } from '../operations/orderOps';
 import { daysUntil } from '../utils/formatters';
 import { toast } from '../utils/dom';
@@ -75,10 +75,19 @@ export class AppUI {
             if (this.isLightMode) {
                 document.documentElement.setAttribute('data-theme', 'light');
             }
-            this.isWorkMode = localStorage.getItem('inv_mode') === 'work';
-            if (this.isWorkMode) {
-                document.body.classList.add('work-mode');
+
+            // URL ?mode=work / ?mode=full wins over the saved preference
+            // (shop-floor tablet shortcut), then gets persisted.
+            const urlMode = new URLSearchParams(location.search).get('mode');
+            let work: boolean;
+            if (urlMode === 'work' || urlMode === 'full') {
+                work = urlMode === 'work';
+                try { localStorage.setItem('inv_mode', work ? 'work' : 'full'); } catch { /* ignore */ }
+            } else {
+                work = localStorage.getItem('inv_mode') === 'work';
             }
+            this.isWorkMode = work;
+            document.body.classList.toggle('work-mode', work);
         } catch (e) {
             // Fall back to defaults if preferences are unreadable
             console.error('[app:setupThemeAndMode] Failed to read theme/mode preferences:', e);
@@ -154,8 +163,17 @@ export class AppUI {
             mainContainer.appendChild(filterBarDiv);
         }
         this.filterBar = new FilterBarComponent(filterBarDiv, {
-            onSearch: () => this.filterAndRenderGrid(),
-            onStatusFilterChange: (status) => this.setFilter('status', status),
+            onSearch: () => {
+                // Like the monolith: a non-empty search jumps to the detailed
+                // grid, otherwise the results would render into the hidden grid.
+                const q = (document.querySelector<HTMLInputElement>('#globalSearch')?.value || '').trim();
+                if (q && this.filterBar && this.filterBar.getViewMode() !== 'grid') {
+                    this.filterBar.setViewMode('grid');
+                } else {
+                    this.filterAndRenderGrid();
+                }
+            },
+            onStatusFilterChange: (status) => status ? this.setFilter('status', status) : this.clearFilter(),
             onResetFilter: () => this.clearFilter(),
             onScanClick: () => ScannerModal.open((code) => this.handleScanResult(code)),
             onViewModeChange: (mode) => {
@@ -225,7 +243,14 @@ export class AppUI {
         if (currentFilter.type === 'status' && currentFilter.value) {
             tools = tools.filter(t => t.status === currentFilter.value);
         } else if (currentFilter.type === 'workstation' && currentFilter.value) {
-            tools = tools.filter(t => Store.workstationOf(t) === currentFilter.value);
+            tools = tools.filter(t => workstationAndPostOf(t).ws === currentFilter.value);
+        } else if (currentFilter.type === 'location' && currentFilter.value) {
+            tools = tools.filter(t => {
+                const loc = workstationAndPostOf(t);
+                const hasPost = loc.post && loc.post !== 'Unknown' && loc.post !== loc.ws;
+                const label = hasPost ? `${loc.ws} | ${loc.post}` : loc.ws;
+                return label === currentFilter.value || loc.ws === currentFilter.value;
+            });
         } else if (currentFilter.type === 'permanent') {
             tools = tools.filter(isPermanentTool);
         } else if (currentFilter.type === 'consumable') {
@@ -385,13 +410,20 @@ export class AppUI {
         this.isWorkMode = !this.isWorkMode;
         document.body.classList.toggle('work-mode', this.isWorkMode);
         try {
-            localStorage.setItem('inv_mode', this.isWorkMode ? 'work' : 'desk');
+            localStorage.setItem('inv_mode', this.isWorkMode ? 'work' : 'full');
         } catch (e) {
             console.error('[app:toggleWorkMode] Failed to persist work mode:', e);
             toast(T('PREF_SAVE_FAILED'), 'warning');
         }
+        this.paintModeBtn();
+        // Returning to the dashboard: redraw charts with fresh data
+        if (!this.isWorkMode && this.charts) this.charts.update();
+    }
+
+    /** Button shows the TARGET mode (like the monolith): Dashboard when in work mode. */
+    private paintModeBtn(): void {
         const btnText = document.getElementById('modeBtnText');
-        if (btnText) btnText.textContent = this.isWorkMode ? T('Desk Mode') : T('Work Mode');
+        if (btnText) btnText.textContent = this.isWorkMode ? T('Dashboard') : T('Work Mode');
     }
 
     private toggleTheme(): void {

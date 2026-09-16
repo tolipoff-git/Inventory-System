@@ -1,7 +1,7 @@
 import { ToolClass, ToolGroup } from '../types/inventory';
 import { UserRole } from '../types/personnel';
 
-export const APP_VERSION = 'v101';
+export const APP_VERSION = 'v103';
 export const BUILD_DATE = '2026-09-10';
 export const SCHEMA_VERSION = 4;
 export const CAL_WARNING_DAYS = 14;
