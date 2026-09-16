@@ -10,6 +10,8 @@ import { BatchRotationModal } from './BatchRotationModal';
 import { AuditLogModal } from './AuditLogModal';
 import { IntegrityModal } from './IntegrityModal';
 import { downloadText, toast } from '../../../utils/dom';
+import { fmtDate } from '../../../utils/formatters';
+import { windowConfirm } from '../../../utils/dialogCompat';
 import { Auth } from '../../../auth/authManager';
 
 export class SystemMenuModal {
@@ -68,6 +70,26 @@ export class SystemMenuModal {
             Auth.doAction('Administrator', () => IntegrityModal.open());
         });
 
+        modal.querySelector('#sysRollbackBtn')?.addEventListener('click', () => {
+            this.close();
+            Auth.doAction('Administrator', async () => {
+                const info = Store.rollbackInfo();
+                if (!info) {
+                    toast(T('NO_ROLLBACK'), 'warning');
+                    return;
+                }
+                const msg = T('ROLLBACK_CONFIRM')
+                    .replace('{reason}', info.reason)
+                    .replace('{ts}', fmtDate(info.ts));
+                if (!windowConfirm(msg)) return;
+                if (await Store.rollback()) {
+                    toast(T('ROLLBACK_DONE'), 'success');
+                } else {
+                    toast(T('ROLLBACK_FAILED'), 'danger');
+                }
+            });
+        });
+
         modal.querySelector('#sysBackupBtn')?.addEventListener('click', () => {
             this.close();
             Auth.doAction('Administrator', () => {
@@ -122,6 +144,7 @@ export class SystemMenuModal {
                     <button class="btn" id="sysArchiveBtn">${T('Decommissioned Assets Archive')}</button>
                     <button class="btn" id="sysAuditLogBtn">${T('System Audit Log')}</button>
                     <button class="btn" id="sysIntegrityBtn">🩺 ${T('Integrity Check')}</button>
+                    <button class="btn btn-warning" id="sysRollbackBtn">↩ ${T('Rollback Last Cascade')}</button>
                     <button class="btn" id="sysBackupBtn">💾 ${T('Export Backup (.json)')}</button>
                     <label class="btn" style="cursor:pointer; text-align:center; margin:0;">
                         <span>📥 ${T('Restore Backup (.json)')}</span>

@@ -17,9 +17,21 @@
 
 .label-type-a { width: 70mm; height: 36mm; }
 .label-type-b, .label-type-c { width: 100mm; height: 50mm; }
-/* Листовая раскладка (Avery): на экране ячейки размечены пунктиром для контроля
-   стартовой позиции; при печати пунктир снимается динамическим стилем */
-.sheet-cell { outline: 1px solid rgba(0,0,0,0.1); }
+/* Листовая раскладка этикеток (Avery): страница Letter 215.9×279.4 мм, каждая
+   ячейка позиционируется абсолютно по данным носителя
+   (cols/rows/top/left/pitchX/pitchY), чтобы попадать в вырубку. */
+.sheet-mode { display: block; }
+.sheet-page {
+    position: relative;
+    width: 215.9mm;
+    height: 279.4mm;
+    background: #ffffff;
+    margin: 0 auto;
+    overflow: hidden;
+}
+/* На экране ячейки размечены пунктиром для контроля стартовой позиции;
+   при печати пунктир снимается. */
+@media screen { .sheet-cell { outline: 1px solid rgba(0,0,0,0.12); } }
 @media print { .sheet-cell { outline: none !important; border: none !important; } }
 
 .label-details { font-size: 8px; line-height: 1.25; flex: 1; }

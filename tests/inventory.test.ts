@@ -97,3 +97,51 @@ describe('store quantity updates against real store logic', () => {
     expect(Store.getTool('CN-003')?.qty).toBe(4);
   });
 });
+
+describe('rollback last cascade (registry snapshot)', () => {
+  it('reports no snapshot before any cascade edit', () => {
+    expect(Store.rollbackInfo()).toBeNull();
+  });
+
+  it('restores programs/workstations/personnel/tools to the snapshot', async () => {
+    await freshStore();
+    Store.workstations = ['WS-A', 'WS-B'];
+    Store.programs = ['Prog-1'];
+    Store.wsProgram = { 'WS-A': 'Prog-1' };
+    Store.personnel = [{ id: 'EMP-1', name: 'Alice', role: 'Operator' }];
+    Store.tools = [seedTool({ id: 'TW-001' })];
+
+    // A cascade edit captures the snapshot before mutating.
+    Store.renameProgram('Prog-1', 'Prog-2');
+    expect(Store.programs).toEqual(['Prog-2']);
+    expect(Store.wsProgram['WS-A']).toBe('Prog-2');
+
+    const info = Store.rollbackInfo();
+    expect(info).not.toBeNull();
+    expect(info?.reason).toContain('rename program');
+
+    // Further drift after the snapshot must also be undone.
+    Store.programs.push('Prog-3');
+    Store.workstations.push('WS-C');
+
+    expect(await Store.rollback()).toBe(true);
+    expect(Store.programs).toEqual(['Prog-1']);
+    expect(Store.wsProgram['WS-A']).toBe('Prog-1');
+    expect(Store.workstations).toEqual(['WS-A', 'WS-B']);
+    expect(Store.personnel.map(p => p.id)).toEqual(['EMP-1']);
+    expect(Store.tools.map(t => t.id)).toEqual(['TW-001']);
+  });
+
+  it('refuses to apply a corrupt snapshot instead of wiping data', async () => {
+    await freshStore();
+    Store.tools = [seedTool({ id: 'TW-002' })];
+    Store.personnel = [{ id: 'EMP-2', name: 'Bob', role: 'Operator' }];
+
+    // Simulate a corrupt persisted snapshot (tools/personnel not arrays).
+    (Store as any)._rollbackSnap = { ts: '2026-01-01T00:00:00.000Z', reason: 'corrupt', tools: null, personnel: null };
+
+    expect(await Store.rollback()).toBe(false);
+    expect(Store.tools.map(t => t.id)).toEqual(['TW-002']);
+    expect(Store.personnel.map(p => p.id)).toEqual(['EMP-2']);
+  });
+});

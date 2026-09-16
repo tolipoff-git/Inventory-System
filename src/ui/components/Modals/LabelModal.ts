@@ -6,7 +6,7 @@ import { T } from '../../../i18n';
 import { Store } from '../../../storage/store';
 import { esc } from '../../../utils/formatters';
 import { generateQrDataUrl } from '../../../labels/qrGenerator';
-import { printLabelsHtml, printQueueLabels, LabelFormat } from '../../../labels/labelPrint';
+import { printLabelsHtml, printQueueLabels, STOCKS, LabelFormat } from '../../../labels/labelPrint';
 import { toast, printHtml } from '../../../utils/dom';
 
 export class LabelModal {
@@ -85,6 +85,11 @@ export class LabelModal {
                             <label>${T('Copies to Print:')}</label>
                             <input type="number" id="labelCopiesInput" class="form-control" value="1" min="1" max="100">
                         </div>
+                        <div class="form-group" style="text-align:left;" id="labelStartGroup">
+                            <label>${T('Start Position:')}</label>
+                            <input type="number" id="labelStartInput" class="form-control" value="1" min="1">
+                            <small style="color:var(--text-muted); font-size:0.75rem;">${T('START_POS_HINT')}</small>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -111,7 +116,7 @@ export class LabelModal {
         });
 
         overlay.querySelector('#modalPrintQueueBtn')?.addEventListener('click', async () => {
-            await printQueueLabels(this.selectedFormat);
+            await printQueueLabels(this.selectedFormat, { start: this.readStartPosition() });
             this.closeToolLabel();
         });
 
@@ -119,14 +124,30 @@ export class LabelModal {
         if (formatSelect) {
             formatSelect.addEventListener('change', async () => {
                 this.selectedFormat = formatSelect.value as LabelFormat;
+                this.updateStartPositionVisibility();
                 if (this.currentToolId) {
                     const tool = Store.getTool(this.currentToolId);
                     if (tool) await this.updatePreview(tool);
                 }
             });
         }
+        this.updateStartPositionVisibility();
 
         overlay.querySelector('#printModalExecuteBtn')?.addEventListener('click', () => this.executePrint());
+    }
+
+    /** The start-cell control only applies to die-cut sheet stock. */
+    private static updateStartPositionVisibility(): void {
+        const group = document.getElementById('labelStartGroup');
+        if (!group) return;
+        const stock = STOCKS[this.selectedFormat];
+        group.style.display = stock && stock.kind === 'sheet' ? '' : 'none';
+    }
+
+    private static readStartPosition(): number {
+        const el = document.getElementById('labelStartInput') as HTMLInputElement | null;
+        const n = parseInt(el?.value || '1', 10);
+        return Number.isFinite(n) && n > 0 ? n : 1;
     }
 
     private static updateQueueState(): void {
@@ -173,7 +194,7 @@ export class LabelModal {
         const copies = parseInt((document.getElementById('labelCopiesInput') as HTMLInputElement).value) || 1;
         const entities = Array.from({ length: copies }, () => ({ id: tool.id, type: 'tool' as const }));
 
-        await printLabelsHtml(entities, this.selectedFormat);
+        await printLabelsHtml(entities, this.selectedFormat, { start: this.readStartPosition() });
         toast(`${T('LABELS_PRINTED')} ${copies}`, 'success');
         this.closeToolLabel();
     }

@@ -2,15 +2,15 @@
 
 ## Overview
 - **Repository:** `/home/admin/git/Inventory-System`
-- **Current Version:** `v104` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
+- **Current Version:** `v105` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
 - **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith is preserved as `index.monolith.v97.html` for reference only and is **not** the active app.
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v104)
+## Recent Accomplishments (v49 – v105)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Deep Modular-Migration Audit & Repair (v104 Release)
+### 0. Deep Modular-Migration Audit & Repair (v104–v105 Releases)
 
 Full-codebase audit of the monolith → modular TS migration: every exported symbol was
 traced to its call sites (`rg`/`fd`), every `T()` key checked against both dictionaries,
@@ -77,15 +77,28 @@ override inside `body.print-zone-mode #printZone` (CSS variables cascade, so inl
 - Smaller: `ScannerModal.open()` no longer reuses a stale callback; removed dead
 `LabelModal.openQueuePrint()` and the dead `receive-order-item`/`reject-order-item` switch arms.
 
-**Known regressions — NOT fixed (need a product decision):**
-- **Avery sheet layout is gone.** `printLabelsHtml()` concatenates cells into `.sheet-mode`,
-which has **no CSS rule anywhere**, and `STOCKS`' `cols/rows/top/left/pitchX/pitchY` are dead
-fields. Printed sheets will not align to die-cut stock. Also lost: built-in Code 39 barcode
-(QR is used on Brady roll stock where it is impractical), `tool.barcode` is ignored, and
-`exportBradyCSV` has no equivalent.
-- **`rollbackLastCascade` is gone.** `Store.snapshot()` still runs on program/ws edits and
-`_rollbackSnap` is persisted, but there is no `Store.rollback()` and no UI. The i18n keys
-(`NO_ROLLBACK`, `ROLLBACK_CONFIRM`, `ROLLBACK_DONE`, `Rollback Last Cascade`) already exist.
+**Fixed in the follow-up pass (v105):**
+- **Avery sheet layout restored.** `printLabelsHtml()` concatenated cells into `.sheet-mode`,
+which had **no CSS rule anywhere**, so nothing lined up with the die-cut stock. The layout is
+now built by a pure, unit-tested `buildLabelSheetHtml()`: Letter pages (215.9×279.4 mm) with
+each cell absolutely positioned from the stock's `left/top/pitchX/pitchY`, `page-break-after`
+between pages, and roll/single stock emitting one stock-sized page per label. Added the
+matching `.sheet-mode`/`.sheet-page`/`.sheet-cell` CSS (screen-only dashed guides).
+- **Start-position control restored** (`ltmStart` in the monolith): the print modal now takes
+a “Start Position” for sheet stock, and `printLabelsHtml`/`printQueueLabels` honour
+`{ start }`, so a part-used Avery sheet can be fed back through the printer. `start` applies
+only to the first page.
+- **`rollbackLastCascade` restored.** `Store.snapshot()` was still being taken on
+program/workstation edits and persisted, but nothing could consume it. Added
+`Store.rollbackInfo()` and `Store.rollback()` (ported from the monolith, including the
+“refuse to apply a corrupt snapshot” guard and the `ROLLBACK` audit entry) plus the
+“Rollback Last Cascade” button in the system menu. RBAC stays in the UI layer
+(`Auth.doAction('Administrator', …)`) because `Store` must not import `Auth` (cycle).
+Covered by 3 new tests in `tests/inventory.test.ts`.
+
+**Known regressions — still NOT fixed (need a product decision):**
+- **Code 39 barcode and `tool.barcode` are still missing.** QR is used on Brady roll stock
+where the monolith deliberately emitted Code 39; `exportBradyCSV` also has no equivalent.
 - **`BatchRotationModal` replaced the monolith's semantics.** It now moves *all* tools from
 WS A to WS B and never touches `status`/`assigneeId` and never calls `Store.log` — the
 monolith rotated *problem* tools (overdue/maintenance/wear/cal-due) into Maintenance.
