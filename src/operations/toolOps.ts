@@ -26,8 +26,8 @@ export function workstationAndPostOf(tool: Tool): { ws: string; post: string } {
     const emp = Store.getEmp(tool.assigneeId);
     if (emp) {
       return {
-        ws: (emp as any).workstation || (emp as any).defaultWs || 'Unassigned',
-        post: (emp as any).post || (emp as any).defaultPost || '',
+        ws: emp.ws || 'Unassigned',
+        post: emp.post || '',
       };
     }
   }
@@ -156,6 +156,12 @@ export async function returnTool(
     isGood = conditionOrScore >= 4;
   }
 
+  // Normalize the numeric 1-5 condition score into the same vocabulary the
+  // history scanners expect (`careOf` counts Good / Needs Maintenance / Damaged).
+  const conditionLabel: string = typeof conditionOrScore === 'number'
+    ? (conditionOrScore >= 4 ? 'Good' : conditionOrScore === 3 ? 'Needs Maintenance' : 'Damaged')
+    : conditionOrScore;
+
   if (isGood) {
     tool.status = 'Active';
   } else {
@@ -175,9 +181,9 @@ export async function returnTool(
   }
 
   Store.touch(tool);
-  Store.toolEvent(tool, `Returned — ${conditionOrScore} (Signed: ${initialsOrNotes})`);
-  if (emp) Store.empEvent(emp, `Returned ${tool.id} — ${conditionOrScore}`);
-  Store.log('TOOL_RETURN', `${tool.id} (${conditionOrScore})`);
+  Store.toolEvent(tool, `Returned — ${conditionLabel} (Signed: ${initialsOrNotes})`);
+  if (emp) Store.empEvent(emp, `Returned ${tool.id} — ${conditionLabel}`);
+  Store.log('TOOL_RETURN', `${tool.id} (${conditionLabel})`);
 
   await Store.save();
   return true;

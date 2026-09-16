@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
-import { hashSecret, verifySecret, sha256Hex } from '../src/utils/crypto';
+import { verifySecret, sha256Hex } from '../src/utils/crypto';
 import { Store } from '../src/storage/store';
 import { Auth } from '../src/auth/authManager';
 import { AppDB } from '../src/storage/indexedDb';

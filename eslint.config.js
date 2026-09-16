@@ -13,6 +13,14 @@ export default [
     files: ['src/**/*.ts'],
   })),
 
+  // Project-level TypeScript outside `src` — the Vite config and the Vitest
+  // suites. Without this block ESLint reports "File ignored because no matching
+  // configuration was supplied" for every one of them (editor warnings).
+  ...tseslint.configs.recommended.map(cfg => ({
+    ...cfg,
+    files: ['*.ts', 'tests/**/*.ts'],
+  })),
+
   {
     files: ['src/**/*.ts'],
     rules: {
@@ -25,7 +33,7 @@ export default [
   // Pre-existing `any` usage in legacy modules — tracked; tighten later with a
   // deliberate type-annotation pass instead of a lint-blocking refactor.
   {
-    files: ['src/*/**/*.ts', 'src/*.ts'],
+    files: ['src/*/**/*.ts', 'src/*.ts', '*.ts', 'tests/**/*.ts'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
     },

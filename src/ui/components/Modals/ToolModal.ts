@@ -82,6 +82,10 @@ export class ToolModal {
                             <label>${T('Specification')}:</label>
                             <input type="text" id="addToolSpec" class="form-control" placeholder="e.g. 20-100 Nm, ±4%">
                         </div>
+                        <div class="form-group">
+                            <label>${T('Program')}:</label>
+                            <select id="addToolProgram" class="form-control"></select>
+                        </div>
                     </div>
 
                     <div class="form-row">
@@ -191,6 +195,10 @@ export class ToolModal {
                             <label>${T('Specification')}:</label>
                             <input type="text" id="editToolSpec" class="form-control">
                         </div>
+                        <div class="form-group">
+                            <label>${T('Program')}:</label>
+                            <select id="editToolProgram" class="form-control"></select>
+                        </div>
                     </div>
 
                     <div class="form-row">
@@ -273,6 +281,14 @@ export class ToolModal {
         const rackSelect = document.getElementById(`${prefix}Rack`) as HTMLSelectElement;
         const shelfSelect = document.getElementById(`${prefix}Shelf`) as HTMLSelectElement;
         const binSelect = document.getElementById(`${prefix}Bin`) as HTMLSelectElement;
+        const progSelect = document.getElementById(`${prefix}Program`) as HTMLSelectElement;
+
+        if (progSelect) {
+            // Per-tool program (v94). Read by ChartsView/DetailModal; previously had
+            // no writer anywhere, so the field was permanently unsettable.
+            progSelect.innerHTML = '<option value="">- Select -</option>' +
+                Store.programs.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+        }
 
         if (wsSelect) {
             wsSelect.innerHTML = Store.workstations.map(ws => `<option value="${esc(ws)}">${esc(ws)}</option>`).join('');
@@ -338,6 +354,7 @@ export class ToolModal {
         (document.getElementById('editToolName') as HTMLInputElement).value = tool.name;
         (document.getElementById('editToolCategory') as HTMLInputElement).value = tool.category || '';
         (document.getElementById('editToolSpec') as HTMLInputElement).value = tool.spec || '';
+        (document.getElementById('editToolProgram') as HTMLSelectElement).value = tool.program || '';
         (document.getElementById('editToolSn') as HTMLInputElement).value = tool.sn || '';
         (document.getElementById('editToolArticle') as HTMLInputElement).value = tool.article || '';
         (document.getElementById('editToolQty') as HTMLInputElement).value = String(tool.qty || 1);
@@ -367,6 +384,7 @@ export class ToolModal {
         const name = (document.getElementById('addToolName') as HTMLInputElement).value.trim();
         const category = (document.getElementById('addToolCategory') as HTMLInputElement).value.trim() || 'General';
         const spec = (document.getElementById('addToolSpec') as HTMLInputElement).value.trim() || 'N/A';
+        const program = (document.getElementById('addToolProgram') as HTMLSelectElement).value;
         const sn = (document.getElementById('addToolSn') as HTMLInputElement).value.trim();
         const article = (document.getElementById('addToolArticle') as HTMLInputElement).value.trim();
         const qty = parseInt((document.getElementById('addToolQty') as HTMLInputElement).value) || 1;
@@ -380,12 +398,18 @@ export class ToolModal {
         const bin = (document.getElementById('addToolBin') as HTMLSelectElement).value;
 
         if (!id || !name) {
-            toast('Tool ID and Name are required.', 'danger');
+            toast(T('TOOL_ID_NAME_REQUIRED'), 'danger');
+            return;
+        }
+
+        // Monolith parity: enforce the CLASS-NNN id shape (e.g. TW-006).
+        if (!/^[A-Z]{2,3}-\d{3,5}$/.test(id)) {
+            toast(T('ID_BAD_FORMAT'), 'danger');
             return;
         }
 
         if (Store.getTool(id)) {
-            toast(`Tool with ID ${id} already exists!`, 'danger');
+            toast(`${T('TOOL_EXISTS')} ${id}`, 'danger');
             return;
         }
 
@@ -395,6 +419,7 @@ export class ToolModal {
             name,
             category,
             spec,
+            program: program || undefined,
             sn: sn || `SN-${id}-${Date.now().toString(36).toUpperCase()}`,
             article,
             qty,
@@ -414,7 +439,7 @@ export class ToolModal {
         };
 
         await Store.saveTool(newTool);
-        toast(`Tool ${id} successfully added!`, 'success');
+        toast(`${T('TOOL_ADDED')} ${id}`, 'success');
         this.closeAdd();
     }
 
@@ -426,6 +451,7 @@ export class ToolModal {
         const name = (document.getElementById('editToolName') as HTMLInputElement).value.trim();
         const category = (document.getElementById('editToolCategory') as HTMLInputElement).value.trim() || 'General';
         const spec = (document.getElementById('editToolSpec') as HTMLInputElement).value.trim() || 'N/A';
+        const program = (document.getElementById('editToolProgram') as HTMLSelectElement).value;
         const sn = (document.getElementById('editToolSn') as HTMLInputElement).value.trim();
         const article = (document.getElementById('editToolArticle') as HTMLInputElement).value.trim();
         const qty = parseInt((document.getElementById('editToolQty') as HTMLInputElement).value) || 1;
@@ -439,13 +465,14 @@ export class ToolModal {
         const bin = (document.getElementById('editToolBin') as HTMLSelectElement).value;
 
         if (!name) {
-            toast('Tool Name is required.', 'danger');
+            toast(T('TOOL_NAME_REQUIRED'), 'danger');
             return;
         }
 
         tool.name = name;
         tool.category = category;
         tool.spec = spec;
+        tool.program = program || undefined;
         tool.sn = sn || tool.sn;
         tool.article = article;
         tool.qty = qty;
@@ -463,7 +490,7 @@ export class ToolModal {
         tool.history.push(`${nowISO().split('T')[0]} | Tool specs & location updated by admin`);
 
         await Store.saveTool(tool);
-        toast(`Tool ${tool.id} updated!`, 'success');
+        toast(`${T('TOOL_UPDATED')} ${tool.id}`, 'success');
         this.closeEdit();
     }
 }

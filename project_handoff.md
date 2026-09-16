@@ -1,14 +1,110 @@
 # Project Handoff: 5S Tool Command Center v3
 
 ## Overview
-- **Repository:** `/home/admin/Documents/Inventory-System`
-- **Current Version:** `v100` (Version string managed centrally via `CONFIG.APP_VERSION`)
-- **Architecture:** Single-file Offline-First PWA (`index.html` monolith ~12,000+ lines). 
+- **Repository:** `/home/admin/git/Inventory-System`
+- **Current Version:** `v104` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
+- **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith is preserved as `index.monolith.v97.html` for reference only and is **not** the active app.
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v103)
+## Recent Accomplishments (v49 – v104)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
+
+### 0. Deep Modular-Migration Audit & Repair (v104 Release)
+
+Full-codebase audit of the monolith → modular TS migration: every exported symbol was
+traced to its call sites (`rg`/`fd`), every `T()` key checked against both dictionaries,
+and every `data-action` emitter matched to its handler. Findings below are split into
+**fixed** and **known-but-deferred** (needs a product decision, not a mechanical fix).
+
+**Fixed in this pass:**
+- **i18n was ~30% incomplete.** 105 `T()` keys used in code were absent from *both*
+dictionaries, so `T()` fell back to the key and RU mode rendered English literals.
+Added all of them (EN + RU); dictionaries are now 600/600 keys with 0 missing and 0
+duplicates. Note: the old AGENTS.md parity check (equal key counts) could not catch this.
+- **Language button lied about the active language.** `Header.render()` hardcoded
+`RU | ENG` and `☀️ Light`, and `applyLanguage()` was only ever called from
+`setLanguage()` — never at boot. The button now derives both labels from real state
+(`getLanguage()`, `data-theme`) and `App.init()` calls `applyLanguage()` before first paint.
+- **Version drift.** `Header` hardcoded `v103`; `DetailModal` read `window.CONFIG`
+(never assigned) and printed `v98.0.0`; `vite.config.ts` hardcoded `appVersion = 'v98'`
+so the SW cache stamp was stuck behind the UI. All now derive from `CONFIG.APP_VERSION`,
+and `vite.config.ts` reads it from `src/config/constants.ts` (same source as `build.sh`).
+- **Sync: the SSE live relay never transmitted.** `broadcastPing()` had zero callers, so
+peers only ever learned about changes via the 15s poll. Now called after a successful push.
+- **Sync: 5S audits never synced.** `_buildLocalPayload()` pushed `settings.audits5s`, but
+`mergeSettings()` did not merge it and `triggerPull()` did not pass it to `applyLoadedData()`.
+Both fixed (union by id, newest-first).
+- **Sync: pull→push echo loop.** `triggerPull()` → `Store.save()` → `notify()` → auto-push,
+which with the new ping would ping-pong between devices. Added an `_applyingRemote` guard.
+- **Order status casing mismatch.** `orderOps` writes `'Received'/'Cancelled'/'Partial'`,
+the UI compared `'received'/'cancelled'/'open'` — so received POs kept an OPEN badge, kept
+showing “Receive All / Cancel Entire Order”, and the hub's Received/Cancelled counters were
+always 0. Added `orderStatusKey()` and routed all readers through it; `submitOrder` now
+writes `'Submitted'`.
+- **Receiving did not replenish stock.** `OrderModal` called `receiveOrderItem(id, itemId, 1)`
+with no target tool, so the `targetToolId` branch never ran — contradicting the shipped FAQ.
+Now prompts for qty + optional target Tool ID; `receiveFullOrder` passes `item.toolId`.
+- **`workstationAndPostOf()` read fields that do not exist** (`emp.workstation`/`emp.defaultWs`;
+`Employee` has `ws`/`post`), so assigned tools always resolved to `Unassigned`. Fixed, plus
+`reportExports` personnel sheet now reads `p.ws`.
+- **`careOf()` scoring was dead.** It counts `Returned … — Good/Needs Maintenance/Damaged`,
+but `returnTool()` wrote the raw numeric score. `returnTool` now writes the label (score kept).
+- **Audit log lost `role` and misattributed entries.** `Store.log()` never set `role` and
+defaulted `user` to `'operator'`. Added `role` to `AuditLogEntry`, a `Store.actor` published
+by `AuthManager` (single setter funnel), and `Store.log()` now defaults to the real actor.
+- **5S certificate PDF exported the OLDEST audit.** `Store.audits5s` is newest-first
+(`unshift`), but `AuditModal` did `[...audits].reverse()[0]`. Now `audits[0]`.
+- **XLSX export failed silently.** No `try/catch` anywhere in `reportExports`; an ExcelJS/quota
+error was an unhandled rejection. Wrapped with a CSV fallback + toast (the monolith's
+`XLSX_FAILED_CSV` behaviour; the i18n strings had survived the migration unused).
+- **Location labels were silently dropped from the print queue.** `printQueueLabels()`
+resolved every queued id through `Store.getTool()`, but location labels are queued as
+`LOC:…` ids. Now handled via `LabelEntity` and the (previously unreachable) location branch
+of `renderLabelCell`.
+- **Tool “Program” field (v94) was unsettable.** `Tool.program` is read by `ChartsView` and
+`DetailModal` but had **no writer anywhere** in `src/`. Restored the dropdown in add/edit.
+Also restored the monolith's `CLASS-NNN` id validation and i18n'd the form toasts.
+- **Double action dispatch.** `ToolGrid.bindDelegation()` and `DetailModal.populate()` both
+bound `data-action` handlers *and* let the click bubble to the document-level delegation in
+`AppUI`, so actions ran twice. Removed the duplicate paths.
+- **Procurement hub PO rows were not clickable** (`order-detail` handler existed with no
+emitter). Restored.
+- **5S report printed near-white on white.** The report uses inline `color:var(--text-main)`
+(dark theme), which beat `printHtml`'s `#printZone { color:#111 }`. Added a theme-token
+override inside `body.print-zone-mode #printZone` (CSS variables cascade, so inline
+`var()` references resolve to print-safe values).
+- Smaller: `ScannerModal.open()` no longer reuses a stale callback; removed dead
+`LabelModal.openQueuePrint()` and the dead `receive-order-item`/`reject-order-item` switch arms.
+
+**Known regressions — NOT fixed (need a product decision):**
+- **Avery sheet layout is gone.** `printLabelsHtml()` concatenates cells into `.sheet-mode`,
+which has **no CSS rule anywhere**, and `STOCKS`' `cols/rows/top/left/pitchX/pitchY` are dead
+fields. Printed sheets will not align to die-cut stock. Also lost: built-in Code 39 barcode
+(QR is used on Brady roll stock where it is impractical), `tool.barcode` is ignored, and
+`exportBradyCSV` has no equivalent.
+- **`rollbackLastCascade` is gone.** `Store.snapshot()` still runs on program/ws edits and
+`_rollbackSnap` is persisted, but there is no `Store.rollback()` and no UI. The i18n keys
+(`NO_ROLLBACK`, `ROLLBACK_CONFIRM`, `ROLLBACK_DONE`, `Rollback Last Cascade`) already exist.
+- **`BatchRotationModal` replaced the monolith's semantics.** It now moves *all* tools from
+WS A to WS B and never touches `status`/`assigneeId` and never calls `Store.log` — the
+monolith rotated *problem* tools (overdue/maintenance/wear/cal-due) into Maintenance.
+- **`RetireModal` hardcodes wear to 100**, captures no initials/photo, and `decommissionTool()`
+never persists `retiredAt/retiredBy/retireReason/retireWear`.
+- **`RegistryModal` lost “add workpost”** (nothing writes `Store.workposts` outside seed/sync)
+and the move-reg / move-ws / print-loc actions. `openRegEdit` builds a “Target Zone” group
+that is then always hidden.
+- **5S report lost three sections** (decommissioning stats, procurement recommendations +
+detail table, role-addressed Kaizen recommendations — replaced by 4 hardcoded English strings).
+The archive modal lost its stats counters and retire-detail columns.
+- **Excel export is English-only**; the monolith was fully bilingual (`isRu`).
+- **Unwired APIs** (newly authored, no UI — decide wire-or-delete): `calculateKPIs()`
+(`MetricsBar` computes inline), `recordToolAudit()`, `submitKaizen()`, `adjustConsumableQty()`,
+`rbac.canCheckout/canManageCrib/canAdmin` (dead — `Auth.has()` is used instead),
+`SyncModal.renderSyncModalHtml/initSyncModalLogic`, `reportExports.print5sAuditCertificate`.
+- **`ToolGrid` `receive-order`/`cancel-order` branch is unreachable** — nothing sets
+`status === 'Pending Delivery'` any more (orders live in `procurementLog`).
+- **`package.json` version diverged from `CONFIG.APP_VERSION`.** AGENTS.md declares package.json the single source, but `build.sh` read `constants.ts` and `vite.config.ts` hardcoded `'v98'`. **Resolved in v104:** `package.json` is now the only source — Vite injects it as `__APP_VERSION__`, `constants.ts` reads that, and `build.sh` parses package.json. Verified: `sw.js`, `dist/sw.js` and the bundle all report `v104`.
 
 ### 0. Dashboard Fixes: Workstation Chart, Search & Work Mode (v103 Release)
 - **Workstation chart was dead:** `ChartsView.renderWsChart()` initialised counts only from `Store.workstations` and then did `if (wsCounts[ws] !== undefined) wsCounts[ws]++` — so every tool whose workstation was **not** pre-registered (e.g. seed locations `Shadow Board`, `Tool Crib`, `USS / Center Conveyor`, `Calibration Lab`) was silently dropped. Result: all bars stayed at 0.

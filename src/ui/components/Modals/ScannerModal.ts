@@ -16,7 +16,9 @@ export class ScannerModal {
     private static isTorchOn = false;
 
     public static open(callback?: ScanCallback): void {
-        if (callback) this.onScanCallback = callback;
+        // Always reset: a stale callback from a previous caller (e.g. the filter
+        // bar) must not be reused when the scanner is opened without one.
+        this.onScanCallback = callback ?? null;
 
         let modal = document.getElementById(this.modalId);
         if (!modal) {

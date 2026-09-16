@@ -33,6 +33,9 @@ class StoreManager {
   public audits5s: Audit5S[] = [];
   public meta: Record<string, any> = { schemaVersion: CONFIG.SCHEMA_VERSION };
 
+  /** Current actor published by AuthManager; used to attribute audit-log entries. */
+  public actor: { username: string; role: string } = { username: 'operator', role: 'Operator' };
+
   constructor() {
     if (this._dbChannel) {
       this._dbChannel.onmessage = (event) => {
@@ -145,13 +148,15 @@ class StoreManager {
     this.notify();
   }
 
-  public log(action: string, details: string = '', user: string = 'operator'): void {
+  public log(action: string, details: string = '', user?: string, role?: string): void {
+    const actor = this.actor || { username: 'operator', role: 'Operator' };
     this.auditLog.unshift({
       id: 'aud_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
       ts: nowISO(),
       action,
       details: String(details),
-      user,
+      user: user || actor.username,
+      role: role || actor.role,
     });
     if (this.auditLog.length > CONFIG.AUDIT_LOG_LIMIT) {
       this.auditLog = this.auditLog.slice(0, CONFIG.AUDIT_LOG_LIMIT);

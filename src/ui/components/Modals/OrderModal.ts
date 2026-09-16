@@ -7,7 +7,7 @@ import { Store } from '../../../storage/store';
 import { esc, fmtDate } from '../../../utils/formatters';
 import { toast } from '../../../utils/dom';
 import { windowConfirm, windowPrompt } from '../../../utils/dialogCompat';
-import { receiveOrderItem, rejectOrderItem, receiveFullOrder, cancelOrder, addOrderComment } from '../../../operations/orderOps';
+import { receiveOrderItem, rejectOrderItem, receiveFullOrder, cancelOrder, addOrderComment, orderStatusKey } from '../../../operations/orderOps';
 import { ProcureManager } from '../../../procure/procure';
 import { exportReq003Workbook, REQ003_MAX_ITEMS } from '../../../procure/req003';
 import { PurchaseOrder } from '../../../types/procurement';
@@ -111,9 +111,10 @@ export class OrderModal {
         }
 
         const getStatusBadge = (st: string) => {
-            if (st === 'received') return `<span style="background:var(--success); color:#000; padding:2px 8px; border-radius:4px; font-weight:bold;">RECEIVED</span>`;
-            if (st === 'cancelled') return `<span style="background:var(--danger); color:#fff; padding:2px 8px; border-radius:4px; font-weight:bold;">CANCELLED</span>`;
-            if (st === 'partial') return `<span style="background:var(--warning); color:#000; padding:2px 8px; border-radius:4px; font-weight:bold;">PARTIAL</span>`;
+            const key = orderStatusKey(st);
+            if (key === 'received') return `<span style="background:var(--success); color:#000; padding:2px 8px; border-radius:4px; font-weight:bold;">RECEIVED</span>`;
+            if (key === 'cancelled') return `<span style="background:var(--danger); color:#fff; padding:2px 8px; border-radius:4px; font-weight:bold;">CANCELLED</span>`;
+            if (key === 'partial') return `<span style="background:var(--warning); color:#000; padding:2px 8px; border-radius:4px; font-weight:bold;">PARTIAL</span>`;
             return `<span style="background:var(--primary); color:#000; padding:2px 8px; border-radius:4px; font-weight:bold;">OPEN</span>`;
         };
 
@@ -195,8 +196,8 @@ export class OrderModal {
             name: order.name,
             qty: order.qty || 1,
             unitCost: order.cost || 0,
-            receivedQty: order.status === 'received' ? order.qty || 1 : 0,
-            status: order.status === 'received' ? 'received' : 'pending'
+            receivedQty: orderStatusKey(order.status) === 'received' ? order.qty || 1 : 0,
+            status: orderStatusKey(order.status) === 'received' ? 'Received' : 'Pending'
         }];
 
         const itemRows = items.map((item, idx) => {
@@ -257,7 +258,7 @@ export class OrderModal {
                 </table>
             </div>
 
-            ${order.status !== 'received' ? `
+            ${orderStatusKey(order.status) !== 'received' ? `
                 <div style="display:flex; gap:10px; margin-bottom:15px;">
                     <button class="btn btn-success" id="receiveAllOrderBtn">${T('Receive All Remaining Items')}</button>
                     <button class="btn btn-danger" id="cancelOrderBtn">${T('Cancel Entire Order')}</button>
@@ -277,8 +278,16 @@ export class OrderModal {
         body.querySelectorAll('[data-action="recv-item"]').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const itemId = (e.currentTarget as HTMLElement).dataset.itemId!;
-                await receiveOrderItem(order.orderId, itemId, 1);
-                toast('Item received into inventory!', 'success');
+                const item = (order.items || []).find(i => i.id === itemId);
+                const remaining = item ? Math.max(1, (item.qty || 1) - (item.receivedQty || 0)) : 1;
+
+                const qtyRaw = windowPrompt(T('RECV_QTY_PROMPT'), String(remaining));
+                const qty = Math.max(1, parseInt(qtyRaw, 10) || remaining);
+                const targetRaw = windowPrompt(T('RECV_TARGET_PROMPT'), item?.toolId || '');
+                const targetToolId = (targetRaw || '').trim() || undefined;
+
+                const ok = await receiveOrderItem(order.orderId, itemId, qty, targetToolId);
+                toast(ok ? T('ITEM_RECEIVED') : T('RECV_FAILED'), ok ? 'success' : 'warning');
                 const updated = Store.procurementLog.find(p => p.orderId === order.orderId);
                 if (updated) this.renderOrderDetail(updated);
             });
@@ -287,10 +296,10 @@ export class OrderModal {
         body.querySelectorAll('[data-action="reject-item"]').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const itemId = (e.currentTarget as HTMLElement).dataset.itemId!;
-                const reason = windowPrompt('Rejection reason:');
+                const reason = windowPrompt(T('Rejection reason:'));
                 if (reason) {
                     await rejectOrderItem(order.orderId, itemId, reason);
-                    toast('Item rejected.', 'warning');
+                    toast(T('ITEM_REJECTED'), 'warning');
                     const updated = Store.procurementLog.find(p => p.orderId === order.orderId);
                     if (updated) this.renderOrderDetail(updated);
                 }
@@ -581,7 +590,7 @@ export class OrderModal {
                 status: 'pending'
             })),
             total: ProcureManager.getGrandTotal(),
-            status: 'open',
+            status: 'Submitted',
             createdAt: new Date().toISOString()
         };
 

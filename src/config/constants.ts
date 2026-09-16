@@ -1,7 +1,12 @@
 import { ToolClass, ToolGroup } from '../types/inventory';
 import { UserRole } from '../types/personnel';
 
-export const APP_VERSION = 'v103';
+// Injected by Vite from `package.json` (see `vite.config.ts` `define`).
+// Declared here so `tsc` is happy; the `typeof` guard keeps this safe when the
+// constant is not substituted (e.g. a bare `tsc`/node run).
+declare const __APP_VERSION__: string | undefined;
+
+export const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'v0';
 export const BUILD_DATE = '2026-09-10';
 export const SCHEMA_VERSION = 4;
 export const CAL_WARNING_DAYS = 14;

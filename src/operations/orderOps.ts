@@ -3,6 +3,22 @@ import { Tool } from '../types/inventory';
 import { Store } from '../storage/store';
 import { nowISO } from '../utils/formatters';
 
+/**
+ * Canonical, case-insensitive view of a purchase-order status.
+ *
+ * Writers are inconsistent by history: `orderOps` stores capitalised values
+ * ('Received', 'Cancelled', 'Partial', 'Ordered', 'Submitted') while older UI
+ * code wrote lowercase ('open', 'received'). UI branching must therefore never
+ * compare raw status strings.
+ */
+export function orderStatusKey(status?: string): 'open' | 'partial' | 'received' | 'cancelled' {
+  const s = String(status || '').toLowerCase();
+  if (s === 'received') return 'received';
+  if (s === 'cancelled') return 'cancelled';
+  if (s === 'partial') return 'partial';
+  return 'open';
+}
+
 export function normalizeOrderItems(order: PurchaseOrder): void {
   if (!Array.isArray(order.items)) {
     order.items = [];
@@ -176,7 +192,8 @@ export async function receiveFullOrder(orderId: string): Promise<boolean> {
 
   for (const item of items) {
     if (item.status !== 'Received' && item.status !== 'Cancelled') {
-      await receiveOrderItem(orderId, item.id, item.qty - (item.receivedQty || 0));
+      // Pass the item's linked tool id (when known) so receiving replenishes stock.
+      await receiveOrderItem(orderId, item.id, item.qty - (item.receivedQty || 0), item.toolId);
     }
   }
 

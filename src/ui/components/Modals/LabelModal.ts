@@ -53,10 +53,6 @@ export class LabelModal {
         if (modal) modal.classList.remove('active');
     }
 
-    public static async openQueuePrint(): Promise<void> {
-        await printQueueLabels(this.selectedFormat);
-    }
-
     private static createPrintModalDOM(): void {
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
@@ -175,10 +171,10 @@ export class LabelModal {
         if (!tool) return;
 
         const copies = parseInt((document.getElementById('labelCopiesInput') as HTMLInputElement).value) || 1;
-        const toolsToPrint = Array(copies).fill(tool);
+        const entities = Array.from({ length: copies }, () => ({ id: tool.id, type: 'tool' as const }));
 
-        await printLabelsHtml(toolsToPrint, this.selectedFormat);
-        toast(`Labels sent to print spooler (${copies} copies).`, 'success');
+        await printLabelsHtml(entities, this.selectedFormat);
+        toast(`${T('LABELS_PRINTED')} ${copies}`, 'success');
         this.closeToolLabel();
     }
 

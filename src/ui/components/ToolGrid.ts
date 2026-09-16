@@ -6,6 +6,7 @@ import { T } from '../../i18n';
 import { Store } from '../../storage/store';
 import { CONFIG } from '../../config/constants';
 import { esc, daysUntil } from '../../utils/formatters';
+import { orderStatusKey } from '../../operations/orderOps';
 import { Tool } from '../../types/inventory';
 
 export interface ToolGridCallbacks {
@@ -76,22 +77,17 @@ export class ToolGridComponent {
         this.container.addEventListener('click', (e) => {
             const target = e.target as HTMLElement;
 
-            // Handle collapse toggle
+            // Handle collapse toggle (grid-local concern).
             const collapseHeader = target.closest<HTMLElement>('.collapse-toggle');
             if (collapseHeader) {
                 this.toggleCard(collapseHeader);
                 return;
             }
 
-            // Handle data-action
-            const actionEl = target.closest<HTMLElement>('[data-action]');
-            if (actionEl) {
-                const action = actionEl.dataset.action;
-                const id = actionEl.dataset.id || '';
-                if (action) {
-                    this.callbacks.onAction(action, id, actionEl);
-                }
-            }
+            // NOTE: `[data-action]` clicks are intentionally NOT handled here.
+            // They bubble to the single document-level delegation in `AppUI`
+            // (`bindGlobalActionDelegation`). Handling them in both places ran
+            // every action twice.
         });
     }
 
@@ -217,15 +213,18 @@ export class ToolGridComponent {
 
         // 5. Procurement Hub
         const plog = Store.procurementLog;
-        const poOpen = plog.filter(l => (l.status || 'open') === 'open');
-        const poRecv = plog.filter(l => l.status === 'received');
-        const poCncl = plog.filter(l => l.status === 'cancelled');
+        const poOpen = plog.filter(l => orderStatusKey(l.status) === 'open');
+        const poRecv = plog.filter(l => orderStatusKey(l.status) === 'received');
+        const poCncl = plog.filter(l => orderStatusKey(l.status) === 'cancelled');
         const poSum = (arr: any[]) => arr.reduce((s, r) => s + (+r.total || ((+r.qty || 0) * (+r.cost || 0)) || 0), 0);
 
         const poLatest = [...plog].reverse().slice(0, 3).map(l => {
-            const stColor = l.status === 'received' ? 'var(--success)' : l.status === 'cancelled' ? 'var(--danger)' : 'var(--warning)';
-            const stLabel = l.status === 'received' ? T('ORDER_RECEIVED') : l.status === 'cancelled' ? T('ORDER_CANCELLED') : (l.status || 'open');
-            return row(`🛒 ${esc(l.name)}`, `<span style="color:${stColor};">${stLabel}</span> · $${(+l.total || 0).toFixed(0)}`);
+            const key = orderStatusKey(l.status);
+            const stColor = key === 'received' ? 'var(--success)' : key === 'cancelled' ? 'var(--danger)' : 'var(--warning)';
+            const stLabel = key === 'received' ? T('ORDER_RECEIVED') : key === 'cancelled' ? T('ORDER_CANCELLED') : (l.status || 'open');
+            // Clickable: opens the order detail (handled by AppUI `order-detail`).
+            const link = `<span data-action="order-detail" data-id="${esc(l.orderId)}" style="cursor:pointer; color:var(--primary-hover); text-decoration:underline;">🛒 ${esc(l.name)}</span>`;
+            return row(link, `<span style="color:${stColor};">${stLabel}</span> · $${(+l.total || 0).toFixed(0)}`);
         }).join('');
 
         const procBody = `

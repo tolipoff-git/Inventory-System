@@ -9,11 +9,25 @@ import { T } from '../i18n';
 export type AuthPromptHandler = () => void;
 
 class AuthManager {
-  public current: UserSession = { username: 'operator', role: 'Operator' };
+  private _current: UserSession = { username: 'operator', role: 'Operator' };
   public pendingAction: (() => void) | null = null;
   public pendingRole: UserRole | null = null;
   private _authListeners: Set<(session: UserSession) => void> = new Set();
   private _promptHandler: AuthPromptHandler | null = null;
+
+  /**
+   * Single funnel for the active session. Every assignment also publishes the
+   * actor to `Store` so audit-log entries are attributed to the real user
+   * instead of the hardcoded 'operator' default.
+   */
+  public get current(): UserSession {
+    return this._current;
+  }
+
+  public set current(session: UserSession) {
+    this._current = session;
+    Store.actor = { username: session.username, role: session.role };
+  }
 
   constructor() {
     try {
