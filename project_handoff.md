@@ -7,10 +7,23 @@
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v101)
+## Recent Accomplishments (v49 – v103)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Dashboard Charts: Hover Tooltips & Risk Details Restored (v101 Release)
+### 0. Dashboard Fixes: Workstation Chart, Search & Work Mode (v103 Release)
+- **Workstation chart was dead:** `ChartsView.renderWsChart()` initialised counts only from `Store.workstations` and then did `if (wsCounts[ws] !== undefined) wsCounts[ws]++` — so every tool whose workstation was **not** pre-registered (e.g. seed locations `Shadow Board`, `Tool Crib`, `USS / Center Conveyor`, `Calibration Lab`) was silently dropped. Result: all bars stayed at 0.
+  - **Fix:** accumulate any returned workstation (`wsCounts[ws] = (wsCounts[ws] || 0) + 1`), like the monolith `wsLoad[ws] = (wsLoad[ws] || 0) + 1`. Grouping now uses the operations `workstationAndPostOf()` (assignee-first), matching monolith `Ops.workstationOf()`. Bars sorted by load descending.
+  - Status donut now includes `Backup` and routes unknown statuses to it (the old object dropped `Backup` — 5 of 22 seeded tools).
+  - Added the missing `location` filter branch in `app.ts` (culture-radar click did nothing before); the `workstation` filter now uses `workstationAndPostOf()` too.
+- **Tool search did nothing:** `FilterBar.onSearch` only re-filtered the grid, but the grid is hidden while the default view is the Category Hub — so results rendered into an invisible container. **Fix (monolith parity):** a non-empty query switches to the detailed grid view (monolith `onSearchInput()` did `if (searchQuery && viewMode!=='grid') setViewMode('grid')`). Verified headless: typing `wrench` shows the hub `none`, grid `grid`, 3 matching cards.
+- **Work mode looked broken:** the class toggled fine, but (a) the button label used a non-existent `Desk Mode` i18n key and reset to "Work Mode" on every header re-render, and (b) the documented `?mode=work` shop-floor shortcut was not implemented. **Fix:**
+  - label now shows the TARGET mode (`Dashboard` when work mode is on), derived from the body class in `Header.render()` and repainted by `app.paintModeBtn()`;
+  - `setupThemeAndMode()` honours `?mode=work` / `?mode=full` (URL wins, then persisted) and uses `classList.toggle('work-mode', …)`;
+  - persisted mode stores `'work'`/`'full'` (legacy `'desk'` still reads as desk mode);
+  - leaving work mode redraws the charts; `ChartsView.update()` skips computation while work mode is active (monolith parity);
+  - work-mode status select clearing (`''`) now calls `clearFilter()` instead of setting an empty filter.
+
+### 0.1. Dashboard Charts: Hover Tooltips & Risk Details Restored (v101 Release)
 - **Regression:** the modular TS rewrite dropped the monolith's interactive chart layer. `renderDonutSvg`, `renderBarSvg` and `renderRadarSvg` had click handlers but **no hover tooltips**, and `ChartsView.computeCulture()`/`compute5S()` were simplified to the point that the risk/culture radar no longer carried Program / Persona / rating-factor data, and the 5S radar lost its best/worst rubric explanations.
 - **Fix:**
   - `src/utils/tooltip.ts` — shared `showTooltip`/`hideTooltip` for the single `#svgTooltip` element, clamped to the viewport (ported from the monolith `showTooltip`).

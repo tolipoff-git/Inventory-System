@@ -218,7 +218,7 @@ export function renderBarSvg(
   if (!svg) return;
   svg.innerHTML = '';
 
-  const entries = Object.entries(data);
+  const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
   if (!entries.length) return;
 
   const maxVal = Math.max(...entries.map(e => e[1]), 4);

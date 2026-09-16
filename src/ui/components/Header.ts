@@ -38,7 +38,7 @@ export class HeaderComponent {
 
         this.container.innerHTML = `
             <div class="header-row">
-                <button class="btn" id="modeBtn">🛠 <span id="modeBtnText">${T('Work Mode')}</span></button>
+                <button class="btn" id="modeBtn">🛠 <span id="modeBtnText">${T(document.body.classList.contains('work-mode') ? 'Dashboard' : 'Work Mode')}</span></button>
                 <button class="btn btn-warning" id="themeToggleBtn" style="font-weight:bold;">☀️ Light</button>
                 <button class="btn btn-warning" id="langToggleBtn">🌐 <span id="langBtnText">RU | ENG</span></button>
                 <button class="btn btn-muted" id="syncStatusBtn" title="Sync Status & Relay Pairing">
@@ -52,7 +52,7 @@ export class HeaderComponent {
                 <div class="header-title-block">
                     <h1 class="header-title">
                         <span>${T('Dashboard')}</span>
-                        <sup id="appVersionTag" title="Click to force reload/update PWA" style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none; cursor:pointer;">v101</sup>
+                        <sup id="appVersionTag" title="Click to force reload/update PWA" style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none; cursor:pointer;">v103</sup>
                     </h1>
                     <div class="header-subtitle">${T('Tools Inventory')}</div>
                     <div class="brand-credit"><b>Igor Tolipov</b> <i>by Design</i></div>
