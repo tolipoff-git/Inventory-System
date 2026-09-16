@@ -7,10 +7,19 @@
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v100)
+## Recent Accomplishments (v49 – v101)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Official REQ-003 Expense Request Restored (v100 Release)
+### 0. Dashboard Charts: Hover Tooltips & Risk Details Restored (v101 Release)
+- **Regression:** the modular TS rewrite dropped the monolith's interactive chart layer. `renderDonutSvg`, `renderBarSvg` and `renderRadarSvg` had click handlers but **no hover tooltips**, and `ChartsView.computeCulture()`/`compute5S()` were simplified to the point that the risk/culture radar no longer carried Program / Persona / rating-factor data, and the 5S radar lost its best/worst rubric explanations.
+- **Fix:**
+  - `src/utils/tooltip.ts` — shared `showTooltip`/`hideTooltip` for the single `#svgTooltip` element, clamped to the viewport (ported from the monolith `showTooltip`).
+  - `src/reports/radarChart.ts` — restored hover tooltips on donut slices (Count/Percent), bars (Tools/Capacity) and radar nodes (score + description, or a rich `tooltipHtml`). Radar now honours point `color`/`mark` (★ best / ▼ worst), `rated`, dynamic label anchoring/truncation, and `opts.stroke`.
+  - `src/ui/components/ChartsView.ts` — `computeCulture()` ported from the monolith: groups by `ws | post` via `Store.workstationAndPostOf`, 0–100 score with overdue/maintenance/wear penalties, resolves Program (`tool.program || Store.wsProgram[ws]`) and Persona (assignee), builds the hover tooltip, and marks best/worst rays; click filters by `location`. `compute5S()` restored the best/worst descriptions with `get5SRubricExplanation` (`AUDIT_BEST`/`AUDIT_WORST`/`AUDIT_SCORE`); clicking a 5S ray still opens the audit-history modal (`AuditModal.openHistory`).
+  - Risk panel (`Maintenance & Repair Queue` / `Consumable Wear Trends`) now shows the location label and live hover tooltips (Program / Persona / Reason / Wear) instead of the dead `data-tip` attributes.
+- Net effect: as in the monolith — hovering a chart ray/tool shows extra info, clicking opens the modal/filter.
+
+### 0.1. Official REQ-003 Expense Request Restored (v100 Release)
 - **Regression:** the modular TypeScript migration replaced the official corporate REQ-003 export with an ExcelJS "from scratch" workbook, producing a wrong, non-corporate form (dark title banner, `#`/Item/Qty/Unit Cost columns) instead of the real `REQ_Expense_Request_<date>.xlsx`.
 - **Fix:** `src/procure/req003.ts` now patches the official template cell-by-cell, exactly like the legacy monolith implementation:
   - `src/procure/req003Template.ts` — the corporate workbook (`Form` + `FSE Code` sheets) embedded as base64, **ZIP_STORED (method 0)**.

@@ -1,5 +1,7 @@
 import { CONFIG } from '../config/constants';
 import { T } from '../i18n';
+import { esc } from '../utils/formatters';
+import { showTooltip, hideTooltip } from '../utils/tooltip';
 
 function createSvgEl(tag: string, attrs: Record<string, any>): SVGElement {
   const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
@@ -13,13 +15,17 @@ export interface RadarPoint {
   pillar: string;
   score: number;
   desc: string;
+  rated?: boolean;
+  color?: string;
+  mark?: string;
+  tooltipHtml?: string;
   onClick?: () => void;
 }
 
 export function renderRadarSvg(
   svgId: string,
   data: RadarPoint[],
-  opts: { max?: number; rings?: number; fill?: string } = {}
+  opts: { max?: number; rings?: number; fill?: string; stroke?: string } = {}
 ): void {
   const svg = document.getElementById(svgId);
   if (!svg) return;
@@ -29,7 +35,7 @@ export function renderRadarSvg(
   const rings = opts.rings || 5;
   const cx = 150;
   const cy = 100;
-  const r = 70;
+  const r = 75;
   const n = data.length;
   if (!n) return;
 
@@ -37,83 +43,75 @@ export function renderRadarSvg(
   const pt = (i: number, rad: number) =>
     `${cx + rad * Math.cos(i * step - Math.PI / 2)},${cy + rad * Math.sin(i * step - Math.PI / 2)}`;
 
-  // Draw background rings
+  // Background rings
   for (let ring = 1; ring <= rings; ring++) {
     const rad = (r * ring) / rings;
     const pts = Array.from({ length: n }, (_, i) => pt(i, rad)).join(' ');
     svg.appendChild(createSvgEl('polygon', {
       points: pts,
       fill: 'none',
-      stroke: 'rgba(255, 255, 255, 0.08)',
-      'stroke-width': '1',
+      stroke: 'var(--border)',
     }));
   }
 
-  // Draw spokes
-  data.forEach((_, i) => {
-    const spoke = createSvgEl('line', {
-      x1: cx,
-      y1: cy,
-      x2: cx + r * Math.cos(i * step - Math.PI / 2),
-      y2: cy + r * Math.sin(i * step - Math.PI / 2),
-      stroke: 'rgba(255, 255, 255, 0.12)',
-      'stroke-width': '1',
+  // Spokes + labels (★ best / ▼ worst)
+  data.forEach((d, i) => {
+    const [x2, y2] = pt(i, r).split(',');
+    svg.appendChild(createSvgEl('line', { x1: cx, y1: cy, x2, y2, stroke: 'var(--border)' }));
+
+    const angle = i * step - Math.PI / 2;
+    const cosA = Math.cos(angle);
+    const labelR = r + 20;
+    const [tx, ty] = pt(i, labelR).split(',');
+    let anchor = 'middle';
+    if (cosA > 0.3) anchor = 'start';
+    else if (cosA < -0.3) anchor = 'end';
+
+    let label = `${d.pillar}${d.mark ? ' ' + d.mark : ''}`;
+    const maxLen = n <= 3 ? 18 : 14;
+    if (label.length > maxLen) label = label.slice(0, maxLen - 1) + '…';
+    const fontSize = label.length > 12 ? '9.5px' : '11px';
+
+    const text = createSvgEl('text', {
+      x: tx,
+      y: ty,
+      fill: d.color || 'var(--text-main)',
+      'font-size': fontSize,
+      'font-weight': 'bold',
+      'text-anchor': anchor,
+      'alignment-baseline': 'middle',
     });
-    svg.appendChild(spoke);
+    text.textContent = label;
+    svg.appendChild(text);
   });
 
-  // Draw score polygon
-  const scorePts = data.map((d, i) => {
-    const rad = (r * Math.min(d.score, max)) / max;
-    return pt(i, rad);
-  }).join(' ');
-
+  // Score polygon
   svg.appendChild(createSvgEl('polygon', {
-    points: scorePts,
+    points: data.map((d, i) => pt(i, (r / max) * Math.min(d.score, max))).join(' '),
     fill: opts.fill || 'rgba(0, 210, 255, 0.25)',
-    stroke: '#00d2ff',
+    stroke: opts.stroke || 'var(--primary)',
     'stroke-width': '2',
   }));
 
-  // Draw labels and dots
+  // Interactive nodes
   data.forEach((d, i) => {
-    const rad = (r * Math.min(d.score, max)) / max;
-    const dotX = cx + rad * Math.cos(i * step - Math.PI / 2);
-    const dotY = cy + rad * Math.sin(i * step - Math.PI / 2);
-
-    const dot = createSvgEl('circle', {
-      cx: dotX,
-      cy: dotY,
-      r: 4,
-      fill: '#00d2ff',
-      stroke: '#05080e',
-      'stroke-width': '1.5',
-      style: 'cursor: pointer;',
+    const [nx, ny] = pt(i, (r / max) * Math.min(d.score, max)).split(',');
+    const node = createSvgEl('circle', {
+      cx: nx,
+      cy: ny,
+      r: 4.5,
+      fill: d.color || 'var(--primary)',
+      class: 'svg-node',
     });
+    const scoreTxt = d.rated === false ? T('Not rated') : `${T('Score:')} ${d.score}/${max}`;
+    node.onmousemove = (e) => showTooltip(e, d.tooltipHtml ||
+      `<strong>${esc(d.pillar)}</strong><br>${scoreTxt}<br>${d.desc}`);
+    node.onmouseleave = hideTooltip;
     if (d.onClick) {
-      dot.onclick = d.onClick;
+      node.style.cursor = 'pointer';
+      node.onclick = d.onClick;
     }
-    svg.appendChild(dot);
-
-    // Label position
-    const labelRad = r + 18;
-    const lx = cx + labelRad * Math.cos(i * step - Math.PI / 2);
-    const ly = cy + labelRad * Math.sin(i * step - Math.PI / 2) + 4;
-
-    const label = createSvgEl('text', {
-      x: lx,
-      y: ly,
-      fill: '#94a3b8',
-      'font-size': '10px',
-      'font-weight': '600',
-      'text-anchor': Math.abs(lx - cx) < 5 ? 'middle' : lx > cx ? 'start' : 'end',
-      style: 'cursor: pointer;',
-    });
-    label.textContent = `${d.pillar} (${d.score})`;
-    if (d.onClick) {
-      label.onclick = d.onClick;
-    }
-    svg.appendChild(label);
+    svg.appendChild(node);
   });
 }
 
@@ -139,6 +137,7 @@ export function renderDonutSvg(
   for (const [key, val] of Object.entries(data)) {
     if (val === 0) continue;
     const slice = (val / total) * 2 * Math.PI;
+    const tip = `<strong>${T(key)}</strong><br>${T('Count:')} ${val}<br>${T('Percent:')} ${((val / total) * 100).toFixed(1)}%`;
 
     let shape: SVGElement | null = null;
     if (val === total) {
@@ -167,6 +166,8 @@ export function renderDonutSvg(
     }
 
     if (shape) {
+      shape.onmousemove = (e) => showTooltip(e, tip);
+      shape.onmouseleave = hideTooltip;
       if (onFilterStatus) {
         shape.onclick = () => onFilterStatus(key);
       }
@@ -192,7 +193,7 @@ export function renderDonutSvg(
     const label = createSvgEl('text', {
       x: 196,
       y: legendY + 9,
-      fill: '#cbd5e1',
+      fill: 'var(--text-main)',
       'font-size': '11px',
       'font-weight': '500',
       style: onFilterStatus ? 'cursor: pointer;' : '',
@@ -229,15 +230,19 @@ export function renderBarSvg(
     const y = 120 - height;
     const bw = Math.max(12, barWidth - 12);
 
+    const tip = `<strong>${esc(key)}</strong><br>${T('Tools:')} ${val}<br>${T('Capacity:')} ${Math.min(100, Math.round((val / 10) * 100))}%`;
+
     const rect = createSvgEl('rect', {
       x,
       y,
       width: bw,
       height,
-      fill: '#00d2ff',
+      fill: 'var(--primary)',
       rx: 3,
       style: 'cursor: pointer; opacity: 0.85; transition: opacity 0.2s;',
     });
+    rect.onmousemove = (e) => showTooltip(e, tip);
+    rect.onmouseleave = hideTooltip;
     if (onFilterWs) {
       rect.onclick = () => onFilterWs(key);
     }
@@ -247,7 +252,7 @@ export function renderBarSvg(
     const label = createSvgEl('text', {
       x: x + bw / 2,
       y: 138,
-      fill: '#94a3b8',
+      fill: 'var(--text-main)',
       'font-size': '10px',
       'text-anchor': 'end',
       transform: `rotate(-35, ${x + bw / 2}, 138)`,
