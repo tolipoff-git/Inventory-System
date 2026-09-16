@@ -37,13 +37,6 @@ async function freshStore(): Promise<void> {
   await Store.init();
 }
 
-async function seedWith(tools: Tool[]): Promise<void> {
-  await freshStore();
-  Store.getStateSnapshot();
-  await Store.save();
-  // Re-load from the DB to keep the test honest about persistence.
-}
-
 function seedTool(on: Partial<Tool>): Tool {
   return { ...SEED_TOOLS[0], ...on };
 }

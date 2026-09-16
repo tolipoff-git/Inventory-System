@@ -2,7 +2,8 @@
 // 5S Tool Command Center — Header Component
 // ============================================================================
 
-import { T } from '../../i18n';
+import { T, getLanguage } from '../../i18n';
+import { CONFIG } from '../../config/constants';
 import { Auth } from '../../auth/authManager';
 import { SyncManagerInstance } from '../../sync/syncManager';
 import { SyncModal } from './Modals/SyncModal';
@@ -35,12 +36,14 @@ export class HeaderComponent {
     public render(): void {
         const user = Auth.getCurrentUser();
         const role = Auth.getCurrentRole();
+        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+        const langLabel = getLanguage() === 'RU' ? 'RU | ENG' : 'ENG | RU';
 
         this.container.innerHTML = `
             <div class="header-row">
                 <button class="btn" id="modeBtn">🛠 <span id="modeBtnText">${T(document.body.classList.contains('work-mode') ? 'Dashboard' : 'Work Mode')}</span></button>
-                <button class="btn btn-warning" id="themeToggleBtn" style="font-weight:bold;">☀️ Light</button>
-                <button class="btn btn-warning" id="langToggleBtn">🌐 <span id="langBtnText">RU | ENG</span></button>
+                <button class="btn btn-warning" id="themeToggleBtn" style="font-weight:bold;">${isLight ? '🌙 Dark' : '☀️ Light'}</button>
+                <button class="btn btn-warning" id="langToggleBtn">🌐 <span id="langBtnText">${langLabel}</span></button>
                 <button class="btn btn-muted" id="syncStatusBtn" title="Sync Status & Relay Pairing">
                     <span id="syncPulseDot" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#00e5ff; margin-right:6px;"></span>
                     <span id="syncBtnLabel">Sync</span>
@@ -52,7 +55,7 @@ export class HeaderComponent {
                 <div class="header-title-block">
                     <h1 class="header-title">
                         <span>${T('Dashboard')}</span>
-                        <sup id="appVersionTag" title="Click to force reload/update PWA" style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none; cursor:pointer;">v103</sup>
+                        <sup id="appVersionTag" title="Click to force reload/update PWA" style="font-size:12px; color:var(--text-muted); font-weight:normal; user-select:none; cursor:pointer;">${CONFIG.APP_VERSION}</sup>
                     </h1>
                     <div class="header-subtitle">${T('Tools Inventory')}</div>
                     <div class="brand-credit"><b>Igor Tolipov</b> <i>by Design</i></div>
@@ -143,7 +146,7 @@ export class HeaderComponent {
         const verTag = this.container.querySelector('#appVersionTag');
         if (verTag) {
             verTag.addEventListener('click', () => {
-                if (window.confirm('Force refresh application cache?')) {
+                if (window.confirm(T('FORCE_REFRESH_CONFIRM'))) {
                     window.location.reload();
                 }
             });

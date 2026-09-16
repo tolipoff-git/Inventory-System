@@ -9,7 +9,17 @@ try {
 } catch {}
 
 const buildTime = new Date().toISOString();
-const appVersion = 'v98';
+
+// Single source of truth for the app version: `package.json` (per AGENTS.md).
+// It is substituted into the bundle as `__APP_VERSION__`, which
+// `src/config/constants.ts` reads as `CONFIG.APP_VERSION`, and `build.sh` uses
+// for the service-worker cache stamp. Previously three places disagreed
+// (package.json 99.0.0 / constants.ts v103 / a hardcoded 'v98' here).
+let appVersion = 'v0';
+try {
+  const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8'));
+  if (pkg && pkg.version) appVersion = 'v' + String(pkg.version).split('.')[0];
+} catch {}
 
 const stampSwCache = {
   name: 'stamp-sw-cache',

@@ -1,4 +1,5 @@
 import { Store } from '../storage/store';
+import { T } from '../i18n';
 import { esc } from '../utils/formatters';
 import { renderQrToCanvas, toolDeeplink, locationDeeplink } from './qrGenerator';
 import { Tool } from '../types/inventory';
@@ -256,31 +257,45 @@ export function printLabelViaIframe(container: HTMLElement, stockKey: string = '
 
 export type LabelFormat = 'avery5161' | 'avery5163' | 'avery5366' | 'brady' | 'genericA' | 'genericB' | 'genericC';
 
+/** A queued label target: either a tool id or a `LOC:` storage-location id. */
+export interface LabelEntity {
+  id: string;
+  type: 'tool' | 'location';
+}
+
 import { toast } from '../utils/dom';
 
 export async function printQueueLabels(format?: LabelFormat): Promise<void> {
   const queueIds = Store.labelQueue || [];
   if (queueIds.length === 0) {
-    toast('Label queue is empty — nothing to print.', 'info');
+    toast(T('LABEL_QUEUE_EMPTY'), 'info');
     return;
   }
-  const toolsToPrint: Tool[] = [];
+
+  // Location labels are queued as `LOC:...` ids and have no Tool record, so they
+  // must not be resolved through Store.getTool (which silently dropped them).
+  const entities: LabelEntity[] = [];
   for (const id of queueIds) {
-    const tool = Store.getTool(id);
-    if (tool) toolsToPrint.push(tool);
+    if (id.startsWith('LOC:')) {
+      entities.push({ id, type: 'location' });
+    } else if (Store.getTool(id)) {
+      entities.push({ id, type: 'tool' });
+    }
   }
-  if (toolsToPrint.length === 0) {
-    toast('No matching tools found in label queue.', 'warning');
+
+  if (entities.length === 0) {
+    toast(T('LABEL_QUEUE_NO_MATCH'), 'warning');
     return;
   }
-  await printLabelsHtml(toolsToPrint, format || 'avery5161');
-  toast(`Printed ${toolsToPrint.length} label${toolsToPrint.length > 1 ? 's' : ''} from queue.`, 'success');
+
+  await printLabelsHtml(entities, format || 'avery5161');
+  toast(`${T('LABELS_PRINTED')} ${entities.length}`, 'success');
 }
 
-export async function printLabelsHtml(tools: Tool[], format: LabelFormat = 'avery5161'): Promise<void> {
+export async function printLabelsHtml(entities: LabelEntity[], format: LabelFormat = 'avery5161'): Promise<void> {
   const container = document.createElement('div');
   container.className = 'sheet-mode';
-  container.innerHTML = tools.map(t => renderLabelCell(format, t.id, 'tool')).join('');
+  container.innerHTML = entities.map(e => renderLabelCell(format, e.id, e.type)).join('');
   document.body.appendChild(container);
   await drawAllQrsInContainer(container);
   printLabelViaIframe(container, format);

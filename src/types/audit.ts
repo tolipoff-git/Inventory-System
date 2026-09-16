@@ -28,6 +28,7 @@ export interface AuditLogEntry {
   action: string;
   details: string;
   user: string;
+  role?: string;
 }
 
 export type KaizenStatus = 'Proposed' | 'In Progress' | 'Implemented';

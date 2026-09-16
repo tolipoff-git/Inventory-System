@@ -134,6 +134,15 @@ export function mergeSettings(localSettings: Record<string, any>, remoteSettings
     }
   });
 
+  // 5S audits are append-only records: union by id, newest first.
+  const auditMap = new Map<string, any>();
+  [...(localSettings.audits5s || []), ...(remoteSettings.audits5s || [])].forEach(a => {
+    const key = a && a.id ? a.id : `${a?.date}_${a?.ws}_${a?.post}`;
+    if (!auditMap.has(key)) auditMap.set(key, a);
+  });
+  const audits5s = Array.from(auditMap.values())
+    .sort((a, b) => String(b?.date || '').localeCompare(String(a?.date || '')));
+
   return {
     ...localSettings,
     ...remoteSettings,
@@ -141,6 +150,7 @@ export function mergeSettings(localSettings: Record<string, any>, remoteSettings
     programs,
     wsProgram,
     workposts,
+    audits5s,
   };
 }
 

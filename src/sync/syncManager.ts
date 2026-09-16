@@ -7,7 +7,7 @@ import {
   pullSyncPayload,
   pushPhotoToCloud,
 } from './syncApi';
-import { subscribeToLiveCloudStream } from './liveRelay';
+import { subscribeToLiveCloudStream, broadcastPing } from './liveRelay';
 import { mergeSyncPayloads } from './conflictResolver';
 import { Store } from '../storage/store';
 
@@ -24,6 +24,12 @@ class SyncManager {
   private _pushDebounceTimer: any = null;
   private _pollIntervalTimer: any = null;
   private _isSyncing: boolean = false;
+  /**
+   * True while a remote payload is being written into the Store. Suppresses the
+   * auto-push that `Store.save()` would otherwise schedule, which would echo the
+   * just-pulled revision straight back to the relay.
+   */
+  private _applyingRemote: boolean = false;
   private _lastPushedTimestamp: string = '';
   private _lastReceivedTimestamp: string = '';
   private _version: number = 1;
@@ -136,6 +142,7 @@ class SyncManager {
   }
 
   private _onStoreMutated(): void {
+    if (this._applyingRemote) return;
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       this.setStatus('offline');
       return;
@@ -191,18 +198,25 @@ class SyncManager {
       this._version = merged.version;
 
       // Apply merged data to store
-      Store.applyLoadedData({
-        tools: merged.tools,
-        procurementLog: merged.procurementLog,
-        personnel: merged.personnel,
-        auditLog: merged.auditLog,
-        workstations: merged.settings.workstations,
-        programs: merged.settings.programs,
-        wsProgram: merged.settings.wsProgram,
-        workposts: merged.settings.workposts,
-      });
+      this._applyingRemote = true;
+      try {
+        Store.applyLoadedData({
+          tools: merged.tools,
+          procurementLog: merged.procurementLog,
+          personnel: merged.personnel,
+          auditLog: merged.auditLog,
+          workstations: merged.settings.workstations,
+          programs: merged.settings.programs,
+          wsProgram: merged.settings.wsProgram,
+          workposts: merged.settings.workposts,
+          audits5s: merged.settings.audits5s,
+          meta: merged.settings.meta,
+        });
 
-      await Store.save();
+        await Store.save();
+      } finally {
+        this._applyingRemote = false;
+      }
       this.setStatus('synced');
       this._isSyncing = false;
       return true;
@@ -238,6 +252,9 @@ class SyncManager {
       if (ok) {
         this.lastSyncedAt = new Date();
         this.setStatus('synced');
+        // Announce the new revision on the public relay so peers pull immediately
+        // instead of waiting for the 15s polling fallback.
+        broadcastPing(this.room, this.deviceId, payload.updatedAt).catch(() => {});
       } else {
         this.setStatus('error');
       }

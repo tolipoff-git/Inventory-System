@@ -320,7 +320,8 @@ export class AuditModal {
         if (!content) return;
 
         const audits = Store.audits5s || [];
-        const latest = [...audits].reverse()[0];
+        // `Store.audits5s` is newest-first (auditOps unshifts), so index 0 is the latest audit.
+        const latest = audits[0];
 
         const pillarKeys = ['sort', 'setOrder', 'shine', 'standardize', 'sustain'];
         const pillarNames = ['1S — Sort', '2S — Set in Order', '3S — Shine', '4S — Standardize', '5S — Sustain'];

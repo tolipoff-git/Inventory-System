@@ -1,7 +1,7 @@
 {
   "name": "inventory-system",
   "private": true,
-  "version": "99.0.0",
+  "version": "104.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint src vite.config.ts tests",
     "deploy": "npm run build && npx wrangler deploy",
     "deploy:prod": "npm run build && npx wrangler deploy --env production"
   },

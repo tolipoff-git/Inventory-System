@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { T } from '../../../i18n';
+import { CONFIG } from '../../../config/constants';
 import { Store } from '../../../storage/store';
 import { esc, fmtDate, durationStr, isAutoSn, nowISO } from '../../../utils/formatters';
 import { Auth } from '../../../auth/authManager';
@@ -204,17 +205,19 @@ export class DetailModal {
             locEl.textContent = `${tool.location || 'N/A'}${addr}`;
         }
 
-        // Action buttons
+        // Action buttons — these have dedicated listeners bound in createModalDOM,
+        // so they must NOT also carry `data-action` (the global delegation would
+        // run the same action a second time).
         const printBtn = document.getElementById('detPrintBtn');
         if (printBtn) {
-            printBtn.setAttribute('data-action', 'print-label');
-            printBtn.setAttribute('data-id', tool.id);
+            printBtn.removeAttribute('data-action');
+            printBtn.removeAttribute('data-id');
         }
 
         const editBtn = document.getElementById('detEditBtn');
         if (editBtn) {
-            editBtn.setAttribute('data-action', 'edit-tool');
-            editBtn.setAttribute('data-id', tool.id);
+            editBtn.removeAttribute('data-action');
+            editBtn.removeAttribute('data-id');
             editBtn.style.display = Auth.has('Administrator') ? 'inline-block' : 'none';
         }
 
@@ -345,7 +348,7 @@ h3 { font-size: 10pt; color: #0f172a; margin: 12px 0 6px; }
   <div>
     <div class="doc-id">Document Ref: TP-ISO9001-5S</div>
     <div class="doc-id">Print Date: ${new Date().toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
-    <div class="doc-id">System Version: v${(window as any).CONFIG?.APP_VERSION || '98.0.0'}</div>
+    <div class="doc-id">System Version: ${CONFIG.APP_VERSION}</div>
   </div>
 </div>
 

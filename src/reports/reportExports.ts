@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { Store } from '../storage/store';
-import { downloadBuffer, downloadText, printHtml } from '../utils/dom';
+import { downloadBuffer, downloadText, printHtml, toast } from '../utils/dom';
 import { datedName, fmtDate, esc, nowISO } from '../utils/formatters';
 import { Audit5S } from '../types/audit';
 import { S5_RUBRICS, WEAR_RETIRE_PCT, WEAR_WARN_PCT, TOOL_CLASSES } from '../config/constants';
@@ -9,7 +9,7 @@ import { sha256Hex } from '../utils/crypto';
 import { careOf } from '../operations/toolOps';
 import { T } from '../i18n';
 
-export async function exportFullInventoryExcel(): Promise<void> {
+async function writeInventoryWorkbook(): Promise<void> {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = '5S Tool Command Center';
   workbook.created = new Date();
@@ -380,7 +380,7 @@ export async function exportFullInventoryExcel(): Promise<void> {
     const care = careOf(p);
     const row = per.addRow([
       p.id, p.name, p.initials || '', p.badge || '',
-      p.workstation || '', p.post || '', held.length, overdue, wear, care.score, care.grade
+      p.ws || '', p.post || '', held.length, overdue, wear, care.score, care.grade
     ]);
     row.eachCell(c => { c.border = border; });
     if (i % 2) row.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.zebra } });
@@ -481,6 +481,22 @@ export async function exportFullInventoryExcel(): Promise<void> {
   const buffer = await workbook.xlsx.writeBuffer();
   const filename = datedName('5S_Tools_Inventory', 'xlsx');
   downloadBuffer(filename, buffer as ArrayBuffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+}
+
+/**
+ * Exports the full inventory workbook. Never fails silently: on any ExcelJS or
+ * quota error it falls back to the CSV export and tells the user why
+ * (mirrors the monolith's XLSX_INIT_FAILED / XLSX_FAILED_CSV behaviour).
+ */
+export async function exportFullInventoryExcel(): Promise<void> {
+  try {
+    await writeInventoryWorkbook();
+  } catch (err) {
+    console.error('[reportExports:exportFullInventoryExcel] XLSX export failed, falling back to CSV:', err);
+    const msg = err instanceof Error ? err.message : String(err);
+    toast(T('XLSX_FAILED_CSV').replace('{msg}', msg), 'warning');
+    exportInventoryCSV();
+  }
 }
 
 export function exportInventoryCSV(): void {

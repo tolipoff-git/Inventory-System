@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-APP_VERSION=$(grep -oP "APP_VERSION(?::\s*|\s*=\s*)'([^']+)'" src/config/constants.ts index.html index.monolith.v97.html 2>/dev/null | head -1 | sed -E "s/.*'([^']+)'.*/\1/")
+# Single source of truth for the version is package.json (see AGENTS.md).
+APP_VERSION=$(node -p "'v' + require('./package.json').version.split('.')[0]" 2>/dev/null || echo "v0")
 if [ -z "$APP_VERSION" ]; then
   APP_VERSION="v0"
 fi

@@ -75,6 +75,23 @@
         font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; line-height: 1.5;
         padding: 0;
     }
+    /* Печать тёмных экранных шаблонов (5S-отчёт и т.п.): внутри зоны печати
+       переопределяем токены темы, иначе инлайновые `color:var(--text-main)`
+       дают почти белый текст на белой бумаге. Переменные наследуются вниз,
+       поэтому правило сильнее инлайновых var()-ссылок. */
+    body.print-zone-mode #printZone {
+        --bg-color: #ffffff;
+        --primary: #1f6f6b;
+        --primary-hover: #1f6f6b;
+        --text-main: #111111;
+        --text-muted: #555555;
+        --success: #0a7a3d;
+        --warning: #a86a00;
+        --danger: #b00020;
+        --border: #cccccc;
+        --border-dark: #bbbbbb;
+        --bg-card: #ffffff;
+    }
     /* Светлая типографика печатных документов */
     #printZone h1 { font-size: 20px; margin: 0 0 2mm; color: #111; }
     #printZone h2 { font-size: 14px; margin: 6mm 0 2mm; padding-bottom: 1mm; border-bottom: 2px solid #1f6f6b; color: #1f6f6b; text-transform: uppercase; }

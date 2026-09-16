@@ -2,7 +2,7 @@
 // 5S Tool Command Center — Main Application UI Orchestrator
 // ============================================================================
 
-import { T, toggleLanguage, onLanguageChange, getLanguage } from '../i18n';
+import { T, toggleLanguage, onLanguageChange, getLanguage, applyLanguage } from '../i18n';
 import { Store } from '../storage/store';
 import { Auth } from '../auth/authManager';
 import { CONFIG } from '../config/constants';
@@ -30,10 +30,10 @@ import { SystemMenuModal } from './components/Modals/SystemMenuModal';
 import { OpsMenuModal } from './components/Modals/OpsMenuModal';
 import { EmployeeProfileModal } from './components/Modals/EmployeeProfileModal';
 import { isPermanentTool, isConsumableTool, workstationAndPostOf } from '../operations/toolOps';
-import { receiveFullOrder, cancelOrder, receiveOrderItem, rejectOrderItem } from '../operations/orderOps';
+import { receiveFullOrder, cancelOrder } from '../operations/orderOps';
 import { daysUntil } from '../utils/formatters';
 import { toast } from '../utils/dom';
-import { windowConfirm, windowPrompt } from '../utils/dialogCompat';
+import { windowConfirm } from '../utils/dialogCompat';
 
 export class AppUI {
     private header: HeaderComponent | null = null;
@@ -49,6 +49,8 @@ export class AppUI {
 
     public init(): void {
         this.setupThemeAndMode();
+        // Apply the persisted language to any static DOM before first paint.
+        applyLanguage();
         this.mountComponents();
         this.bindGlobalKeyboard();
         this.bindBackdropAndEscape();
@@ -378,31 +380,13 @@ export class AppUI {
                     }
                 });
                 break;
-            case 'receive-order-item':
-                Auth.doAction('Tool Crib Manager', async () => {
-                    const itemId = extra?.dataset.item || '';
-                    await receiveOrderItem(id, itemId, 1);
-                    toast('Item received!', 'success');
-                    this.refreshAll();
-                });
-                break;
-            case 'reject-order-item':
-                Auth.doAction('Tool Crib Manager', async () => {
-                    const itemId = extra?.dataset.item || '';
-                    const reason = windowPrompt('Rejection reason:');
-                    if (reason) {
-                        await rejectOrderItem(id, itemId, reason);
-                        toast('Item rejected.', 'warning');
-                        this.refreshAll();
-                    }
-                });
-                break;
             case 'recv-item':
             case 'reject-item':
-                // Handled directly in OrderModal
+                // Emitted by OrderModal and handled by its own local listeners;
+                // the global delegation must stay inert for these.
                 break;
             default:
-                console.log('Action unhandled:', action, id);
+                console.warn('[app:handleAction] Unhandled action:', action, id);
         }
     }
 
@@ -530,6 +514,7 @@ export class AppUI {
         (window as any).forceUpdatePWA = () => window.location.reload();
         (window as any).T = T;
         (window as any).getLanguage = getLanguage;
+        (window as any).CONFIG = CONFIG;
         (window as any).Store = Store;
         (window as any).Auth = Auth;
     }
