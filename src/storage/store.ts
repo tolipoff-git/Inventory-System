@@ -429,6 +429,44 @@ class StoreManager {
     }
   }
 
+  /** Snapshot metadata for the "rollback last cascade" UI, or null when none exists. */
+  public rollbackInfo(): { ts: string; reason: string } | null {
+    return this._rollbackSnap || null;
+  }
+
+  /**
+   * Restore the last cascade snapshot (taken by `snapshot()` before program /
+   * workstation registry edits).
+   *
+   * RBAC is enforced by the caller (`Auth.doAction('Administrator', …)`) — this
+   * module deliberately does not import `Auth`, which imports `Store`.
+   */
+  public async rollback(): Promise<boolean> {
+    const snap = this.rollbackInfo();
+    if (!snap) return false;
+
+    // Validate the critical arrays before applying, so a corrupt snapshot can
+    // never wipe live data.
+    if (!Array.isArray((snap as any).tools) || !Array.isArray((snap as any).personnel)) {
+      console.error('[store:rollback] Corrupt snapshot — tools or personnel not arrays:', snap);
+      return false;
+    }
+
+    const s = snap as any;
+    this.workstations = Array.isArray(s.workstations) ? JSON.parse(JSON.stringify(s.workstations)) : this.workstations;
+    this.workposts = Array.isArray(s.workposts) ? JSON.parse(JSON.stringify(s.workposts)) : this.workposts;
+    this.programs = s.programs ? JSON.parse(JSON.stringify(s.programs)) : [];
+    this.wsProgram = s.wsProgram ? JSON.parse(JSON.stringify(s.wsProgram)) : {};
+    this.personnel = JSON.parse(JSON.stringify(s.personnel));
+    this.tools = JSON.parse(JSON.stringify(s.tools));
+    this.audits5s = s.audits5s ? JSON.parse(JSON.stringify(s.audits5s)) : (this.audits5s || []);
+
+    this.migrate();
+    this.log('ROLLBACK', `to ${s.ts} (${s.reason})`);
+    await this.save();
+    return true;
+  }
+
   public migrate(): void {
     this.tools.forEach(t => {
       if (!t.commissioned_date) t.commissioned_date = '2025-05-10';

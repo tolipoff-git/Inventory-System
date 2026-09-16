@@ -265,7 +265,7 @@ export interface LabelEntity {
 
 import { toast } from '../utils/dom';
 
-export async function printQueueLabels(format?: LabelFormat): Promise<void> {
+export async function printQueueLabels(format?: LabelFormat, opts: LabelLayoutOptions = {}): Promise<void> {
   const queueIds = Store.labelQueue || [];
   if (queueIds.length === 0) {
     toast(T('LABEL_QUEUE_EMPTY'), 'info');
@@ -288,14 +288,87 @@ export async function printQueueLabels(format?: LabelFormat): Promise<void> {
     return;
   }
 
-  await printLabelsHtml(entities, format || 'avery5161');
+  await printLabelsHtml(entities, format || 'avery5161', opts);
   toast(`${T('LABELS_PRINTED')} ${entities.length}`, 'success');
 }
 
-export async function printLabelsHtml(entities: LabelEntity[], format: LabelFormat = 'avery5161'): Promise<void> {
+export interface LabelLayoutOptions {
+  /**
+   * 1-based cell on the FIRST sheet where printing starts (sheet stock only).
+   * Lets a partially used Avery sheet be fed back through the printer without
+   * wasting the already-consumed labels.
+   */
+  start?: number;
+}
+
+/**
+ * Compose the printable label sheet.
+ *
+ * Sheet stock (Avery) is laid out as one or more Letter pages with each label
+ * absolutely positioned from the stock definition (`left/top/pitchX/pitchY`),
+ * so the output lines up with the die-cut cells. Roll/single stock emits one
+ * label per page sized to the stock.
+ */
+/**
+ * Pure layout builder for a label run (no DOM access, so it is unit-testable).
+ *
+ * Sheet stock (Avery) becomes one or more Letter pages with each label
+ * absolutely positioned from the stock definition (`left/top/pitchX/pitchY`),
+ * so the output lines up with the die-cut cells. Roll/single stock emits one
+ * label per page sized to the stock.
+ */
+export function buildLabelSheetHtml(
+  entities: LabelEntity[],
+  format: LabelFormat = 'avery5161',
+  opts: LabelLayoutOptions = {}
+): string {
+  const stock = STOCKS[format] || STOCKS.avery5161;
+
+  if (stock.kind === 'sheet' && stock.cols && stock.rows) {
+    const perSheet = stock.cols * stock.rows;
+    const start = Math.max(1, Math.min(perSheet, opts.start || 1));
+
+    let idx = 0;
+    const pages: string[] = [];
+    while (idx < entities.length) {
+      let cells = '';
+      for (let pos = 1; pos <= perSheet; pos++) {
+        const col = (pos - 1) % stock.cols;
+        const row = Math.floor((pos - 1) / stock.cols);
+        const style = `position:absolute; left:${stock.left! + col * stock.pitchX!}mm; top:${stock.top! + row * stock.pitchY!}mm; width:${stock.w}mm; height:${stock.h}mm; overflow:hidden;`;
+        // Only the first page honours `start`; later pages fill from cell 1.
+        const printable = pages.length > 0 || pos >= start;
+        let inner = '';
+        if (printable && idx < entities.length) {
+          const e = entities[idx++];
+          inner = renderLabelCell(format, e.id, e.type);
+        }
+        cells += `<div class="sheet-cell" style="${style}">${inner}</div>`;
+      }
+      pages.push(cells);
+    }
+
+    return pages.map((p, i) =>
+      `<div class="sheet-page"${i < pages.length - 1 ? ' style="page-break-after:always;"' : ''}>${p}</div>`
+    ).join('');
+  }
+
+  return entities.map(e =>
+    `<div class="sheet-cell" style="position:relative; width:${stock.w}mm; height:${stock.h}mm; overflow:hidden; margin:0 auto; page-break-after:always;">${renderLabelCell(format, e.id, e.type)}</div>`
+  ).join('');
+}
+
+export async function printLabelsHtml(
+  entities: LabelEntity[],
+  format: LabelFormat = 'avery5161',
+  opts: LabelLayoutOptions = {}
+): Promise<void> {
+  const stock = STOCKS[format] || STOCKS.avery5161;
   const container = document.createElement('div');
   container.className = 'sheet-mode';
-  container.innerHTML = entities.map(e => renderLabelCell(format, e.id, e.type)).join('');
+  container.innerHTML = buildLabelSheetHtml(entities, format, opts);
+  container.style.zoom = stock.kind === 'sheet' ? '0.55' : (stock.w < 40 ? '2.5' : '1');
+
   document.body.appendChild(container);
   await drawAllQrsInContainer(container);
   printLabelViaIframe(container, format);
