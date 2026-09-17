@@ -21,6 +21,13 @@ Do not re-audit or re-document what is already recorded there; append to it inst
 - `_headers` — Cloudflare Pages CDN cache rules.
 
 ## Conventions
+- **Release workflow — do this automatically, do NOT ask the user first:**
+  after finishing any change, (1) bump `package.json` `version`, (2) update
+  `README.md` and `project_handoff.md`, (3) run `bash build.sh` to refresh the
+  `sw.js` cache stamp, (4) commit the feature, (5) commit the refreshed `sw.js`
+  as `chore(pwa): refresh sw.js cache version for vNN`, (6) `git push origin main`
+  (this auto-deploys to Cloudflare Pages). The user has explicitly asked for this
+  end-to-end flow every time without being prompted.
 - **Versioning:** single source = `package.json` `version` + build-time
   substitution into the built bundle (`CONFIG.APP_VERSION` in src/config).
   Every release: bump version, update `project_handoff.md`, run `bash build.sh`,
