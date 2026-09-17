@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v109)
+# 5S Tool Command Center — v3 (v110)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -47,6 +47,10 @@ src/
   (index, level, overdue/maintenance/wear KPIs, program, responsible person, risk-driver
   summary, per-tool table) with a shortcut to the 5S report.
 - Care Score (0-100) per employee from return-condition history.
+- **5S report** (screen + printable document) — KPIs, 5S pillar scores with rubric findings,
+  status breakdown, decommissioning statistics, procurement recommendations & detail,
+  workstation load/loss risk, production culture per station|post, and **Kaizen advice
+grouped by the role that can act on it**.
 - 5S audit reports + automated procurement recommendations.
 - Photo timelines — tool condition photos embedded chronologically.
 

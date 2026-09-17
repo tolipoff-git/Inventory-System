@@ -57,6 +57,7 @@ export interface Tool {
   price?: number;
   qty?: number;
   minQty?: number;
+  maxQty?: number;
   organizer?: boolean;
   address?: ToolAddress;
   updatedAt?: string;
