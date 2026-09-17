@@ -378,6 +378,123 @@ class StoreManager {
     this.save();
   }
 
+  public programExists(name: string): boolean {
+    return this.programs.includes(name);
+  }
+
+  /** Add a station, optionally assigning it to a program (null → "no program" group). */
+  public addWorkstation(name: string, program: string | null = null): void {
+    if (!this.workstations.includes(name)) this.workstations.push(name);
+    if (program && this.programs.includes(program)) this.wsProgram[name] = program;
+    this.log('REGISTRY_ADD', `workstations: ${name}${program ? ` (${program})` : ''}`);
+    this.save();
+  }
+
+  public addWorkpost(name: string, ws: string | null): void {
+    this.workposts.push({ name, ws: ws || null });
+    this.log('REGISTRY_ADD', `workposts: ${name} (${ws || 'no zone'})`);
+    this.save();
+  }
+
+  /** Rename a station: registry + program map + child posts + personnel + tool locations. */
+  public renameWorkstation(oldName: string, newName: string): void {
+    this.snapshot(`rename zone ${oldName}`);
+    const i = this.workstations.indexOf(oldName);
+    if (i >= 0) this.workstations[i] = newName;
+    if (this.wsProgram[oldName]) {
+      this.wsProgram[newName] = this.wsProgram[oldName];
+      delete this.wsProgram[oldName];
+    }
+    this.workposts.forEach(p => { if (p.ws === oldName) p.ws = newName; });
+    this.personnel.forEach(e => { if (e.ws === oldName) e.ws = newName; });
+    this.tools.forEach(t => {
+      if (t.address && t.address.zone === oldName) t.address.zone = newName;
+      const L = this.parseLocParts(t.location || '');
+      if (L && L.parts[0] === oldName) {
+        L.parts[0] = newName;
+        t.location = L.parts.join(L.sep || ' / ');
+      }
+    });
+    this.log('REG_RENAME_WS', `${oldName} → ${newName}`);
+    this.save();
+  }
+
+  /** Rename a post inside a station (ws=null → the global "no zone" post). */
+  public renameWorkpost(ws: string | null, oldName: string, newName: string): void {
+    this.snapshot(`rename post ${oldName}`);
+    const p = this.postObj(oldName, ws);
+    if (p) p.name = newName;
+    this.personnel.forEach(e => {
+      const inZone = ws === null || e.ws === ws;
+      if (inZone && e.post === oldName) e.post = newName;
+    });
+    this.tools.forEach(t => {
+      const L = this.parseLocParts(t.location || '');
+      if (L && L.parts.length > 1 && L.parts[1] === oldName && (ws === null || L.parts[0] === ws)) {
+        L.parts[1] = newName;
+        t.location = L.parts.join(L.sep || ' / ');
+      }
+    });
+    this.log('REG_RENAME_WP', `${oldName} → ${newName}`);
+    this.save();
+  }
+
+  /** Move a post to another station together with its personnel and tools. */
+  public moveWorkpost(name: string, fromWs: string | null, toWs: string | null): void {
+    this.snapshot(`move post ${name}`);
+    const p = this.postObj(name, fromWs);
+    if (p) p.ws = toWs || null;
+    if (fromWs !== null) {
+      this.personnel.forEach(e => {
+        if (e.post === name && e.ws === fromWs) e.ws = toWs || '';
+      });
+      this.tools.forEach(t => {
+        const L = this.parseLocParts(t.location || '');
+        if (L && L.parts.length > 1 && L.parts[1] === name && L.parts[0] === fromWs) {
+          L.parts[0] = toWs || '';
+          t.location = L.parts.filter(Boolean).join(L.sep || ' / ');
+          if (t.address) t.address.zone = toWs || '';
+        }
+      });
+    }
+    this.log('REG_MOVE_WP', `${name}: ${fromWs || 'no zone'} → ${toWs || 'no zone'}`);
+    this.save();
+  }
+
+  /** Remove a station: its posts are removed in cascade (dangling refs are left for integrity scan). */
+  public removeWorkstation(name: string): { posts: number } {
+    this.snapshot(`remove zone ${name}`);
+    const posts = this.workposts.filter(p => p.ws === name).length;
+    this.workposts = this.workposts.filter(p => p.ws !== name);
+    this.workstations = this.workstations.filter(w => w !== name);
+    delete this.wsProgram[name];
+    this.log('REGISTRY_REMOVE', `workstations: ${name} (${posts} posts)`);
+    this.save();
+    return { posts };
+  }
+
+  public removeWorkpost(name: string, ws: string | null): { removed: number } {
+    this.snapshot(`remove post ${name}`);
+    const before = this.workposts.length;
+    this.workposts = this.workposts.filter(p => !(p.name === name && p.ws === (ws || null)));
+    const removed = before - this.workposts.length;
+    this.log('REGISTRY_REMOVE', `workposts: ${name} (${ws || 'no zone'})`);
+    this.save();
+    return { removed };
+  }
+
+  /** Usage counters for a station, used by the delete-confirmation dialogs. */
+  public zoneUsage(name: string): { posts: number; emp: number; tools: number } {
+    const posts = this.workposts.filter(p => p.ws === name).length;
+    const emp = this.personnel.filter(e => e.ws === name).length;
+    let tools = 0;
+    this.tools.forEach(t => {
+      const L = this.parseLocParts(t.location || '');
+      if (L && L.parts[0] === name) tools++;
+    });
+    return { posts, emp, tools };
+  }
+
   public addToLabelQueue(id: string): void {
     if (!this.labelQueue.includes(id)) {
       this.labelQueue.push(id);

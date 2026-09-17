@@ -10,11 +10,13 @@ import { showTooltip, hideTooltip } from '../../utils/tooltip';
 import { get5SRubricExplanation } from '../../operations/auditOps';
 import { workstationAndPostOf } from '../../operations/toolOps';
 import { renderDonutSvg, renderBarSvg, renderRadarSvg, RadarPoint } from '../../reports/radarChart';
+import { computeRiskGroups } from '../../reports/riskIndex';
 
 export interface ChartsCallbacks {
     onFilterSelect: (type: string, value: string) => void;
     onOpenAuditHistory: (pillarIdx?: number) => void;
     onCompleteMaint: (toolId: string) => void;
+    onOpenRiskDetail: (ws: string, post: string) => void;
 }
 
 export class ChartsViewComponent {
@@ -87,6 +89,9 @@ export class ChartsViewComponent {
                 <div class="collapsible"><div class="collapsible-inner">
                     <div style="max-height:230px; overflow-y:auto;">
                         <svg id="chartCulture" width="100%" height="200" viewBox="0 0 300 200"></svg>
+                        <div style="text-align:center; font-size:0.78rem; color:var(--text-muted); margin-top:4px;">
+                            ${T('CULTURE_LEGEND')}
+                        </div>
                         <div id="chart3-table" style="font-size:0.85rem;"></div>
                     </div>
                 </div></div>
@@ -234,51 +239,22 @@ export class ChartsViewComponent {
     }
 
     private computeCulture(): RadarPoint[] {
-        const active = Store.activeTools();
-        const groups: Record<string, { ws: string; post: string; tools: any[] }> = {};
+        const groups = computeRiskGroups();
 
-        active.forEach(t => {
-            const loc = workstationAndPostOf(t);
-            const key = `${loc.ws} | ${loc.post}`;
-            if (!groups[key]) groups[key] = { ws: loc.ws, post: loc.post, tools: [] };
-            groups[key].tools.push(t);
-        });
+        const data: RadarPoint[] = groups.map(g => {
+            const reasons = g.score >= 80
+                ? `★ ${T('High Reliability:')} 0 Overdue, low maintenance, low average wear (${g.avgWear}%). Assigned: ${esc(g.persona)}`
+                : `▼ ${T('Rating Drivers / Risk Factors:')} Overdue items (${g.overdue}), Maintenance items (${g.maintenance}), Wear penalty (${g.avgWear}%). Assigned: ${esc(g.persona)}`;
 
-        const data: RadarPoint[] = Object.values(groups).map(g => {
-            const tools = g.tools;
-            const overdue = tools.filter(t => t.status === 'Overdue').length;
-            const maint = tools.filter(t => t.status === 'Maintenance').length;
-            const wear = Math.round(tools.reduce((a, t) => a + Store.wearOf(t), 0) / tools.length) || 0;
-            const score = Math.max(5, Math.min(100, Math.round(100 - overdue * 20 - maint * 10 - wear * 0.4)));
-
-            const progs = [...new Set(tools.map(t => (t as any).program || Store.wsProgram[g.ws] || 'N/A'))].filter(p => p !== 'N/A');
-            const program = progs.length ? progs.join(', ') : 'N/A';
-
-            const persons = [...new Set(tools.map(t => {
-                if (t.assigneeId) {
-                    const emp = Store.getEmp(t.assigneeId);
-                    return emp ? emp.name : t.assigneeId;
-                }
-                return null;
-            }).filter(Boolean))] as string[];
-            const persona = persons.length ? persons.join(', ') : 'Unassigned / Team';
-
-            const reasons = score >= 80
-                ? `★ ${T('High Reliability:')} 0 Overdue, low maintenance, low average wear (${wear}%). Assigned: ${esc(persona)}`
-                : `▼ ${T('Rating Drivers / Risk Factors:')} Overdue items (${overdue}), Maintenance items (${maint}), Wear penalty (${wear}%). Assigned: ${esc(persona)}`;
-
-            const hasPost = g.post && g.post !== 'Unknown' && g.post !== g.ws;
-            const pillar = hasPost ? `${g.ws} | ${g.post}` : g.ws;
-            const tooltipTitle = hasPost ? `<strong>${esc(pillar)}</strong>` : `<strong>${esc(g.ws)}</strong>`;
-            const tooltipHtml = `<div style="padding:6px; font-size:0.82rem; line-height:1.4;">${tooltipTitle}<br><strong>${T('Program:')}</strong> ${esc(program)}<br><strong>${T('Persona / Responsible:')}</strong> ${esc(persona)}<br><div style="margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.15);">${esc(reasons)}</div></div>`;
+            const tooltipHtml = `<div style="padding:6px; font-size:0.82rem; line-height:1.4;"><strong style="color:var(--primary-hover);">${esc(g.label)}</strong><br><strong>${T('Risk Index')}:</strong> ${g.score}/100<br><strong>${T('Program:')}</strong> ${esc(g.program)}<br><strong>${T('Persona / Responsible:')}</strong> ${esc(g.persona)}<br><div style="margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.15);">${esc(reasons)}</div></div>`;
 
             return {
-                pillar,
-                score,
+                pillar: g.label,
+                score: g.score,
                 rated: true,
                 desc: reasons,
                 tooltipHtml,
-                onClick: () => this.callbacks.onFilterSelect('location', pillar)
+                onClick: () => this.callbacks.onOpenRiskDetail(g.ws, g.post)
             };
         });
 
