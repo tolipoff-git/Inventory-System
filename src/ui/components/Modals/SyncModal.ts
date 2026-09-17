@@ -136,7 +136,7 @@ export function initSyncModalLogic(): void {
     const timeSpan = document.getElementById('syncModalLastTime');
     if (timeSpan) {
       timeSpan.innerText = SyncManagerInstance.lastSyncedAt
-        ? SyncManagerInstance.lastSyncedAt.toLocaleTimeString()
+        ? SyncManagerInstance.lastSyncedAt.toLocaleTimeString('en-US')
         : '—';
     }
 

@@ -1,7 +1,7 @@
 import ExcelJS from 'exceljs';
 import { Store } from '../storage/store';
 import { downloadBuffer, downloadText, printHtml, toast } from '../utils/dom';
-import { datedName, fmtDate, esc, nowISO } from '../utils/formatters';
+import { datedName, fmtDate, fmtDateTime, esc, nowISO } from '../utils/formatters';
 import { Audit5S } from '../types/audit';
 import { S5_RUBRICS, WEAR_RETIRE_PCT, WEAR_WARN_PCT, TOOL_CLASSES } from '../config/constants';
 import { Auth } from '../auth/authManager';
@@ -102,7 +102,7 @@ async function writeInventoryWorkbook(): Promise<void> {
 
   sum.mergeCells('A2:E2');
   const sSub = sum.getCell('A2');
-  sSub.value = `Export Serial: ${exportSerial}  |  Generated: ${new Date().toLocaleString('en-US')}  |  Author: ${author}`;
+  sSub.value = `Export Serial: ${exportSerial}  |  Generated: ${fmtDateTime(new Date())}  |  Author: ${author}`;
   sSub.font = { italic: true, color: { argb: 'FF666666' } };
 
   // Key Metrics block

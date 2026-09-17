@@ -2,15 +2,15 @@
 
 ## Overview
 - **Repository:** `/home/admin/git/Inventory-System`
-- **Current Version:** `v105` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
+- **Current Version:** `v106` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
 - **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith is preserved as `index.monolith.v97.html` for reference only and is **not** the active app.
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v105)
+## Recent Accomplishments (v49 – v106)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
-### 0. Deep Modular-Migration Audit & Repair (v104–v105 Releases)
+### 0. Deep Modular-Migration Audit & Repair (v104–v106 Releases)
 
 Full-codebase audit of the monolith → modular TS migration: every exported symbol was
 traced to its call sites (`rg`/`fd`), every `T()` key checked against both dictionaries,
@@ -95,6 +95,15 @@ program/workstation edits and persisted, but nothing could consume it. Added
 “Rollback Last Cascade” button in the system menu. RBAC stays in the UI layer
 (`Auth.doAction('Administrator', …)`) because `Store` must not import `Auth` (cycle).
 Covered by 3 new tests in `tests/inventory.test.ts`.
+
+**Fixed in v106 — canonical US date format:**
+- `fmtDate()` was hardcoded to `ru-RU` (DD.MM.YYYY) while the printed passport and the Excel
+export hardcoded `en-US`, so the same app mixed two conventions and ENG mode still showed
+Russian-style dates. `fmtDate()` is now US `M/D/YYYY` and a new `fmtDateTime()` covers
+date+time; the remaining hardcoded locales (`reportExports`, `SyncModal`, the Worker photo
+viewer) were routed through them. The format is deliberately **locale-independent** — the app
+is bilingual and prints controlled documents, where one unambiguous format matters more than
+per-language conventions. Covered by `tests/formatters.test.ts` (8 tests).
 
 **Known regressions — still NOT fixed (need a product decision):**
 - **Code 39 barcode and `tool.barcode` are still missing.** QR is used on Brady roll stock
