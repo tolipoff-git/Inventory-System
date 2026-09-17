@@ -712,7 +712,7 @@ function renderViewerHtml(room: string, photoId: string, caption: string, timest
   const safeRoom = escapeHtml(room);
   const safeId = escapeHtml(photoId);
   const safeCaption = escapeHtml(caption || 'Inspection / Tool Photo');
-  const safeTime = escapeHtml(timestamp ? new Date(timestamp).toLocaleString() : 'N/A');
+  const safeTime = escapeHtml(timestamp ? new Date(timestamp).toLocaleString('en-US') : 'N/A');
   const safePhotoUrl = escapeHtml(photoUrl);
   const downloadLink = `/api/photo/${encodeURIComponent(room)}/${encodeURIComponent(photoId)}?download=1${token ? `&token=${encodeURIComponent(token)}` : ''}`;
 

@@ -22,11 +22,28 @@ export function d(v: any): Date | null {
   return isNaN(dt.getTime()) ? null : dt;
 }
 
-/** Format Date to dd.mm.yyyy */
+/**
+ * Canonical date format for the whole app: US `M/D/YYYY`.
+ *
+ * Deliberately locale-independent — the app is bilingual (EN/RU) and prints
+ * controlled documents (tool passports, 5S reports, Excel exports), where one
+ * unambiguous format matters more than per-language conventions. Previously
+ * this was hardcoded to `ru-RU` (DD.MM.YYYY) while print/Excel used `en-US`,
+ * so the same app mixed both conventions.
+ *
+ * Returns 'N/A' for missing or unparseable input.
+ */
 export function fmtDate(v: any): string {
   const dt = d(v);
   if (!dt) return 'N/A';
-  return dt.toLocaleDateString('ru-RU');
+  return dt.toLocaleDateString('en-US');
+}
+
+/** Canonical date+time format: US `M/D/YYYY, h:mm:ss AM/PM`. */
+export function fmtDateTime(v: any): string {
+  const dt = d(v);
+  if (!dt) return 'N/A';
+  return dt.toLocaleString('en-US');
 }
 
 /** ISO timestamp string */
