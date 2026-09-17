@@ -63,7 +63,7 @@ export class ChartsViewComponent {
         this.container.innerHTML = `
             <div class="chart-card ${this.isCardCollapsed('chart1') ? 'collapsed' : ''}" data-card-key="chart1">
                 <h3 class="collapse-toggle" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;">
-                    <span>${T('Tool Status Breakdown')}</span>
+                    <span data-i18n="Tool Status Breakdown">${T('Tool Status Breakdown')}</span>
                     <span class="collapse-chevron">▾</span>
                 </h3>
                 <div class="collapsible"><div class="collapsible-inner">
@@ -73,7 +73,7 @@ export class ChartsViewComponent {
 
             <div class="chart-card ${this.isCardCollapsed('chart2') ? 'collapsed' : ''}" data-card-key="chart2">
                 <h3 class="collapse-toggle" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;">
-                    <span>${T('Workstation Tool Load')}</span>
+                    <span data-i18n="Workstation Tool Load">${T('Workstation Tool Load')}</span>
                     <span class="collapse-chevron">▾</span>
                 </h3>
                 <div class="collapsible"><div class="collapsible-inner">
@@ -83,13 +83,13 @@ export class ChartsViewComponent {
 
             <div class="chart-card ${this.isCardCollapsed('chart3') ? 'collapsed' : ''}" data-card-key="chart3">
                 <h3 class="collapse-toggle" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;">
-                    <span>${T('Risk Index & Incidents')}</span>
+                    <span data-i18n="Risk Index &amp; Incidents">${T('Risk Index & Incidents')}</span>
                     <span class="collapse-chevron">▾</span>
                 </h3>
                 <div class="collapsible"><div class="collapsible-inner">
                     <div style="max-height:230px; overflow-y:auto;">
                         <svg id="chartCulture" width="100%" height="200" viewBox="0 0 300 200"></svg>
-                        <div style="text-align:center; font-size:0.78rem; color:var(--text-muted); margin-top:4px;">
+                        <div style="text-align:center; font-size:0.78rem; color:var(--text-muted); margin-top:4px;" data-i18n="CULTURE_LEGEND">
                             ${T('CULTURE_LEGEND')}
                         </div>
                         <div id="chart3-table" style="font-size:0.85rem;"></div>
@@ -99,12 +99,12 @@ export class ChartsViewComponent {
 
             <div class="chart-card ${this.isCardCollapsed('chart4') ? 'collapsed' : ''}" data-card-key="chart4">
                 <h3 class="collapse-toggle" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;">
-                    <span>${T('5S Audit Radar')}</span>
+                    <span data-i18n="5S Audit Radar">${T('5S Audit Radar')}</span>
                     <span class="collapse-chevron">▾</span>
                 </h3>
                 <div class="collapsible"><div class="collapsible-inner">
                     <svg id="chartRadar" width="100%" height="200" viewBox="0 0 300 200"></svg>
-                    <div style="text-align:center; font-size:0.78rem; color:var(--text-muted); margin-top:4px;">
+                    <div style="text-align:center; font-size:0.78rem; color:var(--text-muted); margin-top:4px;" data-i18n="RADAR_CLICK_HINT">
                         ${T('RADAR_CLICK_HINT')}
                     </div>
                 </div></div>

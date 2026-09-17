@@ -2,13 +2,20 @@
 
 ## Overview
 - **Repository:** `/home/admin/git/Inventory-System`
-- **Current Version:** `v110` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
+- **Current Version:** `v111` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
 - **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith is preserved as `index.monolith.v97.html` for reference only and is **not** the active app.
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v110)
+## Recent Accomplishments (v49 – v111)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
+
+### 0. Language Switch Re-translates Charts, KPIs & Modals (v111 Release)
+- **Symptom:** in ENG mode the dashboard chart card titles (and the KPI labels) stayed Russian.
+- **Root cause:** `ChartsView.render()` and `MetricsBar.render()` build their labels once at mount; `refreshAll()` (fired by `onLanguageChange`) only calls `charts.update()` / `metrics.update()`, which repaint the SVG and the numbers but **not** the labels. Modals had the same class of bug — their DOM is created on first open and cached, so a modal opened before the switch kept the old language.
+- **Fix:**
+  - Added `data-i18n` to the four chart card titles, `CULTURE_LEGEND`, `RADAR_CLICK_HINT` and the five KPI labels/hints. `applyLanguage()` already translates every `[data-i18n]` element on each switch, so no render-path change was needed.
+  - `applyLanguage()` now removes **closed** `.modal-overlay` nodes, so the next open rebuilds them in the current language. An open modal is left untouched. Every modal already follows the `if (!modal) createModalDOM()` pattern, so removal is safe.
 
 ### 0. 5S Report Restored to Monolith Depth (v110 Release)
 - **Symptom:** the modular 5S report was a thin subset of the monolith's — it had lost decommissioning statistics, procurement detail/recommendations, Kaizen advice by role, the workstation culture table, per-pillar rubric findings and the print signature block.

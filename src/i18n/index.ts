@@ -93,6 +93,11 @@ export function applyLanguage(): void {
     }
   });
 
+  // Modals cache their DOM after the first open, so their labels would keep the
+  // old language. Drop the *closed* ones so the next open rebuilds them fresh;
+  // an open modal is left untouched (its content is re-populated on open).
+  document.querySelectorAll('.modal-overlay:not(.active)').forEach(el => el.remove());
+
   // Notify listeners to re-render dynamic views
   renderListeners.forEach(cb => {
     try {
