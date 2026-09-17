@@ -29,29 +29,29 @@ export class MetricsBarComponent {
         this.container.className = 'kpi-container';
         this.container.innerHTML = `
             <div class="kpi-card" id="kpiCardTotal">
-                <div class="kpi-label">${T('Total Assets')}</div>
+                <div class="kpi-label" data-i18n="Total Assets">${T('Total Assets')}</div>
                 <div class="kpi-value" id="kpiTotal">0</div>
-                <div class="kpi-hint">${T('click: reset filter')}</div>
+                <div class="kpi-hint" data-i18n="click: reset filter">${T('click: reset filter')}</div>
             </div>
             <div class="kpi-card success" id="kpiCardActive">
-                <div class="kpi-label">${T('Active on Floor')}</div>
+                <div class="kpi-label" data-i18n="Active on Floor">${T('Active on Floor')}</div>
                 <div class="kpi-value" id="kpiActive">0</div>
-                <div class="kpi-hint">${T('click: filter')}</div>
+                <div class="kpi-hint" data-i18n="click: filter">${T('click: filter')}</div>
             </div>
             <div class="kpi-card warning" id="kpiCardIssued">
-                <div class="kpi-label">${T('Issued to Personnel')}</div>
+                <div class="kpi-label" data-i18n="Issued to Personnel">${T('Issued to Personnel')}</div>
                 <div class="kpi-value" id="kpiIssued">0</div>
-                <div class="kpi-hint">${T('click: filter')}</div>
+                <div class="kpi-hint" data-i18n="click: filter">${T('click: filter')}</div>
             </div>
             <div class="kpi-card warning" id="kpiCardMaint">
-                <div class="kpi-label">${T('Maint. & Cal. Queue')}</div>
+                <div class="kpi-label" data-i18n="Maint. &amp; Cal. Queue">${T('Maint. & Cal. Queue')}</div>
                 <div class="kpi-value" id="kpiMaint">0</div>
-                <div class="kpi-hint">${T('click: filter')}</div>
+                <div class="kpi-hint" data-i18n="click: filter">${T('click: filter')}</div>
             </div>
             <div class="kpi-card danger" id="kpiCardOverdue">
-                <div class="kpi-label">${T('Overdue Alerts')}</div>
+                <div class="kpi-label" data-i18n="Overdue Alerts">${T('Overdue Alerts')}</div>
                 <div class="kpi-value" id="kpiOverdue">0</div>
-                <div class="kpi-hint">${T('click: filter')}</div>
+                <div class="kpi-hint" data-i18n="click: filter">${T('click: filter')}</div>
             </div>
         `;
 
