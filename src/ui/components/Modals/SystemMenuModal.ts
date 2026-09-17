@@ -10,6 +10,7 @@ import { BatchRotationModal } from './BatchRotationModal';
 import { AuditLogModal } from './AuditLogModal';
 import { IntegrityModal } from './IntegrityModal';
 import { downloadText, toast } from '../../../utils/dom';
+import { hardReloadPwa } from '../../../utils/pwa';
 import { fmtDate } from '../../../utils/formatters';
 import { windowConfirm } from '../../../utils/dialogCompat';
 import { Auth } from '../../../auth/authManager';
@@ -119,7 +120,7 @@ export class SystemMenuModal {
         }
 
         modal.querySelector('#sysUpdateBtn')?.addEventListener('click', () => {
-            window.location.reload();
+            hardReloadPwa();
         });
     }
 

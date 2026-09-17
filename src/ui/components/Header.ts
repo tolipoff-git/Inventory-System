@@ -9,6 +9,7 @@ import { SyncManagerInstance } from '../../sync/syncManager';
 import { SyncModal } from './Modals/SyncModal';
 import { Store } from '../../storage/store';
 import { printQueueLabels } from '../../labels/labelPrint';
+import { hardReloadPwa } from '../../utils/pwa';
 
 export interface HeaderCallbacks {
     onToggleMode: () => void;
@@ -147,7 +148,7 @@ export class HeaderComponent {
         if (verTag) {
             verTag.addEventListener('click', () => {
                 if (window.confirm(T('FORCE_REFRESH_CONFIRM'))) {
-                    window.location.reload();
+                    hardReloadPwa();
                 }
             });
         }

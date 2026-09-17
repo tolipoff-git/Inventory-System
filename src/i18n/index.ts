@@ -40,7 +40,7 @@ export function toggleLanguage(): void {
 }
 
 export function initFaqAccordion(): void {
-  const details = document.querySelectorAll('#faqBody .faq-accordion details');
+  const details = document.querySelectorAll('.faq-accordion details');
   details.forEach(target => {
     target.addEventListener('toggle', () => {
       if ((target as HTMLDetailsElement).open) {
@@ -84,12 +84,14 @@ export function applyLanguage(): void {
     if (key) (el as HTMLOptionElement).innerText = T(key);
   });
 
-  // FAQ body
-  const faqBody = document.getElementById('faqBody');
-  if (faqBody) {
-    faqBody.innerHTML = T('FAQ_BODY');
-    initFaqAccordion();
-  }
+  // FAQ body (legacy shell anchor + the FAQ modal)
+  ['faqBody', 'faqModalBody'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.innerHTML = T('FAQ_BODY');
+      initFaqAccordion();
+    }
+  });
 
   // Notify listeners to re-render dynamic views
   renderListeners.forEach(cb => {

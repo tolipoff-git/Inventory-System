@@ -2,7 +2,7 @@
 // 5S Tool Command Center — SopModal Component (Standard Operating Procedures & FAQ)
 // ============================================================================
 
-import { T } from '../../../i18n';
+import { T, initFaqAccordion } from '../../../i18n';
 import { printHtml } from '../../../utils/dom';
 
 export class SopModal {
@@ -140,5 +140,6 @@ export class SopModal {
         const body = document.getElementById('faqModalBody');
         if (!body) return;
         body.innerHTML = T('FAQ_BODY');
+        initFaqAccordion();
     }
 }

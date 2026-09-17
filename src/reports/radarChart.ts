@@ -43,21 +43,48 @@ export function renderRadarSvg(
   const pt = (i: number, rad: number) =>
     `${cx + rad * Math.cos(i * step - Math.PI / 2)},${cy + rad * Math.sin(i * step - Math.PI / 2)}`;
 
-  // Background rings
+  // Whole-ray interactivity: spoke, label and node all answer to hover/click.
+  const bindPoint = (el: SVGElement, d: RadarPoint): void => {
+    const scoreTxt = d.rated === false ? T('Not rated') : `${T('Score:')} ${d.score}/${max}`;
+    const tip = d.tooltipHtml || `<strong>${esc(d.pillar)}</strong><br>${scoreTxt}<br>${d.desc}`;
+    el.addEventListener('mousemove', (e) => showTooltip(e as MouseEvent, tip));
+    el.addEventListener('mouseleave', () => hideTooltip());
+    if (d.onClick) {
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', () => d.onClick!());
+    }
+  };
+
+  // Background rings (decorative — never swallow pointer events)
   for (let ring = 1; ring <= rings; ring++) {
     const rad = (r * ring) / rings;
     const pts = Array.from({ length: n }, (_, i) => pt(i, rad)).join(' ');
-    svg.appendChild(createSvgEl('polygon', {
+    const poly = createSvgEl('polygon', {
       points: pts,
       fill: 'none',
       stroke: 'var(--border)',
-    }));
+    });
+    poly.setAttribute('pointer-events', 'none');
+    svg.appendChild(poly);
   }
 
   // Spokes + labels (★ best / ▼ worst)
   data.forEach((d, i) => {
     const [x2, y2] = pt(i, r).split(',');
-    svg.appendChild(createSvgEl('line', { x1: cx, y1: cy, x2, y2, stroke: 'var(--border)' }));
+
+    // Invisible fat line so the whole ray is easy to hover on touch/mouse.
+    const hit = createSvgEl('line', {
+      x1: cx, y1: cy, x2, y2,
+      stroke: 'transparent',
+      'stroke-width': 14,
+    });
+    hit.setAttribute('pointer-events', 'stroke');
+    bindPoint(hit, d);
+    svg.appendChild(hit);
+
+    svg.appendChild(createSvgEl('line', {
+      x1: cx, y1: cy, x2, y2, stroke: 'var(--border)', 'pointer-events': 'none',
+    }));
 
     const angle = i * step - Math.PI / 2;
     const cosA = Math.cos(angle);
@@ -82,16 +109,19 @@ export function renderRadarSvg(
       'alignment-baseline': 'middle',
     });
     text.textContent = label;
+    bindPoint(text, d);
     svg.appendChild(text);
   });
 
-  // Score polygon
-  svg.appendChild(createSvgEl('polygon', {
+  // Score polygon (decorative — keep it from blocking the rays)
+  const scorePoly = createSvgEl('polygon', {
     points: data.map((d, i) => pt(i, (r / max) * Math.min(d.score, max))).join(' '),
     fill: opts.fill || 'rgba(0, 210, 255, 0.25)',
     stroke: opts.stroke || 'var(--primary)',
     'stroke-width': '2',
-  }));
+  });
+  scorePoly.setAttribute('pointer-events', 'none');
+  svg.appendChild(scorePoly);
 
   // Interactive nodes
   data.forEach((d, i) => {
@@ -99,18 +129,11 @@ export function renderRadarSvg(
     const node = createSvgEl('circle', {
       cx: nx,
       cy: ny,
-      r: 4.5,
+      r: 5.5,
       fill: d.color || 'var(--primary)',
       class: 'svg-node',
     });
-    const scoreTxt = d.rated === false ? T('Not rated') : `${T('Score:')} ${d.score}/${max}`;
-    node.onmousemove = (e) => showTooltip(e, d.tooltipHtml ||
-      `<strong>${esc(d.pillar)}</strong><br>${scoreTxt}<br>${d.desc}`);
-    node.onmouseleave = hideTooltip;
-    if (d.onClick) {
-      node.style.cursor = 'pointer';
-      node.onclick = d.onClick;
-    }
+    bindPoint(node, d);
     svg.appendChild(node);
   });
 }

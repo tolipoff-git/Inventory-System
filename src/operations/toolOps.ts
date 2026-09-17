@@ -21,14 +21,29 @@ export const isPermanentTool = (t: Tool): boolean =>
 export const isConsumableTool = (t: Tool): boolean =>
   CONFIG.CONSUMABLE_PREFIXES.some(p => t.id.startsWith(p)) || t.type === 'Consumable';
 
+/** Canonical statuses shown on the dashboard donut; everything else maps to `Backup`. */
+export const STATUS_BUCKETS = ['Active', 'Issued', 'Backup', 'Maintenance', 'Overdue'];
+
+/**
+ * Map any stored status onto a dashboard bucket. Used by BOTH the status donut
+ * and the status filter so clicking a slice always shows exactly the tools that
+ * were counted in it (e.g. `Pending Delivery` / `Calibration` fold into `Backup`).
+ */
+export function statusBucket(status: string | null | undefined): string {
+  const s = status || '';
+  return STATUS_BUCKETS.includes(s) ? s : 'Backup';
+}
+
 export function workstationAndPostOf(tool: Tool): { ws: string; post: string } {
   if (tool.assigneeId) {
     const emp = Store.getEmp(tool.assigneeId);
     if (emp) {
-      return {
-        ws: emp.ws || 'Unassigned',
-        post: emp.post || '',
-      };
+      // Legacy records (migrated from the monolith) store `workstation`/`defaultWs`
+      // and `defaultPost` instead of the current `ws`/`post`.
+      const legacy = emp as any;
+      const empWs = emp.ws || legacy.workstation || legacy.defaultWs || '';
+      const empPost = emp.post || legacy.defaultPost || '';
+      if (empWs || empPost) return { ws: empWs || 'Unassigned', post: empPost };
     }
   }
 
