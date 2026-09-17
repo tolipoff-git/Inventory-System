@@ -446,9 +446,18 @@ The archive modal lost its stats counters and retire-detail columns.
 8. **Line-Item Procurement & Partial Receipts (v69):** Added multi-item PO schema, partial receipt qty tracking (`Ops.receiveOrderItem`), item rejection with reason logging (`Ops.rejectOrderItem`), master status re-calculation (`Ops.recalcOrderStatus`), and `orderDetailModal` line-items table with row-level action buttons.
 
 ## Maintenance & Deployment Guidelines
-- **Updating App Version:** Simply change `APP_VERSION` in `CONFIG.APP_VERSION` (in `index.html`).
+- **Updating App Version:** single source is `package.json` `version` (substituted into the bundle as `CONFIG.APP_VERSION`); `build.sh` stamps `sw.js` from the same value. Do not hand-edit a version string.
 - **Cloudflare Pages Build Command:** Configure `bash build.sh` in Cloudflare Pages Build Settings.
 - **Local Testing:** Run `./build.sh` locally to verify `sw.js` updates with current commit short hash.
+
+## Enterprise Architecture Plan — Audited & Corrected (2026-09-17, non-release docs change)
+`ENTERPRISE_ARCHITECTURE_PLAN.md` was rewritten into a **decision record**. Its previous "current state" section was factually stale (claimed localStorage-only storage, no cloud sync, hardcoded PIN), which made the whole gap analysis misleading. Now:
+- **§0 Reality Check** audits each stale claim against the as-built system (IndexedDB 7 stores + blobs, Worker+KV sync with room tokens, ntfy SSE live relay, PBKDF2+RBAC, SHA-256 export stamp + sheet lock).
+- **§4 Deliberately NOT Doing** — WASM SQLite/OPFS, Postgres/Aurora+Hyperdrive, Durable Objects/bin locks, CRDT/vector clocks, SAML/OIDC SSO, double-entry ledger, ERP connectors (SAP/NetSuite/Coupa), Logpush→SIEM, microservice split — each with a reason. These are **conscious rejections, not missing features**.
+- **§5 Roadmap** — Phase A is the one genuine architectural gap: **deletes are not tombstoned**, so a peer holding an older copy can resurrect a removed record on merge. Also: audit `updatedAt` coverage on every mutation path, and add `/api/health`.
+- **§6 SOP & Standards Hub plan** — move the four hardcoded SOPs into `settings.sops` (data-driven, bilingual EN/RU, revision + approval metadata), add an "SOP & Standards" registry tab, surface SOPs contextually on the tool/station card, and log `SOP_VIEW`/`SOP_PRINT` for training evidence.
+- **§7 Revisit Triggers** — the explicit condition that would justify each rejected item.
+Do not re-open a rejected item on "best practice" grounds unless its trigger has fired.
 
 ## Deferred Audit Items (post-MVP, consciously postponed)
 A rendering-architecture audit flagged four items. Decision (user, MVP stage): do NOT implement now — the app works and the refactor risk outweighs the benefit. Revisit after MVP:
