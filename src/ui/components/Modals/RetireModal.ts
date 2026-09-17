@@ -51,21 +51,21 @@ export class RetireModal {
                     <div class="form-group">
                         <label>${T('Retirement Reason:')}</label>
                         <select id="retireReasonSelect" class="form-control">
-                            <option value="Broken / Scrap">Broken / Beyond Economic Repair</option>
-                            <option value="Worn Out">Excessive Wear (>80%)</option>
-                            <option value="Obsolete">Technically Obsolete / Upgraded</option>
-                            <option value="Lost / Missing">Lost / Unaccounted Asset</option>
+                            <option value="Broken / Scrap" data-i18n="Broken / Beyond Economic Repair">${T('Broken / Beyond Economic Repair')}</option>
+                            <option value="Worn Out" data-i18n="Excessive Wear (>80%)">${T('Excessive Wear (>80%)')}</option>
+                            <option value="Obsolete" data-i18n="Technically Obsolete / Upgraded">${T('Technically Obsolete / Upgraded')}</option>
+                            <option value="Lost / Missing" data-i18n="Lost / Unaccounted Asset">${T('Lost / Unaccounted Asset')}</option>
                         </select>
                     </div>
 
                     <div class="form-group">
                         <label>${T('Decommission Notes / Disposal Method:')}</label>
-                        <input type="text" id="retireNotesInput" class="form-control" placeholder="e.g. Scrapped in Metal Bin B">
+                        <input type="text" id="retireNotesInput" class="form-control" placeholder="${T('RETIRE_NOTES_PH')}" data-i18n-ph="RETIRE_NOTES_PH">
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-muted" id="retireCancelBtn">${T('Cancel')}</button>
-                    <button class="btn btn-danger" id="retireSubmitBtn">${T('Retire Asset')}</button>
+                    <button class="btn btn-muted" id="retireCancelBtn" data-i18n="Cancel">${T('Cancel')}</button>
+                    <button class="btn btn-danger" id="retireSubmitBtn" data-i18n="Retire Asset">${T('Retire Asset')}</button>
                 </div>
             </div>
         `;
@@ -94,13 +94,13 @@ export class RetireModal {
         const reason = (document.getElementById('retireReasonSelect') as HTMLSelectElement).value;
         const notes = (document.getElementById('retireNotesInput') as HTMLInputElement).value.trim();
 
-        if (windowConfirm(`Are you sure you want to decommission tool ${this.currentToolId}? This will move it to the Retired Assets Archive.`)) {
+        if (windowConfirm(T('RETIRE_CONFIRM').replace('{id}', this.currentToolId))) {
             try {
                 await decommissionTool(this.currentToolId, 100, reason, 'Admin', notes || '');
-                toast(`Tool ${this.currentToolId} decommissioned.`, 'warning');
+                toast(T('RETIRE_SUCCESS').replace('{id}', this.currentToolId), 'warning');
                 this.close();
             } catch (e: any) {
-                toast(`Decommission failed: ${e.message}`, 'danger');
+                toast(T('RETIRE_FAILED').replace('{msg}', e.message), 'danger');
             }
         }
     }

@@ -15,7 +15,7 @@ export class RegistryModal {
     private static regEditModalId = 'regEditModal';
     private static currentTab = 'personnelTab';
     private static editingEmpId: string | null = null;
-    private static regEditAction: { type: string; id: string; ws?: string } | null = null;
+    private static regEditAction: { mode: string; type: string; id: string; ws?: string } | null = null;
 
     public static open(tab?: string): void {
         let modal = document.getElementById(this.modalId);
@@ -60,6 +60,7 @@ export class RegistryModal {
                             <input type="text" id="regEmpName" class="form-control" placeholder="Full Name">
                             <input type="text" id="regEmpInitials" class="form-control" placeholder="Initials" style="max-width:100px;">
                             <input type="text" id="regEmpBadge" class="form-control" placeholder="Badge/ID" style="max-width:120px;">
+                            <select id="regEmpProg" class="form-control" title="${T('Program')}"></select>
                             <select id="regEmpWs" class="form-control"></select>
                             <select id="regEmpPost" class="form-control"></select>
                             <button class="btn btn-success" id="regEmpSaveBtn">+ ${T('Add')}</button>
@@ -73,6 +74,7 @@ export class RegistryModal {
                                         <th>${T('Name')}</th>
                                         <th>Initials</th>
                                         <th>Badge</th>
+                                        <th>${T('Program')}</th>
                                         <th>WS</th>
                                         <th>Post</th>
                                         <th>${T('Care Score')}</th>
@@ -155,6 +157,13 @@ export class RegistryModal {
             });
         }
 
+        const progSelect = overlay.querySelector<HTMLSelectElement>('#regEmpProg');
+        if (progSelect) {
+            progSelect.addEventListener('change', () => {
+                this.populateEmpWsSelect(progSelect.value, '');
+            });
+        }
+
         this.createRegEditModalDOM();
     }
 
@@ -175,7 +184,7 @@ export class RegistryModal {
                         <input type="text" id="regEditNameInput" class="form-control">
                     </div>
                     <div class="form-group" id="regEditZoneGroup" style="display:none;">
-                        <label>${T('Target Zone / Workstation')}:</label>
+                        <label id="regEditZoneLabel">${T('Target Zone / Workstation')}:</label>
                         <select id="regEditZoneSelect" class="form-control"></select>
                     </div>
                 </div>
@@ -218,26 +227,44 @@ export class RegistryModal {
             posts.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
     }
 
+    /** Fill the program dropdown (Program → Station → Post assignment). */
+    private static populateEmpProgSelect(selectedProg: string): void {
+        const progSelect = document.getElementById('regEmpProg') as HTMLSelectElement;
+        if (!progSelect) return;
+        progSelect.innerHTML = `<option value="">${T('All / No program')}</option>` +
+            Store.programOptions().map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+        if (selectedProg) progSelect.value = selectedProg;
+    }
+
+    /** Fill the station dropdown from the chosen program, then refresh its posts. */
+    private static populateEmpWsSelect(program: string, selectedWs: string): void {
+        const wsSelect = document.getElementById('regEmpWs') as HTMLSelectElement;
+        if (!wsSelect) return;
+        const stations = program ? Store.wsOfProgram(program) : Store.workstations;
+        wsSelect.innerHTML = stations.map(ws => `<option value="${esc(ws)}">${esc(ws)}</option>`).join('');
+        if (selectedWs && stations.includes(selectedWs)) wsSelect.value = selectedWs;
+        this.updatePostSelect(wsSelect.value);
+    }
+
     // --- Personnel Tab ---
     private static renderPersonnel(): void {
         const tbody = document.getElementById('regEmpList');
-        const wsSelect = document.getElementById('regEmpWs') as HTMLSelectElement;
-        if (wsSelect) {
-            wsSelect.innerHTML = Store.workstations.map(ws => `<option value="${esc(ws)}">${esc(ws)}</option>`).join('');
-            this.updatePostSelect(wsSelect.value);
-        }
+        this.populateEmpProgSelect('');
+        this.populateEmpWsSelect('', '');
 
         if (!tbody) return;
         tbody.innerHTML = Store.personnel.map(emp => {
             const careScore = emp.careScore ?? 100;
             const careColor = careScore >= 80 ? 'var(--success)' : careScore >= 60 ? 'var(--warning)' : 'var(--danger)';
+            const prog = emp.ws ? (Store.programOf(emp.ws) || '—') : '—';
             return `
             <tr>
                 <td><strong>${esc(emp.id)}</strong></td>
                 <td>${esc(emp.name)}</td>
                 <td>${esc(emp.initials || '—')}</td>
                 <td>${esc(emp.badge || '—')}</td>
-                <td>${esc(emp.ws || 'Tool Gage')}</td>
+                <td>${esc(prog)}</td>
+                <td>${esc(emp.ws || '—')}</td>
                 <td>${esc(emp.post || '—')}</td>
                 <td><span style="background:${careColor}; color:#000; padding:2px 6px; border-radius:3px; font-weight:bold;">${careScore}%</span></td>
                 <td>
@@ -276,9 +303,9 @@ export class RegistryModal {
         (document.getElementById('regEmpInitials') as HTMLInputElement).value = emp.initials || '';
         (document.getElementById('regEmpBadge') as HTMLInputElement).value = emp.badge || '';
 
-        const wsSelect = document.getElementById('regEmpWs') as HTMLSelectElement;
-        if (wsSelect && emp.ws) wsSelect.value = emp.ws;
-        this.updatePostSelect(wsSelect ? wsSelect.value : '');
+        const prog = emp.ws ? (Store.programOf(emp.ws) || '') : '';
+        this.populateEmpProgSelect(prog);
+        this.populateEmpWsSelect(prog, emp.ws || '');
 
         const postSelect = document.getElementById('regEmpPost') as HTMLSelectElement;
         if (postSelect && emp.post) postSelect.value = emp.post;
@@ -351,99 +378,161 @@ export class RegistryModal {
         const wsList = document.getElementById('regWsList');
         if (!wsList) return;
 
-        const html = Store.programs.map(prog => {
+        const renBtn = (type: string, name: string, ws?: string) =>
+            `<button class="btn" style="padding:2px 6px; font-size:0.75rem;" data-reg-rename="${type}" data-id="${esc(name)}" data-ws="${esc(ws || '')}" title="${T('Rename')}">✏️</button>`;
+        const moveWsBtn = (name: string) =>
+            `<button class="btn" style="padding:2px 6px; font-size:0.75rem;" data-reg-move-ws="${esc(name)}" title="${T('Move to program…')}">⇄</button>`;
+        const moveWpBtn = (name: string, ws: string) =>
+            `<button class="btn" style="padding:2px 6px; font-size:0.75rem;" data-reg-move-wp="${esc(name)}" data-ws="${esc(ws)}" title="${T('Move to zone…')}">⇄</button>`;
+        const delBtn = (type: string, name: string, ws?: string) =>
+            `<button class="btn btn-danger" style="padding:2px 6px; font-size:0.75rem;" data-reg-del="${type}" data-id="${esc(name)}" data-ws="${esc(ws || '')}">✖</button>`;
+
+        const postRow = (p: { name: string; ws: string | null }, ctx: string) => `
+            <li class="history-item" style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="color:var(--text-muted);">↳ ${esc(p.name)}</span>
+                <div style="white-space:nowrap;">${renBtn('workposts', p.name, ctx)}${moveWpBtn(p.name, ctx)}${delBtn('workposts', p.name, ctx)}</div>
+            </li>`;
+
+        const wsBlock = (ws: string) => {
+            const posts = Store.workposts.filter(p => p.ws === ws);
+            return `
+            <li class="history-item" style="flex-direction:column; align-items:stretch;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                    <span>📍 <strong>${esc(ws)}</strong> <span style="color:var(--text-muted); font-size:0.8rem;">(${posts.length})</span></span>
+                    <div style="white-space:nowrap;">${renBtn('workstations', ws)}${moveWsBtn(ws)}${delBtn('workstations', ws)}</div>
+                </div>
+                <ul class="history-list" style="margin:6px 0 4px 16px;">
+                    ${posts.map(p => postRow(p, ws)).join('')}
+                    <li style="display:flex; gap:6px; margin-top:4px;">
+                        <input type="text" class="form-control" placeholder="${T('New post name')}" style="flex:1; font-size:0.85rem;">
+                        <button class="btn btn-success" style="padding:4px 8px; font-size:0.85rem;" data-reg-add-post="${esc(ws)}">+ ${T('Add')}</button>
+                    </li>
+                </ul>
+            </li>`;
+        };
+
+        const addWsRow = (prog: string) => `
+            <li style="display:flex; gap:6px; margin:4px 0 2px 16px;">
+                <input type="text" class="form-control" placeholder="${T('New station name')}" style="flex:1; font-size:0.85rem;">
+                <button class="btn btn-success" style="padding:4px 8px; font-size:0.85rem;" data-reg-add-ws="${esc(prog)}">+ ${T('Add')}</button>
+            </li>`;
+
+        let html = Store.programs.map(prog => {
             const stations = Store.wsOfProgram(prog);
             return `
             <li class="history-item" style="flex-direction:column; align-items:stretch; border-left:3px solid var(--primary); margin-bottom:10px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span>🏭 <strong>${esc(prog)}</strong> (${stations.length})</span>
-                    <div>
-                        <button class="btn" style="padding:2px 6px; font-size:0.75rem;" data-reg-prog-rename="${esc(prog)}">✏️</button>
-                        <button class="btn btn-danger" style="padding:2px 6px; font-size:0.75rem;" data-reg-prog-del="${esc(prog)}">✖</button>
-                    </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                    <span>🏭 <strong>${esc(prog)}</strong> <span style="color:var(--text-muted); font-size:0.8rem;">(${stations.length})</span></span>
+                    <div style="white-space:nowrap;">${renBtn('programs', prog)}${delBtn('programs', prog)}</div>
                 </div>
-                <ul class="history-list" style="margin-top:6px; margin-left:14px;">
-                    ${stations.map(ws => `
-                        <li class="history-item" style="display:flex; justify-content:space-between; align-items:center;">
-                            <span>📍 ${esc(ws)}</span>
-                            <div>
-                                <button class="btn" style="padding:2px 6px; font-size:0.75rem;" data-reg-ws-rename="${esc(ws)}">✏️</button>
-                                <button class="btn btn-danger" style="padding:2px 6px; font-size:0.75rem;" data-reg-ws-del="${esc(ws)}">✖</button>
-                            </div>
-                        </li>
-                    `).join('')}
-                    <li style="display:flex; gap:6px; margin-top:4px;">
-                        <input type="text" class="form-control" placeholder="${T('New station name')}" id="newWsInput_${esc(prog)}" style="font-size:0.85rem;">
-                        <button class="btn btn-success" style="padding:4px 8px; font-size:0.85rem;" data-reg-ws-add="${esc(prog)}">+ ${T('Add')}</button>
-                    </li>
+                <ul class="history-list" style="margin:6px 0 4px 16px;">
+                    ${stations.map(wsBlock).join('')}
+                    ${addWsRow(prog)}
                 </ul>
-            </li>
-            `;
+            </li>`;
         }).join('');
 
+        const free = Store.workstations.filter(ws => !Store.wsProgram[ws]);
+        html += `
+            <li class="history-item" style="flex-direction:column; align-items:stretch; margin-bottom:10px;">
+                <div><strong>${T('No program (areas)')}</strong> <span style="color:var(--text-muted); font-size:0.8rem;">(${free.length})</span></div>
+                <ul class="history-list" style="margin:6px 0 4px 16px;">${free.map(wsBlock).join('')}${addWsRow('')}</ul>
+            </li>`;
+
+        const unzoned = Store.workposts.filter(p => p.ws === null);
+        if (unzoned.length) {
+            html += `
+            <li class="history-item" style="flex-direction:column; align-items:stretch;">
+                <div><strong>${T('No zone (unassigned)')}</strong> <span style="color:var(--text-muted); font-size:0.8rem;">(${unzoned.length})</span></div>
+                <ul class="history-list" style="margin:6px 0 4px 16px;">${unzoned.map(p => postRow(p, '')).join('')}</ul>
+            </li>`;
+        }
+
         wsList.innerHTML = html;
+        this.bindWsListEvents(wsList);
+    }
 
-        wsList.querySelectorAll('[data-reg-ws-add]').forEach(btn => {
+    private static bindWsListEvents(wsList: HTMLElement): void {
+        wsList.querySelectorAll('[data-reg-add-ws]').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const prog = (e.currentTarget as HTMLElement).dataset.regWsAdd!;
+                const prog = (e.currentTarget as HTMLElement).dataset.regAddWs || '';
                 const input = (e.currentTarget as HTMLElement).closest('li')?.querySelector<HTMLInputElement>('input');
-                if (input && input.value.trim()) {
-                    const wsName = input.value.trim();
-                    if (!Store.workstations.includes(wsName)) {
-                        Store.workstations.push(wsName);
-                        Store.setWsProgram(wsName, prog);
-                        await Store.save();
-                        toast(`Station ${wsName} added to ${prog}!`, 'success');
-                        this.renderWs();
-                    }
-                }
+                const name = input?.value.trim();
+                if (!name) return;
+                if (Store.workstations.includes(name)) { toast(T('ZONE_EXISTS'), 'warning'); return; }
+                Store.addWorkstation(name, prog || null);
+                await Store.save();
+                toast(`Station ${name} added!`, 'success');
+                this.renderWs();
             });
         });
 
-        wsList.querySelectorAll('[data-reg-prog-rename]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const prog = (e.currentTarget as HTMLElement).dataset.regProgRename!;
-                this.openRegEdit('programs', prog);
-            });
-        });
-
-        wsList.querySelectorAll('[data-reg-prog-del]').forEach(btn => {
+        wsList.querySelectorAll('[data-reg-add-post]').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const prog = (e.currentTarget as HTMLElement).dataset.regProgDel!;
-                if (windowConfirm(`Delete program ${prog}?`)) {
-                    Store.removeProgram(prog);
-                    await Store.save();
-                    toast(`Program ${prog} deleted!`, 'warning');
-                    this.renderWs();
-                }
+                const ws = (e.currentTarget as HTMLElement).dataset.regAddPost || '';
+                const input = (e.currentTarget as HTMLElement).closest('li')?.querySelector<HTMLInputElement>('input');
+                const name = input?.value.trim();
+                if (!name) return;
+                if (Store.postExists(name, ws)) { toast(T('POST_EXISTS'), 'warning'); return; }
+                Store.addWorkpost(name, ws);
+                await Store.save();
+                toast(`Post ${name} added!`, 'success');
+                this.renderWs();
             });
         });
 
-        wsList.querySelectorAll('[data-reg-ws-rename]').forEach(btn => {
+        wsList.querySelectorAll('[data-reg-rename]').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const ws = (e.currentTarget as HTMLElement).dataset.regWsRename!;
-                this.openRegEdit('workstations', ws);
+                const el = e.currentTarget as HTMLElement;
+                this.openRegEdit('rename', el.dataset.regRename!, el.dataset.id!, el.dataset.ws || '');
             });
         });
 
-        wsList.querySelectorAll('[data-reg-ws-del]').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const ws = (e.currentTarget as HTMLElement).dataset.regWsDel!;
-                if (windowConfirm(`Delete station ${ws}?`)) {
-                    Store.workstations = Store.workstations.filter(w => w !== ws);
-                    delete Store.wsProgram[ws];
-                    await Store.save();
-                    toast(`Station ${ws} deleted!`, 'warning');
-                    this.renderWs();
-                }
+        wsList.querySelectorAll('[data-reg-move-ws]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const ws = (e.currentTarget as HTMLElement).dataset.regMoveWs!;
+                this.openRegEdit('move-ws', 'workstations', ws);
             });
         });
+
+        wsList.querySelectorAll('[data-reg-move-wp]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const el = e.currentTarget as HTMLElement;
+                this.openRegEdit('move-wp', 'workposts', el.dataset.regMoveWp!, el.dataset.ws || '');
+            });
+        });
+
+        wsList.querySelectorAll('[data-reg-del]').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const el = e.currentTarget as HTMLElement;
+                await this.deleteRegistryItem(el.dataset.regDel!, el.dataset.id!, el.dataset.ws || '');
+            });
+        });
+    }
+
+    private static async deleteRegistryItem(type: string, id: string, ws: string): Promise<void> {
+        if (type === 'programs') {
+            const stations = Store.wsOfProgram(id).length;
+            if (!windowConfirm(T('REMOVE_PROGRAM_CONFIRM').replace('{name}', id).replace('{n}', String(stations)))) return;
+            Store.removeProgram(id);
+        } else if (type === 'workstations') {
+            const u = Store.zoneUsage(id);
+            if (!windowConfirm(T('REMOVE_ZONE_CONFIRM').replace('{name}', id).replace('{posts}', String(u.posts)).replace('{emp}', String(u.emp)).replace('{tools}', String(u.tools)))) return;
+            Store.removeWorkstation(id);
+        } else {
+            if (!windowConfirm(T('REMOVE_POST_CONFIRM').replace('{name}', id))) return;
+            Store.removeWorkpost(id, ws || null);
+        }
+        await Store.save();
+        this.renderWs();
+        this.renderWp();
     }
 
     private static async addProgram(): Promise<void> {
         const input = document.getElementById('regProgName') as HTMLInputElement;
         if (!input || !input.value.trim()) return;
         const prog = input.value.trim();
+        if (Store.programExists(prog)) { toast(T('PROGRAM_EXISTS'), 'warning'); return; }
         input.value = '';
         Store.addProgram(prog);
         await Store.save();
@@ -458,31 +547,33 @@ export class RegistryModal {
 
         wpList.innerHTML = Store.workposts.map(p => `
             <li class="history-item" style="display:flex; justify-content:space-between; align-items:center;">
-                <span>🛠 <strong>${esc(p.name)}</strong> <span style="color:var(--text-muted);">— ${esc(p.ws || 'No Zone')}</span></span>
-                <div>
+                <span>🛠 <strong>${esc(p.name)}</strong> <span style="color:var(--text-muted);">— ${esc(p.ws || T('No zone'))}</span></span>
+                <div style="white-space:nowrap;">
                     <button class="btn" style="padding:2px 6px; font-size:0.75rem;" data-reg-wp-rename="${esc(p.name)}" data-ws="${esc(p.ws || '')}">✏️</button>
+                    <button class="btn" style="padding:2px 6px; font-size:0.75rem;" data-reg-wp-move="${esc(p.name)}" data-ws="${esc(p.ws || '')}" title="${T('Move to zone…')}">⇄</button>
                     <button class="btn btn-danger" style="padding:2px 6px; font-size:0.75rem;" data-reg-wp-del="${esc(p.name)}" data-ws="${esc(p.ws || '')}">✖</button>
                 </div>
             </li>
-        `).join('');
+        `).join('') || `<li style="color:var(--text-muted); padding:10px;">${T('No posts yet.')}</li>`;
 
         wpList.querySelectorAll('[data-reg-wp-rename]').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const name = (e.currentTarget as HTMLElement).dataset.regWpRename!;
-                const ws = (e.currentTarget as HTMLElement).dataset.ws || '';
-                this.openRegEdit('workposts', name, ws);
+                const el = e.currentTarget as HTMLElement;
+                this.openRegEdit('rename', 'workposts', el.dataset.regWpRename!, el.dataset.ws || '');
+            });
+        });
+
+        wpList.querySelectorAll('[data-reg-wp-move]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const el = e.currentTarget as HTMLElement;
+                this.openRegEdit('move-wp', 'workposts', el.dataset.regWpMove!, el.dataset.ws || '');
             });
         });
 
         wpList.querySelectorAll('[data-reg-wp-del]').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const name = (e.currentTarget as HTMLElement).dataset.regWpDel!;
-                const ws = (e.currentTarget as HTMLElement).dataset.ws || '';
-                if (windowConfirm(`Delete post ${name}?`)) {
-                    Store.workposts = Store.workposts.filter(p => !(p.name === name && p.ws === (ws || null)));
-                    await Store.save();
-                    this.renderWp();
-                }
+                const el = e.currentTarget as HTMLElement;
+                await this.deleteRegistryItem('workposts', el.dataset.regWpDel!, el.dataset.ws || '');
             });
         });
     }
@@ -540,17 +631,37 @@ export class RegistryModal {
         this.renderRbac();
     }
 
-    // --- RegEdit Modal ---
-    private static openRegEdit(type: string, id: string, ws?: string): void {
-        this.regEditAction = { type, id, ws };
+    // --- RegEdit Modal (rename / move station / move post) ---
+    private static openRegEdit(mode: string, type: string, id: string, ws?: string): void {
+        this.regEditAction = { mode, type, id, ws };
         const modal = document.getElementById(this.regEditModalId);
         const title = document.getElementById('regEditTitle');
-        const input = document.getElementById('regEditNameInput') as HTMLInputElement;
+        const nameGroup = document.getElementById('regEditNameGroup');
+        const nameInput = document.getElementById('regEditNameInput') as HTMLInputElement;
         const zoneGroup = document.getElementById('regEditZoneGroup');
+        const zoneLabel = document.getElementById('regEditZoneLabel');
+        const zoneSelect = document.getElementById('regEditZoneSelect') as HTMLSelectElement;
 
-        if (title) title.textContent = `Rename ${type.slice(0, -1)}: ${id}`;
-        if (input) input.value = id;
-        if (zoneGroup) zoneGroup.style.display = 'none';
+        if (mode === 'move-ws') {
+            if (title) title.textContent = `${T('Move to program…')}: ${id}`;
+            if (nameGroup) nameGroup.style.display = 'none';
+            if (zoneGroup) zoneGroup.style.display = 'block';
+            if (zoneLabel) zoneLabel.textContent = T('Target Program');
+            const current = Store.programOf(id);
+            zoneSelect.innerHTML = `<option value="">${T('— No program —')}</option>` +
+                Store.programs.filter(p => p !== current).map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+        } else if (mode === 'move-wp') {
+            if (title) title.textContent = `${T('Move to zone…')}: ${id}`;
+            if (nameGroup) nameGroup.style.display = 'none';
+            if (zoneGroup) zoneGroup.style.display = 'block';
+            if (zoneLabel) zoneLabel.textContent = T('Target Zone');
+            zoneSelect.innerHTML = Store.workstations.filter(w => w !== ws).map(w => `<option value="${esc(w)}">${esc(w)}</option>`).join('');
+        } else {
+            if (title) title.textContent = `${T('Rename')}: ${id}`;
+            if (nameGroup) nameGroup.style.display = 'block';
+            if (nameInput) nameInput.value = id;
+            if (zoneGroup) zoneGroup.style.display = 'none';
+        }
 
         if (modal) modal.classList.add('active');
     }
@@ -563,23 +674,30 @@ export class RegistryModal {
 
     private static async applyRegEdit(): Promise<void> {
         if (!this.regEditAction) return;
-        const newName = (document.getElementById('regEditNameInput') as HTMLInputElement).value.trim();
-        if (!newName) return;
+        const { mode, type, id, ws } = this.regEditAction;
 
-        const { type, id, ws } = this.regEditAction;
-        if (type === 'programs') {
-            Store.renameProgram(id, newName);
-        } else if (type === 'workstations') {
-            const idx = Store.workstations.indexOf(id);
-            if (idx >= 0) Store.workstations[idx] = newName;
-            Store.workposts.forEach(p => { if (p.ws === id) p.ws = newName; });
-            Store.tools.forEach(t => {
-                if (t.location.includes(id)) t.location = t.location.replace(id, newName);
-                if (t.address && t.address.zone === id) t.address.zone = newName;
-            });
-        } else if (type === 'workposts') {
-            const post = Store.workposts.find(p => p.name === id && p.ws === (ws || null));
-            if (post) post.name = newName;
+        if (mode === 'move-ws') {
+            const target = (document.getElementById('regEditZoneSelect') as HTMLSelectElement).value || null;
+            if (target === Store.programOf(id)) { toast(T('PICK_TARGET_PROGRAM'), 'warning'); return; }
+            Store.setWsProgram(id, target);
+        } else if (mode === 'move-wp') {
+            const target = (document.getElementById('regEditZoneSelect') as HTMLSelectElement).value;
+            if (!target || target === (ws || '')) { toast(T('PICK_TARGET_ZONE'), 'warning'); return; }
+            if (Store.postExists(id, target)) { toast(T('TARGET_HAS_POST'), 'warning'); return; }
+            Store.moveWorkpost(id, ws || null, target);
+        } else {
+            const newName = (document.getElementById('regEditNameInput') as HTMLInputElement).value.trim();
+            if (!newName || newName === id) { toast(T('NAME_EMPTY_OR_SAME'), 'warning'); return; }
+            if (type === 'programs') {
+                if (Store.programExists(newName)) { toast(T('PROGRAM_EXISTS'), 'warning'); return; }
+                Store.renameProgram(id, newName);
+            } else if (type === 'workstations') {
+                if (Store.workstations.includes(newName)) { toast(T('ZONE_EXISTS'), 'warning'); return; }
+                Store.renameWorkstation(id, newName);
+            } else {
+                if (Store.postExists(newName, ws || null)) { toast(T('POST_EXISTS'), 'warning'); return; }
+                Store.renameWorkpost(ws || null, id, newName);
+            }
         }
 
         await Store.save();

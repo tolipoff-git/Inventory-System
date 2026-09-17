@@ -2,13 +2,23 @@
 
 ## Overview
 - **Repository:** `/home/admin/git/Inventory-System`
-- **Current Version:** `v106` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
+- **Current Version:** `v107` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
 - **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith is preserved as `index.monolith.v97.html` for reference only and is **not** the active app.
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v106)
+## Recent Accomplishments (v49 – v107)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
+
+### 0. Registry Hierarchy, Personnel Assignment & Risk Detail (v107 Release)
+Restored monolith registry/chart behaviour that the modular rewrite had dropped, and added a risk-detail drill-down.
+- **Programs & Stations tab rebuilt** (`RegistryModal.renderWs`) to the monolith `renderRegistryLists` shape: **Program → Station → Post** hierarchy with an inline **“+ Add” post row under every station** (posts previously could not be created at all), an inline add-station row per program, a **“No program (areas)”** bottom group (this is where `Tool Gage` / `Machine Shop` now appear — they were previously invisible), and a **“No zone (unassigned)”** group for `ws === null` posts.
+- **Unlink / move:** station **⇄ “Move to program…”** (with a **“— No program —”** option to detach a station from its program) and post **⇄ “Move to zone…”**, both with full cascade. New `Store` methods: `programExists`, `addWorkstation`, `addWorkpost`, `renameWorkstation`, `renameWorkpost`, `moveWorkpost`, `removeWorkstation`, `removeWorkpost`, `zoneUsage`. The reg-edit modal now has three modes (`rename` / `move-ws` / `move-wp`).
+- **Personnel → Program/Station/Post assignment:** the personnel form gained a **Program** selector that filters the station dropdown (Program → Station → Post); the table gained a **Program** column. Removed the implicit `emp.ws || 'Tool Gage'` default that silently pinned employees to Tool Gage.
+- **Risk Index chart** (`src/reports/riskIndex.ts`, new): shared `computeRiskGroups()` groups active tools by **station | post** with a 0–100 index; tools outside the registry are aggregated into a single **“Storage / Crib”** bucket so the chart no longer spawns a point per free-text location. `ChartsView.computeCulture()` now consumes it and shows the index in the hover tooltip.
+- **Risk detail modal** (`src/ui/components/Modals/RiskModal.ts`, new): clicking a risk-chart node opens a breakdown — index, level (High/Medium/Low), overdue/maintenance/avg-wear KPIs, program, responsible person, a **summary** of risk drivers, a per-tool table, and an **“Open 5S Report”** button. Wired via `ChartsCallbacks.onOpenRiskDetail` in `src/ui/app.ts`.
+- **i18n:** new keys in both dictionaries (`Risk Index`, `Risk Detail`, `Risk level`, `High/Medium/Low`, `Summary`, `Open 5S Report`, `RISK_SUMMARY`, `RISK_GROUP_EMPTY`, `All / No program`, `No posts yet.`); `CULTURE_LEGEND` reworded. Parity 622/622.
+- **Assumptions:** “assign a person to a program” is implemented as the cascading Program → Station → Post selector (program derived from the station via `wsProgram`, no new employee field); the risk chart stays a radar (monolith parity) with the Storage/Crib aggregation.
 
 ### 0. Deep Modular-Migration Audit & Repair (v104–v106 Releases)
 

@@ -29,6 +29,7 @@ import { SopModal } from './components/Modals/SopModal';
 import { SystemMenuModal } from './components/Modals/SystemMenuModal';
 import { OpsMenuModal } from './components/Modals/OpsMenuModal';
 import { EmployeeProfileModal } from './components/Modals/EmployeeProfileModal';
+import { RiskModal } from './components/Modals/RiskModal';
 import { isPermanentTool, isConsumableTool, workstationAndPostOf } from '../operations/toolOps';
 import { receiveFullOrder, cancelOrder } from '../operations/orderOps';
 import { daysUntil } from '../utils/formatters';
@@ -153,7 +154,8 @@ export class AppUI {
             onOpenAuditHistory: (pillarIdx) => AuditModal.openHistory(pillarIdx),
             onCompleteMaint: (toolId) => {
                 Auth.doAction('Tool Crib Manager', () => ServiceModal.open(toolId));
-            }
+            },
+            onOpenRiskDetail: (ws, post) => RiskModal.open(ws, post)
         });
         this.charts.render();
 

@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v98)
+# 5S Tool Command Center — v3 (v107)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -41,9 +41,20 @@ src/
 
 ### 2. Analytics & 5S
 - Interactive click-to-filter dashboards, Production Culture Radar.
+- **Risk Index chart** — one point per **station | post** (0–100 index); tools outside
+  the registry are aggregated into a single *Storage / Crib* bucket. Clicking a node
+  opens a **risk-detail modal** (index, level, overdue/maintenance/wear KPIs, program,
+  responsible person, risk-driver summary, per-tool table) with a shortcut to the 5S report.
 - Care Score (0-100) per employee from return-condition history.
 - 5S audit reports + automated procurement recommendations.
 - Photo timelines — tool condition photos embedded chronologically.
+
+### 2b. Registries & structure
+- **Program → Station → Post** hierarchy in *System Registries*: inline add for stations
+  and posts, rename/move/delete with cascade, a **“No program (areas)”** group
+  (Tool Gage, Machine Shop) and a **“No zone”** group; stations can be detached from a
+  program (**— No program —**).
+- Personnel are assigned along the same hierarchy (Program → Station → Post).
 
 ### 3. Live multi-device sync
 - **Cloudflare Worker** (`/api/sync/:roomKey`) — room-authed (Bearer),
@@ -71,7 +82,7 @@ npm ci                    # install
 npm run dev               # vite dev server (localhost:3000/3001/5173)
 npm run typecheck         # tsc --noEmit
 npm run build             # production build (dist/)
-npm test                  # vitest 26 tests (crypto, store, conflict, worker, migration)
+npm test                  # vitest 48 tests (crypto, store, conflict, worker, migration)
 npm run lint              # eslint (strict; legacy no-explicit-any excluded)
 ```
 
