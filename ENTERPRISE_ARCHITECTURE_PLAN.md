@@ -1,599 +1,434 @@
 # Enterprise Architecture & Synchronization Plan
 
-**5S Tool Command Center — Industrial-Grade Architecture & Distributed Synchronization**  
-**Document Version:** 1.2.0  
-**Target Platform:** Cloudflare Enterprise Edge + Hybrid Cloud (PostgreSQL / AWS Aurora)  
-**Classification:** Technical Architecture Specification  
+> **Status: audited & corrected.** This document previously described a target
+> architecture (WASM SQLite, PostgreSQL/Aurora, Durable Objects, CRDT, SAML SSO,
+> SAP/NetSuite connectors) *and* an inaccurate "current state". The current-state
+> section was wrong — it described a localStorage-only, sync-less, hardcoded-PIN
+> app that no longer exists. See **§0** for the audit and **§4** for what we have
+> deliberately decided *not* to build, with reasons.
+>
+> Live status of the app itself lives in `project_handoff.md`. This file is the
+> architecture **decision record**; update it when a decision changes, not on
+> every release.
 
 ---
 
 ## Table of Contents
 
-- [1. System Philosophy, Operational Story & Core Business Logic](#1-system-philosophy-operational-story--core-business-logic)
-  - [1.1 The Living System Concept: Two Sides of One Pipeline](#11-the-living-system-concept-two-sides-of-one-pipeline)
-  - [1.2 The 5-Step Operational Closed Loop: A Day on the Floor](#12-the-5-step-operational-closed-loop-a-day-on-the-floor)
-  - [1.3 Five Operational Personas & User Journeys](#13-five-operational-personas--user-journeys)
-  - [1.4 Core Guiding Principles](#14-core-guiding-principles)
-- [2. Executive Summary & Problem Statement](#2-executive-summary--problem-statement)
-  - [2.1 Context & Background](#21-context--background)
-  - [2.2 Limitations of MVP Architecture](#22-limitations-of-mvp-architecture)
-  - [2.3 Strategic Enterprise Objectives](#23-strategic-enterprise-objectives)
-- [3. Architectural Evolution: MVP vs Enterprise](#3-architectural-evolution-mvp-vs-enterprise)
-  - [3.1 Comparison Matrix](#31-comparison-matrix)
-  - [3.2 Gap Analysis](#32-gap-analysis)
-- [4. Target System Architecture](#4-target-system-architecture)
-  - [4.1 High-Level Architecture Topology](#41-high-level-architecture-topology)
-  - [4.2 Component Breakdown](#42-component-breakdown)
-  - [4.3 Data Flow & Traffic Routing](#43-data-flow--traffic-routing)
-- [5. Data Layer & Financial-Grade Ledger](#5-data-layer--financial-grade-ledger)
-  - [5.1 Double-Entry Inventory Accounting](#51-double-entry-inventory-accounting)
-  - [5.2 Event Sourcing & Immutable Journal](#52-event-sourcing--immutable-journal)
-  - [5.3 Schema Definitions & Relational Entities](#53-schema-definitions--relational-entities)
-- [6. Edge Computing & Serverless Backend](#6-edge-computing--serverless-backend)
-  - [6.1 Cloudflare Pages Functions & Workers API](#61-cloudflare-pages-functions--workers-api)
-  - [6.2 Cloudflare Hyperdrive & Connection Pooling](#62-cloudflare-hyperdrive--connection-pooling)
-  - [6.3 Cloudflare Durable Objects for Real-Time State & Bin Locks](#63-cloudflare-durable-objects-for-real-time-state--bin-locks)
-- [7. Client-Side Engine & Offline Storage](#7-client-side-engine--offline-storage)
-  - [7.1 WASM SQLite + Origin Private File System (OPFS)](#71-wasm-sqlite--origin-private-file-system-opfs)
-  - [7.2 Service Worker Background Sync API](#72-service-worker-background-sync-api)
-  - [7.3 Client Transactional Outbox Pattern](#73-client-transactional-outbox-pattern)
-- [8. Distributed Synchronization & Conflict Resolution](#8-distributed-synchronization--conflict-resolution)
-  - [8.1 Real-Time Push/Pull Protocol (WebSockets / SSE)](#81-real-time-pushpull-protocol-websockets--sse)
-  - [8.2 Conflict-Free Replicated Data Types (CRDT) & Vector Clocks](#82-conflict-free-replicated-data-types-crdt--vector-clocks)
-  - [8.3 Delta Sync & Tombstone Soft-Deletes](#83-delta-sync--tombstone-soft-deletes)
-- [9. Security, Identity & Enterprise Governance](#9-security-identity--enterprise-governance)
-  - [9.1 Corporate SSO & Identity Providers (SAML 2.0 / OIDC)](#91-corporate-sso--identity-providers-saml-20--oidc)
-  - [9.2 Role-Based and Attribute-Based Access Control (RBAC/ABAC)](#92-role-based-and-attribute-based-access-control-rbacabac)
-  - [9.3 Cryptographic Audit Trail & Non-Repudiation](#93-cryptographic-audit-trail--non-repudiation)
-- [10. Enterprise ERP & Procurement Integrations](#10-enterprise-erp--procurement-integrations)
-  - [10.1 Connectors for SAP, NetSuite, and Coupa](#101-connectors-for-sap-netsuite-and-coupa)
-  - [10.2 Automated Material Reorder & Safety Stock Engine](#102-automated-material-reorder--safety-stock-engine)
-  - [10.3 Webhook Event Dispatcher](#103-webhook-event-dispatcher)
-- [11. Observability, DevOps & Data Migration](#11-observability-devops--data-migration)
-  - [11.1 Schema Migrations & Database Versioning](#111-schema-migrations--database-versioning)
-  - [11.2 Telemetry, Tracing & Cloudflare Logpush to SIEM](#112-telemetry-tracing--cloudflare-logpush-to-siem)
-  - [11.3 Zero-Downtime Migration from MVP LocalStorage](#113-zero-downtime-migration-from-mvp-localstorage)
-- [12. Procurement Workspace & Receiving Dock Engine](#12-procurement-workspace--receiving-dock-engine)
-  - [12.1 Dedicated Procurement Hub UI & Workflow Architecture](#121-dedicated-procurement-hub-ui--workflow-architecture)
-  - [12.2 Two-Way Organic Integration with Physical Warehouse](#122-two-way-organic-integration-with-physical-warehouse)
-  - [12.3 Automated Replenishment & Line-Worker Requisition Protocol](#123-automated-replenishment--line-worker-requisition-protocol)
-  - [12.4 Receiving Dock, Quality Inspection & Put-Away Bridge](#124-receiving-dock-quality-inspection--put-away-bridge)
-  - [12.5 Financial Compliance & Expense Request Artifact Generation](#125-financial-compliance--expense-request-artifact-generation)
-- [13. Phased Implementation Roadmap](#13-phased-implementation-roadmap)
-  - [13.1 Phase 1: Core Edge Backend & Database Migration](#131-phase-1-core-edge-backend--database-migration)
-  - [13.2 Phase 2: Client WASM SQLite & Offline Outbox](#132-phase-2-client-wasm-sqlite--offline-outbox)
-  - [13.3 Phase 3: Real-Time Durable Objects Sync](#133-phase-3-real-time-durable-objects-sync)
-  - [13.4 Phase 4: Enterprise SSO, RBAC & ERP Connectors](#134-phase-4-enterprise-sso-rbac--erp-connectors)
+- [0. Reality Check — Audit of This Plan](#0-reality-check--audit-of-this-plan)
+- [1. System Philosophy & Operational Story](#1-system-philosophy--operational-story)
+- [2. As-Built Architecture](#2-as-built-architecture)
+- [3. Capability Status Matrix](#3-capability-status-matrix)
+- [4. Deliberately NOT Doing (and Why)](#4-deliberately-not-doing-and-why)
+- [5. Recommended Roadmap](#5-recommended-roadmap)
+- [6. SOP & Standards Hub — Update Plan](#6-sop--standards-hub--update-plan)
+- [7. Revisit Triggers](#7-revisit-triggers)
 
 ---
 
-## 1. System Philosophy, Operational Story & Core Business Logic
+## 0. Reality Check — Audit of This Plan
 
-### 1.1 The Living System Concept: Two Sides of One Pipeline
-In a modern production facility or kitting warehouse (e.g., AMZ TYS1), inventory management and procurement are **not two separate applications**. They are two stages of a single, continuous physical pipeline:
+The original document was written as a sales-grade target vision. It is useful as
+an aspiration, but three of its claims about the *current* system were factually
+wrong, which made the whole gap analysis misleading.
 
-```
-[ PHYSICAL SHOP FLOOR ]                     [ INVENTORY WAREHOUSE ]                     [ PROCUREMENT & DOCK ]
-Technician needs fasteners  ──(Consume)──>  Bin stock reaches min level ──(Reorder)──>  PO generated & shipped
-Technician receives parts   <──(Put-Away)── Goods checked into bin      <──(Receive)── Carrier arrives at Dock
-```
-
-When systems are fragmented into disconnected tools (spreadsheets, emails, paper sign-off sheets), the result is inevitable:
-- Technicians run out of bolts mid-shift because nobody knew the safety stock was depleted.
-- The procurement team orders duplicate tools because they cannot see what is already on order or in transit.
-- When parcels arrive at the receiving dock, packages sit unopened for days because the receiving clerk does not know which workstation or technician requested them.
-
-The **5S Tool Command Center Enterprise** unites the entire lifecycle into an organic, closed-loop system where **physical shop-floor reality, warehouse storage bins, and procurement operations always mirror each other in real time.**
-
----
-
-### 1.2 The 5-Step Operational Closed Loop: A Day on the Floor
-
-#### Step 1: Consumption & Deficit Detection on the Floor
-- **What happens:** A technician is assembling hardware on the kitting line. As they use fasteners or if a torque wrench fails calibration, they record the checkout or flag the tool as `Maintenance / Scrapped` via a 2-tap mobile scan.
-- **The System Reaction:** The local database instantly recalculates on-hand quantities. If the balance drops below the **Safety Stock Threshold (Reorder Point)**, an automated replenishment flag is triggered immediately.
-
-#### Step 2: Intelligent Aggregation & Requisition
-- **What happens:** The Procurement Specialist opens their morning dashboard. Instead of wading through unread emails and handwritten notes, they see an **aggregated Deficit Inbox**.
-- **The System Reaction:** The system groups all needed items by vendor and category. Part numbers, item descriptions, vendor URLs, IH codes, target bin locations, and estimated unit costs are already filled in automatically from the master item catalog.
-
-#### Step 3: Purchasing, Carrier Tracking & Real-Time Visibility
-- **What happens:** The buyer approves the batch and clicks **"Export Expense Request"**. The system instantly generates the official corporate `Expense_Request.xlsx` (REQ003) with active Excel formulas and required FSE cost codes for management sign-off. Once the order is placed, the buyer enters the PO number and carrier tracking ID.
-- **The System Reaction:** In the inventory app, the item card updates with an **"Inbound Delivery"** badge: `📦 Inbound: 500 EA (PO #ORD-8821, ETA: Thursday)`, so anyone checking the tool or fastener in the system sees that replenishment has already been ordered and is on the way.
-
-#### Step 4: Dock Receiving, Inspection & 1-Click Put-Away
-- **What happens:** The delivery arrives at the receiving dock. The dock clerk scans the QR code or barcode on the packing slip.
-- **The System Reaction:** The app displays the exact items, quantities, and target storage locations: `Put Away into: Rack B, Bin 12-04`.
-- **Atomic Put-Away:** The clerk confirms receipt of 500 EA. With a single click:
-  1. The purchase order status transitions from `In Transit` to `Completed`.
-  2. The warehouse on-hand stock increases by +500.
-  3. A double-entry ledger event (`STOCK_RECEIVE` from `LOC-VENDOR-RECEIVING` into `LOC-BIN-B12`) is committed.
-  4. Any tool that was marked `Pending Delivery` becomes `Active on Floor`.
-
-#### Step 5: Enterprise Governance & ERP Reconciliation
-- **What happens:** In the background, Cloudflare Workers and Event Sourcing engines register the completed transaction.
-- **The System Reaction:** Cryptographic audit signatures, actor IDs, device fingerprints, and timestamps are sealed into the immutable ledger and pushed to corporate ERP (SAP / NetSuite) and compliance SIEM logs.
-
----
-
-### 1.3 Five Operational Personas & User Journeys
-
-| Persona | Primary Goal | Daily User Journey in the System |
+| Old plan claim | Actual state (audited) | Verdict |
 | :--- | :--- | :--- |
-| **1. Shop-Floor Technician** | Fast, frictionless tool & parts checkout | Scans QR on bin/tool with camera → taps Take/Return → works without UI lag, even completely offline. |
-| **2. Kitting Team Lead** | Line readiness & 5S audit compliance | Monitors live 5S radar charts → flags worn tools for maintenance → approves tech replenishment requests. |
-| **3. Procurement Specialist** | Zero stockouts & accurate purchase orders | Opens Procurement Hub → reviews auto-generated deficits → generates REQ003 Excel forms in 1 click → tracks carrier ETAs. |
-| **4. Receiving Dock Clerk** | Rapid freight intake & put-away accuracy | Scans arriving parcel barcode → verifies item quality → confirms put-away into suggested bin → inventory updates instantly. |
-| **5. Financial / Quality Auditor** | 100% traceability & cost compliance | Inspects tamper-evident audit trail → tracks asset depreciation & vendor price trends → exports ISO 9001 compliance records. |
+| Client storage is `window.localStorage` (5 MB, string-only) | **IndexedDB** `inv_inventory_db` with 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`) + photo blobs. `localStorage` holds only UI prefs (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata. | ❌ claim was stale |
+| Sync protocol: "Manual export/import / no cloud sync" | Cloudflare Worker `sync` API + KV, room-token auth, client `SyncManager`/`SyncApi`, **live push via ntfy SSE**, cross-tab `BroadcastChannel`. | ❌ claim was stale |
+| Conflict resolution: "None / Last-Write-Wins" | `conflictResolver.ts` does **per-entity LWW by `updatedAt`** *plus* union of append-only arrays (tool `history`, `audit_history`), settings union, 5S audits union, capped audit log. | ⚠️ understated |
+| Authentication: "Hardcoded PIN code check" | **PBKDF2-HMAC-SHA256** (210k iterations, salted), constant-time verify, legacy SHA-256 auto-upgrade on login, first-login PIN setup, 3 RBAC roles. | ❌ claim was stale |
+| Audit & compliance: "Ephemeral browser memory log" | Persistent `audit` store (capped at `AUDIT_LOG_LIMIT`), actor + role attribution, SHA-256 fingerprint stamped on every Excel export + workbook sheet protection. | ❌ claim was stale |
+| "No multi-facility isolation" | Rooms already exist (`DEFAULT_SYNC_ROOM`, `/api/sync/:roomKey`, per-room token). | ⚠️ partially done |
+
+**Conclusion:** the "MVP limitations" narrative (§2.2 of the old document) was
+obsolete. The real architecture is a **serverless, offline-first, single-tenant
+PWA with opportunistic cloud sync** — not a localStorage prototype. The gap to
+the described "enterprise" target is therefore *much smaller in some places and
+much less desirable in others* than the old document implied.
+
+**The one genuine architectural gap** worth naming:
+
+> **Deletes are not tombstoned.** Removal is expressed as *absence*. A peer that
+> still holds an older copy will re-introduce the record on the next merge.
+> Append-only data (history, audits) is safe; hard deletes (tool, employee,
+> user, registry entry) are not. See §5 Phase A.
 
 ---
 
-### 1.4 Core Guiding Principles
-1. **Physical Fidelity (What is in the software exists on the shelf):** No phantom inventory. Every digital record maps to a verifiable physical bin, tool, or active purchase order.
-2. **Zero-Friction Shop-Floor First:** Technicians must never wait for spinners or network handshakes. Operations take <= 2 taps and < 100ms.
-3. **Deterministic Offline Resilience:** If the factory Wi-Fi dies, work never halts. All mutations queue locally and reconcile deterministically upon reconnect.
-4. **Organic Bi-Directional Visibility:** Warehouse stockouts trigger procurement; procurement receipts restock the warehouse; neither operates in a silo.
+## 1. System Philosophy & Operational Story
 
----
+*(Kept — this is domain content and remains valid.)*
 
-## 2. Executive Summary & Problem Statement
+### 1.1 Two sides of one pipeline
 
-### 2.1 Context & Background
-The **5S Tool Command Center** is currently deployed as an offline-first Progressive Web Application (PWA) hosted on Cloudflare Pages. It serves shop-floor operations, kitting lines, and technical workstations for hardware tracking, fastener inventory, and tool assignments.
+Inventory and procurement are not two applications; they are two stages of one
+physical pipeline:
 
-### 2.2 Limitations of MVP Architecture
-1. **Unbounded Race Conditions:** Local storage stores flat item snapshots (`qty: N`). Two technicians checking out parts offline will overwrite each other upon reconnection, causing inventory shrinkage.
-2. **Browser Storage Bottlenecks:** `LocalStorage` is synchronous, blocks the main UI thread, and is capped at 5 MB, making high-resolution attachments, full audit logs, and enterprise catalogs impossible.
-3. **Absence of Centralized Governance:** Lack of centralized database locking, server-side authentication, and immutable audit logs prevents ISO 9001 / SOC 2 compliance.
-4. **No Multi-Facility Isolation:** Inability to handle multi-warehouse (TYS1, TYS2, DEN4) partitioned tenants and centralized supplier restocks.
+```
+[ SHOP FLOOR ]                [ STORAGE ]                     [ PROCUREMENT & DOCK ]
+Tool issued / part consumed → Bin hits min level            → Requisition / PO
+Part put away               ← Bin replenished                ← Freight received
+```
 
-### 2.3 Strategic Enterprise Objectives
-- Deliver **Zero Data Loss** and deterministic conflict resolution across all distributed workstations and offline scanners.
-- Ensure **Sub-15ms Read Latency** globally via Cloudflare Edge infrastructure.
-- Implement **Financial-Grade Double-Entry Inventory Accounting (Ledger)**.
-- Provide turnkey **Single Sign-On (SSO)**, **Role-Based Access Control (RBAC)**, and **Immutable Audit Logs**.
+Fragmentation (spreadsheets, e-mail, paper sign-off) produces predictable
+failures: stockouts nobody saw coming, duplicate orders, parcels sitting
+unopened because nobody knows who requested them.
 
----
+### 1.2 The closed loop, as actually implemented
 
-## 3. Architectural Evolution: MVP vs Enterprise
-
-### 3.1 Comparison Matrix
-
-| Architectural Dimension | Current MVP Implementation | Target Enterprise Architecture |
+| Step | In the app today | Status |
 | :--- | :--- | :--- |
-| **Client Storage** | `window.localStorage` (5MB, string-only) | **WASM SQLite + Origin Private File System (OPFS)** |
-| **State Mutation Model** | Direct state replacement (`qty = qty - 1`) | **Event Sourcing + Double-Entry Ledger Transactions** |
-| **Sync Protocol** | Manual export/import / no cloud sync | **Bidirectional WebSockets via Durable Objects + Offline Outbox** |
-| **Conflict Resolution** | None / Last-Write-Wins (LWW) | **CRDT (Pn-Counters) + Vector Clocks + Bin Reservation Locks** |
-| **Database Engine** | None (Client-side browser cache) | **Managed PostgreSQL (AWS Aurora) via Cloudflare Hyperdrive** |
-| **Edge Cache / Serverless** | Pure Static Site Hosting | **Cloudflare Pages Functions + Workers + Hyperdrive** |
-| **Authentication & IAM** | Hardcoded PIN code check | **Enterprise SAML 2.0 / OIDC (Okta, Azure AD) + mTLS** |
-| **Access Control** | Uniform unrestricted access | **Granular RBAC + ABAC with Cryptographic Token Verification** |
-| **Audit & Compliance** | Ephemeral browser memory log | **Append-Only Tamper-Evident Ledger + Cloudflare Logpush SIEM** |
-| **Integrations** | Static Excel export | **Automated Webhooks + REST/GraphQL ERP Bridges (SAP, NetSuite)** |
+| 1. Consumption & deficit detection | Checkout / return / retire actions; Min/Max thresholds on consumables; low-stock surfacing in the Category Hub. | ✅ |
+| 2. Aggregation & requisition | `OrderModal` cart with line items, live total, per-line reason + supplier link. | ✅ |
+| 3. Purchasing & visibility | Order status pipeline; `Pending Delivery` tool status; official **REQ-003 `.xlsx`** export (cell-level template patch). Carrier/ETA tracking fields. | ⚠️ partial (no carrier ETA badge) |
+| 4. Receiving & put-away | Per-line **partial receiving** and per-line **rejection with reason**; stock increments automatically; `Pending Delivery → Active`. | ✅ |
+| 5. Governance & reconciliation | Audit log, SHA-256 export stamp, sheet lock, full-inventory `.xlsx`. ERP/SIEM push: **not planned** (§4). | ⚠️ by design |
 
-### 3.2 Gap Analysis
-The evolution requires separating the application into distinct layers:
-- **Presentation & Local Engine Layer:** PWA UI using Web Workers and WASM SQLite for ultra-fast local interaction.
-- **Edge Routing & Lock Management Layer:** Cloudflare Pages Functions and Durable Objects managing real-time connections and transactional leases.
-- **Persistent Core Layer:** Highly available, multi-region PostgreSQL cluster handling ledger storage and ERP sync.
+### 1.3 Personas
 
----
+| Persona | Goal | Journey today |
+| :--- | :--- | :--- |
+| Shop-floor technician | Fast checkout | Scan QR → assign/return in ≤2 taps, works fully offline |
+| Kitting team lead | Line readiness, 5S | 5S radar, risk chart + risk-detail modal, maintenance queue |
+| Procurement specialist | No stockouts | Orders registry, partial receiving, REQ-003 export |
+| Receiving clerk | Fast intake | Scan → receive/reject per line → stock updates |
+| Quality / financial auditor | Traceability | Audit log, archive, stamped exports |
 
-## 4. Target System Architecture
+### 1.4 Guiding principles (unchanged)
 
-### 4.1 High-Level Architecture Topology
-
-```
-+-----------------------------------------------------------------------------------+
-|                            WORKSTATION & CLIENT TIER                             |
-|                                                                                   |
-|  [ Industrial Scanner / PWA ]       [ Technician Laptop ]       [ Mobile Scanner / Phone ] |
-|  +--------------------------+       +-------------------+       +------------------------+ |
-|  | UI (DOM / Canvas / PWA)  |       | UI (Web Component)|       | UI (PWA Mobile)        | |
-|  | Web Worker + WASM SQLite |       | WASM SQLite (OPFS)|       | WASM SQLite            | |
-|  | Transactional Outbox     |       | Outbox Sync Engine|       | Outbox Sync            | |
-|  +------------+-------------+       +---------+---------+       +-----------+------------+ |
-+---------------|-------------------------------|-------------------------|---------+
-                |                               |                         |
-                +-----------------------+-------+-------------------------+
-                                        | (HTTPS / WebSocket + mTLS / SSO JWT)
-                                        v
-+-----------------------------------------------------------------------------------+
-|                           CLOUDFLARE EDGE NETWORK                                 |
-|                                                                                   |
-|  [ Cloudflare Zero Trust / Access Gateway ]                                      |
-|    - SAML 2.0 / OIDC Auth Validation                                             |
-|    - WAF, Rate Limiting & DDoS Shield                                             |
-|                                                                                   |
-|  [ Cloudflare Pages Functions ]                 [ Cloudflare Durable Objects ]   |
-|    - REST / GraphQL Ingress Endpoints              - Warehouse Zone Coordinator   |
-|    - Mutation Validation & Signatures             - Live WebSocket Broadcast     |
-|    - Outbox Transaction Ingestion                 - Short-Term Bin Locks         |
-|                                                                                   |
-|  [ Cloudflare Hyperdrive ]                                                        |
-|    - Distributed Connection Pooling & Query Caching (< 15ms latency)             |
-+---------------------------------------+-------------------------------------------+
-                                        |
-                                        | Secure VPC Peering / WireGuard Tunnel
-                                        v
-+-----------------------------------------------------------------------------------+
-|                        ENTERPRISE PERSISTENT DATA TIER                            |
-|                                                                                   |
-|  [ PostgreSQL Multi-Region Cluster / AWS Aurora ]                                 |
-|    - Immutable Ledger Events Table (`inventory_events`)                           |
-|    - Master Entities (`items`, `bins`, `facilities`, `users`)                     |
-|    - Materialized Projections (`current_stock_view`)                              |
-|                                                                                   |
-|  [ Cloudflare Logpush ] ─────────> [ SIEM / Datadog / S3 Compliance Bucket ]     |
-|  [ ERP Webhook Worker ] ─────────> [ SAP S/4HANA / NetSuite / Coupa ]             |
-+-----------------------------------------------------------------------------------+
-```
-
-### 4.2 Component Breakdown
-1. **Client Engine:** Runs locally in a Web Worker to avoid blocking UI rendering. It queries local WASM SQLite with zero network latency.
-2. **Cloudflare Durable Objects:** Acts as the single-source-of-truth coordinator for a specific physical zone or warehouse. Manages active WebSocket connections and arbitrates simultaneous checkouts.
-3. **Cloudflare Hyperdrive:** Solves the cold-start and connection latency problem by maintaining persistent connection pools from edge nodes to the central PostgreSQL database.
-4. **Master PostgreSQL Database:** Stores the primary immutable financial ledger, foreign keys, constraints, and historical snapshots.
-
-### 4.3 Data Flow & Traffic Routing
-- **Read Operations:** Served instantly from local client WASM SQLite. Background queries hit Cloudflare Pages Functions -> Hyperdrive -> Read Replicas.
-- **Write Operations:** Written immediately to local SQLite outbox queue, then streamed via WebSocket/HTTPS to the Zone Durable Object. The Durable Object commits the ledger entry to PostgreSQL and broadcasts the delta to all active clients in the facility.
+1. **Physical fidelity** — no phantom inventory; every record maps to a real bin/tool/PO.
+2. **Zero-friction floor first** — ≤2 taps, no spinners on the critical path.
+3. **Deterministic offline resilience** — Wi-Fi loss never halts work.
+4. **Bi-directional visibility** — stockouts trigger procurement; receipts restock storage.
 
 ---
 
-## 5. Data Layer & Financial-Grade Ledger
+## 2. As-Built Architecture
 
-### 5.1 Double-Entry Inventory Accounting
-In an enterprise system, stock quantities are treated like financial currency:
-- **No inventory is created or destroyed without equal offsetting debits and credits.**
-- Every movement requires a `source_location_id` and a `destination_location_id`.
-- **System Accounts:**
-  - `LOC-VENDOR-RECEIVING`: External incoming goods.
-  - `LOC-FLOOR-SCRAP`: Damaged/scrapped items.
-  - `LOC-WORK-ORDER-EXPENSE`: Parts consumed in assembly/maintenance.
-  - `LOC-BIN-XXXX`: Physical storage bins.
+### 2.1 Topology
 
 ```
-Example: Technician checks out 10 fasteners for Assembly Line #1
-Debit:   LOC-WORK-ORDER-4091  (+10)
-Credit:  LOC-BIN-A12          (-10)
-Net Balance Change in Warehouse: -10 Available, +10 Allocated
++------------------------------------------------------------------+
+|  CLIENT (PWA, offline-first)                                     |
+|  UI (TS components, no framework) · i18n EN/RU (1:1 parity)      |
+|  IndexedDB inv_inventory_db  (source of truth)                   |
+|    tools · personnel · users · audit · procurement · settings ·   |
+|    photos (blobs)                                                 |
+|  localStorage: inv_theme, inv_lang, inv_mode, inv_cards, session  |
+|  SyncManager ──> SyncApi ──> Worker      (push/pull, best-effort)|
+|  LiveRelay  ──> ntfy.sh SSE             (live delta hint)        |
+|  BroadcastChannel('inv_db_sync')        (cross-tab reload)       |
++----------------------------------|-------------------------------+
+                                   | HTTPS (Bearer room token)
+                                   v
++------------------------------------------------------------------+
+|  CLOUDFLARE WORKER (src/worker/index.ts)                         |
+|   • /api/sync/:roomKey   push/pull JSON snapshots                |
+|   • /api/photo/:room/:id photo route (mime + 5 MiB guard, viewer)|
+|   • static assets binding (Pages)                                |
+|   • constant-time token compare · origin allowlist · security hdrs|
+|  KV: INVENTORY_KV (primary) · EHS_KV                             |
+|  Secrets: SYNC_SECRET (never in VCS) · ALLOWED_ORIGIN            |
+|  Observability: Workers logs enabled (wrangler.jsonc)            |
++------------------------------------------------------------------+
 ```
 
-### 5.2 Event Sourcing & Immutable Journal
-The database never executes `UPDATE items SET qty = 15`. Instead, it appends immutable events:
+**No** PostgreSQL, Hyperdrive, Durable Objects, or server-side ledger — see §4.
 
-```sql
-CREATE TABLE inventory_events (
-    event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    event_sequence BIGSERIAL NOT NULL,
-    facility_id VARCHAR(32) NOT NULL,
-    event_type VARCHAR(64) NOT NULL, -- 'STOCK_CHECKOUT', 'STOCK_RECEIVE', 'BIN_TRANSFER'
-    item_id VARCHAR(64) NOT NULL,
-    source_location VARCHAR(64) NOT NULL,
-    dest_location VARCHAR(64) NOT NULL,
-    quantity NUMERIC(12, 4) NOT NULL,
-    actor_id VARCHAR(128) NOT NULL,
-    device_id VARCHAR(128) NOT NULL,
-    client_tx_id UUID NOT NULL UNIQUE, -- Idempotency token
-    client_timestamp TIMESTAMPTZ NOT NULL,
-    server_timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    metadata JSONB DEFAULT '{}'::jsonb
-);
+### 2.2 Sync & conflict resolution (actual)
 
-CREATE INDEX idx_events_facility_seq ON inventory_events(facility_id, event_sequence);
-CREATE INDEX idx_events_item_id ON inventory_events(item_id);
-```
+- **Transport:** snapshot push/pull per room. The client sends its full payload;
+  the Worker stores it in KV under the room key; peers pull and merge.
+- **Liveness:** `ntfy.sh` SSE relay publishes a "something changed" hint; clients
+  pull on hint, on local change, on interval, and manually. Failures degrade to
+  polling — sync never blocks local work.
+- **Merge (`conflictResolver.ts`):**
+  - per-entity winner = higher `updatedAt` (remote wins ties);
+  - `history` / `audit_history` = set union (no duplicate loss);
+  - `auditLog` = union, newest first, capped at `AUDIT_LOG_LIMIT`;
+  - `settings` = union of workstations / programs / workposts; `wsProgram` merge;
+    `audits5s` union by id (append-only).
+- **Known gap:** hard deletes are not tombstoned (see §0 and §5 Phase A).
 
-### 5.3 Schema Definitions & Relational Entities
+### 2.3 Security (actual)
 
-```sql
--- Materialized View for Real-Time Stock Queries
-CREATE MATERIALIZED VIEW current_inventory_balance AS
-SELECT 
-    facility_id,
-    item_id,
-    location_id,
-    SUM(CASE WHEN dest_location = location_id THEN quantity ELSE -quantity END) AS on_hand_qty
-FROM (
-    SELECT facility_id, item_id, dest_location AS location_id, quantity FROM inventory_events
-    UNION ALL
-    SELECT facility_id, item_id, source_location AS location_id, quantity FROM inventory_events
-) transfers
-WHERE location_id NOT LIKE 'LOC-SYSTEM-%'
-GROUP BY facility_id, item_id, location_id;
+- PBKDF2-HMAC-SHA256, 210k iterations, per-user salt; constant-time compare.
+- RBAC: `Administrator` (3) > `Tool Crib Manager` (2) > `Operator` (1);
+  privileged actions gated by `Auth.doAction(role, cb)`.
+- Worker: room-token bearer + `X-Sync-Token`, constant-time compare, origin
+  allowlist (`ALLOWED_ORIGIN`), photo mime allowlist + 5 MiB cap, hardened
+  response headers.
+- Exports: SHA-256 fingerprint + serial, logged to the audit trail; workbook
+  sheets locked (unlock password = first 16 hex chars of the checksum).
 
--- Master Items Catalog
-CREATE TABLE master_items (
-    item_id VARCHAR(64) PRIMARY KEY,
-    part_number VARCHAR(128) NOT NULL UNIQUE,
-    description TEXT NOT NULL,
-    category VARCHAR(64) NOT NULL,
-    min_safety_stock NUMERIC(12, 4) NOT NULL DEFAULT 0,
-    reorder_point NUMERIC(12, 4) NOT NULL DEFAULT 0,
-    uom VARCHAR(16) NOT NULL DEFAULT 'EA',
-    ih_number VARCHAR(64),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-```
+### 2.4 Build, test, deploy
+
+- Vite 6 + TS 5.6; `npm run build` → `dist/`; `bash build.sh` refreshes the SW
+  cache stamp from `package.json` + git short hash.
+- Quality gates: `tsc --noEmit`, ESLint, Vitest (48 tests), EN/RU key parity.
+- Cloudflare Pages auto-deploys on push to `main`.
 
 ---
 
-## 6. Edge Computing & Serverless Backend
+## 3. Capability Status Matrix
 
-### 6.1 Cloudflare Pages Functions & Workers API
-API routes are placed directly within the repository structure under `/functions/api/`:
-- `/functions/api/v1/auth/session.ts` — Validates SSO token and returns user permissions.
-- `/functions/api/v1/sync/pull.ts` — Returns delta events since client's `last_sequence_number`.
-- `/functions/api/v1/sync/push.ts` — Accepts batch transactions from offline outbox.
-- `/functions/api/v1/items/[id].ts` — Granular item metadata, bin locations, and stock levels.
+Legend: ✅ done · 🟡 partial · ⛔ deliberately not doing (§4) · 🔭 revisit trigger (§7)
 
-### 6.2 Cloudflare Hyperdrive & Connection Pooling
-- Cloudflare Workers are distributed across 300+ edge cities. Directly opening a TCP connection to PostgreSQL on every serverless invocation causes database connection exhaustion.
-- **Hyperdrive Integration:** Maintains pre-warmed connection pools in every Cloudflare region, reducing database handshake overhead from ~150ms to <15ms.
-
-### 6.3 Cloudflare Durable Objects for Real-Time State & Bin Locks
-For real-time multi-user operations, a Durable Object is provisioned per facility/zone (e.g., `ZoneDurableObject("TYS1-ZONE-A")`):
-- **WebSockets Coordinator:** Holds persistent WebSocket connections with all tablets and scanners active in that zone.
-- **Bin Reservation Locks:** When a user begins scanning a bin, the Durable Object grants a 30-second soft-lock to prevent simultaneous conflicting checkouts.
-- **Instant Broadcast:** As soon as an event is validated, the Durable Object pushes the JSON delta down all open WebSockets in under 20ms.
-
----
-
-## 7. Client-Side Engine & Offline Storage
-
-### 7.1 WASM SQLite + Origin Private File System (OPFS)
-The client application drops `localStorage` in favor of an in-browser relational database:
-- **`@sqlite.org/sqlite-wasm`** running in a dedicated Web Worker (`db.worker.js`).
-- Persisted using the **Origin Private File System (OPFS)** API, providing fast, unmetered, private disk storage.
-- Supports complete SQL queries, indexes, and full-text search (FTS5) locally in the browser with sub-millisecond execution times.
-
-### 7.2 Service Worker Background Sync API
-- Registered background sync tags: `sync-inventory-outbox`.
-- If a technician performs operations in a basement or shielded enclosure with zero cellular/Wi-Fi coverage, the browser queues the sync job.
-- When network connectivity is restored (even if the browser tab has been closed), the Service Worker wakes up, executes the sync loop, and receives confirmation from Cloudflare.
-
-### 7.3 Client Transactional Outbox Pattern
-Every local user mutation creates a local database transaction with two operations:
-1. Mutate local SQLite state projection.
-2. Insert transaction payload into local table `client_outbox`:
-   ```sql
-   CREATE TABLE client_outbox (
-       tx_id TEXT PRIMARY KEY,
-       created_at TEXT NOT NULL,
-       event_type TEXT NOT NULL,
-       payload TEXT NOT NULL,
-       status TEXT NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'IN_FLIGHT', 'COMMITTED'
-       retry_count INTEGER DEFAULT 0
-   );
-   ```
+| Capability | Status | Notes |
+| :--- | :--- | :--- |
+| Offline-first client storage | ✅ | IndexedDB, 7 stores + blobs |
+| Serverless sync API + KV | ✅ | Worker + room tokens |
+| Live cross-device push | ✅ | ntfy SSE relay (best-effort) |
+| Cross-tab consistency | ✅ | `BroadcastChannel` |
+| Field/entity-level merge | ✅ | LWW per entity + append-only union |
+| Tombstoned deletes | 🔭 | **Real gap** — Phase A |
+| RBAC + hashed credentials | ✅ | PBKDF2, 3 roles |
+| Audit trail + export integrity | ✅ | SHA-256 stamp, sheet lock |
+| Partial receiving / rejections | ✅ | Per line item |
+| Official REQ-003 export | ✅ | Cell-level template patch |
+| Full inventory `.xlsx` + CSV fallback | ✅ | ExcelJS |
+| Labels (A/B/C, QR/Code39) + queue | ✅ | Batch + queue printing |
+| 5S audits, radar, report | ✅ | Rich report restored (v110) |
+| Risk index per station/post | ✅ | Shared `computeRiskGroups()` |
+| Data-driven SOP registry | ⛔/🔭 | Plan in §6 |
+| Enterprise SSO (SAML/OIDC) | ⛔ | §4 |
+| Postgres/Aurora + Hyperdrive | ⛔ | §4 |
+| Durable Objects / bin locks | ⛔ | §4 |
+| CRDT / vector clocks | ⛔ | §4 |
+| Double-entry ledger / event sourcing | ⛔ | §4 |
+| ERP connectors (SAP/NetSuite/Coupa) | ⛔ | §4 |
+| Logpush → SIEM | ⛔ | §4 |
+| WASM SQLite + OPFS | ⛔ | §4 |
+| Service Worker Background Sync | 🔭 | Poor Safari support |
 
 ---
 
-## 8. Distributed Synchronization & Conflict Resolution
+## 4. Deliberately NOT Doing (and Why)
 
-### 8.1 Real-Time Push/Pull Protocol (WebSockets / SSE)
-The synchronization lifecycle follows an active bi-directional handshake:
+These were the bulk of the old target architecture. Each is a **conscious
+rejection**, not a missing feature. The rule of thumb: *this is a single-plant
+tool crib with a handful of devices and a physically attended crib.* Complexity
+must buy a real operational benefit, not a diagram.
 
-```
-[ Client Device ]                                  [ Cloudflare Edge ]
-       |                                                    |
-       | ── 1. CONNECT (Bearer JWT + LastKnownSeq=1042) ──> | (Durable Object)
-       | <── 2. CATCH_UP_STREAM (Events 1043...1080) ────── |
-       | ── 3. PUSH_OUTBOX_BATCH [tx_01, tx_02] ──────────> |
-       | <── 4. ACK_BATCH [tx_01=Committed, tx_02=OK] ───── |
-       |                                                    |
-       | <── 5. LIVE_DELTA_EVENT (Real-time Broadcast) ──── |
-```
+### 4.1 WASM SQLite + OPFS
+**Rejected.** IndexedDB already provides gigabytes of async structured storage
+with zero build weight. WASM SQLite adds ~1 MB of binary, a Web Worker bridge,
+OPFS browser quirks (Safari), and a full data-migration project — to replace a
+store that is not currently a bottleneck. *Buy: nothing.*
 
-### 8.2 Conflict-Free Replicated Data Types (CRDT) & Vector Clocks
-1. **Positive-Negative Counters (PN-Counters):** Used for stock counting. Increments and decrements are recorded as independent monotonic vectors.
-2. **Vector Clocks:** Every client maintains a state vector `V = { ClientA: seq, ClientB: seq, Server: seq }`. This allows the server to detect whether an event is concurrent or causally dependent.
-3. **Business Rule Conflict Resolution:**
-   - If two offline technicians checkout the last available part simultaneously:
-     - The server commits both transactions in chronological order of `client_timestamp` (verified against drift bounds).
-     - The item balance reaches negative stock (`-1`), and an automated **Discrepancy Exception Task** is instantly assigned to the inventory supervisor.
+### 4.2 Managed PostgreSQL / Aurora behind Cloudflare Hyperdrive
+**Rejected for now.** It introduces a paid database, connection secrets, VPC
+peering, backups, and an ops burden — for a dataset that fits comfortably in KV
+(and on every client). It also creates a *second source of truth* to reconcile
+against the offline-first local DB, which is precisely the complexity the current
+design avoids. *Revisit only if* the data volume or a genuine multi-facility
+consolidation requirement appears (§7).
 
-### 8.3 Delta Sync & Tombstone Soft-Deletes
-- No record is physically deleted during offline sync cycles.
-- Deleted items are marked with `is_deleted = TRUE` and a `deleted_at` timestamp (Tombstone).
-- Sync queries filter `WHERE server_sequence > :last_client_seq`, ensuring tombstones propagate properly to all remote clients.
+### 4.3 Durable Objects + short-term bin locks
+**Rejected.** Real-time lock arbitration is the right tool for *unattended*
+vending or high-concurrency reservation. Here the crib is attended and checkout
+is a physical handover; the failure mode the lock would prevent (two people
+taking the same physical wrench) is a process issue, not a distributed-systems
+one. *Cost:* a stateful coordination layer on the critical path.
 
----
+### 4.4 CRDTs / vector clocks
+**Rejected.** Correct for collaborative free-text editing; heavy for records with
+a clear owner and a `updatedAt`. The current **per-entity LWW + append-only
+union** covers the real conflicts (history/audit never lost). What we actually
+need is tombstoning (§5 Phase A), which is ~50 lines, not a CRDT library.
 
-## 9. Security, Identity & Enterprise Governance
+### 4.5 Enterprise SSO (SAML 2.0 / OIDC via Cloudflare Zero Trust)
+**Rejected for now.** Requires an IdP contract (Okta/Azure AD) and IT ownership
+of the app's identity. The shop-floor requirement is "the right person, the right
+role, no shared passwords" — already met by PBKDF2 + RBAC. *Revisit if* IT
+mandates SSO or the app is onboarded to a corporate IdP.
 
-### 9.1 Corporate SSO & Identity Providers (SAML 2.0 / OIDC)
-- Integrated through **Cloudflare Zero Trust Access**.
-- Supports enterprise identity providers:
-  - **Microsoft Entra ID (Azure AD)**
-  - **Okta Identity Cloud**
-  - **Google Workspace Enterprise / PingFederate**
-- Automatic session revocation and token rotation with short-lived JWTs (15-minute expiration + refresh tokens).
+### 4.6 Double-entry ledger / event sourcing
+**Rejected.** This is financial-grade accounting for fungible goods. A tool crib
+needs **traceability** (who had what, when, why retired), which the audit log +
+append-only history + stamped exports already deliver. A ledger would add a
+second bookkeeping system to reconcile against reality. *Note:* the *idea* worth
+keeping from this is immutable, append-only event records — which the current
+`history` / `audit_history` / `auditLog` already are.
 
-### 9.2 Role-Based and Attribute-Based Access Control (RBAC/ABAC)
+### 4.7 ERP connectors (SAP S/4HANA, NetSuite, Coupa)
+**Rejected.** The pragmatic integration point is the artifact the finance team
+already consumes: the official **REQ-003 `.xlsx`**. Building and maintaining
+connectors for systems we cannot test against is unbounded cost. *Revisit if* the
+plant runs one of these and the finance team asks for a feed.
 
-```
-+--------------------------------------------------------------------------------+
-|                         RBAC PERMISSION MATRIX                                 |
-+---------------------+-------------+-------------+---------------+--------------+
-| Role                | View & Scan | Adjust Qty  | Modify Master | Export Audit |
-+---------------------+-------------+-------------+---------------+--------------+
-| Operator / Tech     |     YES     |  NO (Scan)  |      NO       |      NO      |
-| Lead Specialist     |     YES     |     YES     |      NO       |      NO      |
-| Inventory Manager   |     YES     |     YES     |      YES      |     YES      |
-| Financial Auditor   |  READ-ONLY  |      NO     |      NO       |   FULL-AUDIT |
-| System Admin        |  FULL-ADMIN |  FULL-ADMIN |  FULL-ADMIN   |  FULL-ADMIN  |
-+---------------------+-------------+-------------+---------------+--------------+
-```
+### 4.8 Cloudflare Logpush → SIEM / Datadog
+**Rejected.** Workers observability/logs are already enabled in `wrangler.jsonc`.
+A SIEM pipeline is enterprise security-operations tooling, out of proportion for
+this deployment.
 
-### 9.3 Cryptographic Audit Trail & Non-Repudiation
-- Every critical event (adjustments, cycle counts, part scrapping) includes:
-  - `actor_uuid` & `actor_email`
-  - `client_device_fingerprint`
-  - `ip_address` (via Cloudflare header `CF-Connecting-IP`)
-  - `signature`: HMAC-SHA256 generated with client device key.
-- Tamper-evident hash chain linking each event to the previous event (`prev_event_hash`), guaranteeing full non-repudiation for safety-critical hardware assemblies.
+### 4.9 Microservice split / GraphQL layer
+**Rejected.** One Worker, one PWA, one schema. A single deployable unit is a
+feature: `bash build.sh` + push deploys everything.
 
----
-
-## 10. Enterprise ERP & Procurement Integrations
-
-### 10.1 Connectors for SAP, NetSuite, and Coupa
-- **Outbound Webhook Worker:** Translates inventory consumption events into ERP-compatible standard payloads (OData, JSON, cXML).
-- **Inbound Purchase Order Sync:** Automatically imports PO tracking numbers, vendor part numbers, and expected delivery dates into bin allocations.
-
-### 10.2 Automated Material Reorder & Safety Stock Engine
-- Dynamic calculation of reorder triggers:
-  $$\text{Reorder Point (ROP)} = (\text{Average Daily Usage} \times \text{Lead Time in Days}) + \text{Safety Stock}$$
-- When `current_stock <= ROP`, the system automatically generates an electronic Purchase Requisition (PR) draft ready for approval.
-
-### 10.3 Webhook Event Dispatcher
-- Delivers real-time notifications to:
-  - Corporate Slack / Microsoft Teams channels for stockout alerts.
-  - PagerDuty for critical safety tooling shortages.
-  - Manufacturing Execution Systems (MES) to pause assembly steps if required fasteners are missing.
+### 4.10 Background Sync API (as a hard dependency)
+**Deferred, not rejected.** Nice-to-have for outbox reliability, but support is
+uneven (notably Safari/iOS). The current "sync on change + on hint + on interval"
+is adequate and degrades gracefully.
 
 ---
 
-## 11. Observability, DevOps & Data Migration
+## 5. Recommended Roadmap
 
-### 11.1 Schema Migrations & Database Versioning
-- Managed using **Drizzle ORM** or **Prisma** with explicit, reversible migration files.
-- Automated migration runner integrated into Cloudflare CI/CD pipeline via GitHub Actions.
+Small, high-value increments that respect the as-built design. Each item must be
+independently shippable and must not add a new runtime dependency.
 
-### 11.2 Telemetry, Tracing & Cloudflare Logpush to SIEM
-- End-to-end distributed tracing using OpenTelemetry standards.
-- Real-time log export via **Cloudflare Logpush** to Datadog, AWS S3, or Splunk.
-- Metric dashboards tracking:
-  - Edge cache hit ratio (>98% target).
-  - Sync latency per warehouse (<50ms p95).
-  - Offline queue depth across all active mobile clients.
+### Phase A — Correctness of the sync layer *(do first)*
 
-### 11.3 Zero-Downtime Migration from MVP LocalStorage
-1. **Migration Tool:** A built-in client migration script detects legacy `inv_inventory_db` in `localStorage`.
-2. **Schema Translation:** Translates unstructured JSON arrays into normalized SQL records.
-3. **Ingestion & Validation:** Submits the legacy data bundle to `/api/v1/migration/import` as a single `LEGACY_IMPORT_BATCH` event.
-4. **Local Purge:** Verifies server acknowledgment and transitions client storage seamlessly to WASM SQLite OPFS.
+1. **Tombstone soft-deletes.** Add `deletedAt` to tools/personnel/users/registry
+   entries instead of removing them; filter them out of all views; merge keeps the
+   newest tombstone. Prevents "resurrected" records. *(The one real gap.)*
+2. **Audit `updatedAt` coverage.** Verify every mutation path stamps
+   `updatedAt` (via `Store.touch()`); a missing stamp silently corrupts conflict
+   resolution. Add a test that asserts it for the main operations.
+3. **`/api/health`** on the Worker — version, KV reachability, timestamp. Cheap
+   and makes sync problems diagnosable without guesswork.
+
+### Phase B — Operability
+
+4. **Sync status panel** — last push/pull, room, peer count, pending changes;
+   surface merge conflicts that lost a record (currently silent).
+5. **Photos → R2** *(when volume grows)* — KV is not the right home for blobs at
+   scale; IndexedDB stays the local cache.
+6. **Room switcher UI** — rooms exist in the backend but are not exposed in the
+   UI; needed only if more than one physical area is tracked.
+
+### Phase C — Only on a real trigger (§7)
+
+7. Outbound webhook on `order received` / `tool retired`.
+8. ERP feed — only if finance asks and a target system exists.
+9. SSO — only if IT mandates it.
 
 ---
 
-## 12. Procurement Workspace & Receiving Dock Engine
+## 6. SOP & Standards Hub — Update Plan
 
-### 12.1 Dedicated Procurement Hub UI & Workflow Architecture
-The application layout introduces a top-level workspace switcher: `[ Category Hub ]` | `[ Detailed Grid ]` | `[ 📦 Procurement Hub ]`.
+### 6.1 Where we are
 
-```
-+----------------------------------------------------------------------------------------------------+
-|                                  PROCUREMENT HUB WORKSPACE                                         |
-+--------------------------+---------------------------+-----------------------+---------------------+
-| 1. Shop-Floor Needs      | 2. Active Orders Pipeline | 3. Receiving Dock     | 4. Vendor Catalog   |
-|    & Low Stock Triggers  |    & Carrier Tracking     |    & Put-Away Bridge  |    & Expense Forms  |
-+--------------------------+---------------------------+-----------------------+---------------------+
-| • Stock <= Safety Stock  | • Kanban / Table Matrix   | • Barcode Scan Ingest | • Official REQ003   |
-| • Scrapped/Damaged Tools | • Status: Draft -> In-Tx  | • Partial Qty Accept  | • Price History DB  |
-| • Tech Requisitions      | • Tracking # / ETA Alert  | • Auto Stock Increment| • Vendor Lead Times |
-+--------------------------+---------------------------+-----------------------+---------------------+
-```
+- `SopModal` renders **four hardcoded SOPs** (`GEN`, `TW`, `BT`, `PB`) as English
+  HTML strings inside the component.
+- The Category Hub has an **SOP card** with four buttons (`data-sop="…"`).
+- Print goes through `printHtml()` → the light `#printZone` form.
+- The i18n key `Read SOP & Maintenance Manual` already exists (unused as an entry point).
 
-### 12.2 Two-Way Organic Integration with Physical Warehouse
-Procurement operations are directly coupled to physical storage entities in the database:
+### 6.2 Problems
 
-```
-[ Warehouse Physical Floor ]                               [ Procurement Pipeline ]
-┌───────────────────────────┐                             ┌────────────────────────┐
-│ Item: M6 Socket Cap Screw │ ── 1. Stock <= Safety ROP ─>│ Auto-Generated Draft   │
-│ Location: Bin A-12-04     │                             │ Order #ORD-8821        │
-│ Status: Low Stock Alert   │                             │ Qty: 500 EA            │
-└─────────────▲─────────────┘                             └───────────┬────────────┘
-              │                                                       │
-              │  2. Dock Check-In: `STOCK_RECEIVE` Event              │
-              └───────────────────────────────────────────────────────┘
+| # | Problem | Consequence |
+| :--- | :--- | :--- |
+| 1 | Content lives in TypeScript source | The shop cannot edit standards; every wording change is a release |
+| 2 | English-only | Contradicts the app's RU-first audience and its 1:1 i18n rule |
+| 3 | No revision / approval metadata | Cannot claim "controlled document"; printed copies carry no revision |
+| 4 | No applicability | A battery SOP shows for a torque wrench; no link from a tool to its SOP |
+| 5 | No search, no index | Users must guess which button to press |
+| 6 | Not auditable | Opening/printing a SOP leaves no training evidence |
+
+### 6.3 Target design (phased)
+
+**Data model** — store SOPs in the `settings` store as `sops: SopDocument[]`
+(no new object store needed; it already syncs and merges as settings):
+
+```ts
+interface SopDocument {
+  id: string;                 // 'SOP-TW-01'
+  titleEn: string; titleRu: string;
+  bodyEn: string;  bodyRu: string;   // safe subset of HTML
+  revision: string;           // 'Rev. 3'
+  effectiveDate: string;      // ISO date
+  approvedBy: string;         // name / role
+  ownerRole: 'Administrator' | 'Tool Crib Manager';
+  status: 'Draft' | 'Approved' | 'Obsolete';
+  appliesTo: {
+    toolClasses?: string[];   // ['TW','PD']
+    programs?: string[];
+    stations?: string[];
+    posts?: string[];
+  };
+  attachments?: { id: string; name: string; photoId?: string }[];
+  links?: { labelEn: string; labelRu: string; url: string }[]; // ISO clauses, vendor manuals
+}
 ```
 
-1. **Warehouse -> Procurement Linkage:**
-   - Every warehouse item card displays real-time incoming deliveries badge: `Inbound: 20 EA (PO #ORD-9102, ETA: Tomorrow)`.
-   - Single-click action on low-stock item: **"Reorder Item"** automatically creates a requisition populated with Part Number, Vendor URL, Safety Stock target quantity, and Primary Bin destination.
-2. **Procurement -> Warehouse Linkage:**
-   - Each purchase order line item holds a mandatory foreign key `target_item_id` and `target_location_id`.
-   - Modifying vendor prices automatically updates estimated replacement values in warehouse asset depreciation logs.
+**Phase A — make SOPs data, bilingual and editable**
 
-### 12.3 Automated Replenishment & Line-Worker Requisition Protocol
-1. **Automated Deficit Detection Engine:**
-   ```typescript
-   interface ReplenishmentNeed {
-       itemId: string;
-       partNumber: string;
-       currentStock: number;
-       safetyStock: number;
-       suggestedOrderQty: number;
-       primaryVendor: string;
-       targetBinLocation: string;
-       urgency: 'CRITICAL_STOCKOUT' | 'LOW_STOCK' | 'TOOL_REPLACEMENT';
-   }
-   ```
-2. **Shop-Floor Requisition Gateway:**
-   - Technicians on the line can flag damaged tools (`Status: Scrapped`) or request specific consumables with a 2-tap mobile action.
-   - Requisitions are automatically triaged into the Procurement Specialist's approval inbox with supervisor sign-off workflows.
+1. Seed the four existing SOPs into `settings.sops` (same text, plus RU translations).
+2. Render the SOP modal from data, in the active language, with a language toggle
+   inside the modal (so a bilingual floor can compare).
+3. Add an **"SOP & Standards" tab to System Registries** (Administrator):
+   list, create, edit, duplicate-as-new-revision, mark `Approved` / `Obsolete`.
+   Every save bumps `revision` and writes to the audit log (`SOP_SAVE`).
+4. Print header with control metadata: code · revision · effective date ·
+   approved by · *"controlled document — printed copies are uncontrolled"*.
 
-### 12.4 Receiving Dock, Quality Inspection & Put-Away Bridge
-When physical freight arrives at the facility receiving dock:
-1. **Barcode / QR Intake:** Receiving clerk scans shipping label or PO barcode (`#ORD-XXXX`).
-2. **Partial Receipts & Discrepancy Handling:**
-   - Supports partial fulfillment (e.g., received 300 out of 500 ordered).
-   - Rejection logging with mandatory reason classification (`DAMAGED_IN_TRANSIT`, `WRONG_SPECIFICATION`, `MISSING_CERTIFICATE`).
-3. **Atomic Put-Away Transaction:**
-   - The receiving clerk confirms put-away into the designated bin (e.g., `LOC-BIN-A12`).
-   - The engine automatically emits a double-entry ledger event:
-     ```sql
-     INSERT INTO inventory_events (
-         event_type, item_id, source_location, dest_location, quantity, actor_id, metadata
-     ) VALUES (
-         'STOCK_RECEIVE', 'ITEM-M6-SS', 'LOC-VENDOR-RECEIVING', 'LOC-BIN-A12', 300, 'clerk_42',
-         '{"po_number": "ORD-8821", "carrier": "UPS", "tracking": "1Z9999999999999999"}'
-     );
-     ```
-   - Item status instantly transitions from `Pending Delivery` to `Active on Floor` without manual warehouse re-entry.
+**Phase B — surface SOPs where the work happens**
 
-### 12.5 Financial Compliance & Expense Request Artifact Generation
-1. **Automated `Expense_Request.xlsx` (REQ003) Generation:**
-   - Direct client-side generation using embedded ExcelJS / template streaming.
-   - Enforces 100% compliance with corporate FSE billing codes, department cost centers, and active Excel formulas (`SUM(H15:H44)`).
-2. **Vendor Performance & Spend Intelligence:**
-   - Tracks actual lead times vs. quoted vendor lead times.
-   - Historical unit-cost graphing across past quarters to detect price creep and supplier variance.
+5. **Contextual entry point:** the tool card's `Read SOP & Maintenance Manual`
+   action opens the SOP(s) whose `appliesTo.toolClasses` contains the tool's
+   class prefix; the station/post card offers its station/post SOPs.
+6. **SOP hub upgrade:** replace the four flat buttons with a small index —
+   grouped by area, with a search box (reuse the global search pattern), status
+   badge (`Approved` / `Draft` / `Obsolete`) and "Rev. N · effective date".
+7. **Standards section:** a list of external references (ISO 9001 clauses,
+   internal specs, supplier manuals) with `links[]`, plus optional attachments
+   stored as IndexedDB blobs like tool photos.
+
+**Phase C — evidence & governance**
+
+8. **Acknowledgement log:** record `SOP_VIEW` / `SOP_PRINT` in the audit log with
+   actor and revision — gives training/traceability evidence for audits.
+9. **Obsolete handling:** superseded SOPs remain retrievable but are visibly
+   marked and excluded from contextual prompts.
+
+### 6.4 Deliberately out of scope for the SOP hub
+
+- A full CMS / rich-text WYSIWYG (a constrained HTML subset is enough).
+- E-signature workflows (approval is a recorded name + role, not a crypto signature).
+- Multi-tenant SOP libraries (single plant).
 
 ---
 
----
+## 7. Revisit Triggers
 
-## 13. Phased Implementation Roadmap
+Each rejected item in §4 has an explicit condition that would justify revisiting
+it. Until the trigger fires, the item stays rejected — do not re-open it on
+"best practice" grounds alone.
 
-### 13.1 Phase 1: Core Edge Backend & Database Migration (Weeks 1–3)
-- [ ] Provision AWS Aurora PostgreSQL / Managed PostgreSQL cluster.
-- [ ] Implement foundational schema migrations (`inventory_events`, `master_items`, `locations`).
-- [ ] Configure Cloudflare Hyperdrive and link to Cloudflare Pages project.
-- [ ] Build `/functions/api/v1/sync` REST endpoints for transaction ingestion.
-
-### 13.2 Phase 2: Client WASM SQLite & Offline Outbox (Weeks 4–6)
-- [ ] Integrate `@sqlite.org/sqlite-wasm` in a dedicated Web Worker with OPFS storage.
-- [ ] Implement the client Transactional Outbox and Service Worker Background Sync.
-- [ ] Build automatic migration utility to transition existing `localStorage` data into SQLite.
-
-### 13.3 Phase 3: Real-Time Durable Objects Sync (Weeks 7–9)
-- [ ] Deploy Cloudflare Durable Objects for facility zone coordination.
-- [ ] Implement WebSocket bidirectional delta streaming.
-- [ ] Implement Vector Clock conflict detection and bin lock arbitration.
-
-### 13.4 Phase 4: Enterprise SSO, RBAC & ERP Connectors (Weeks 10–12)
-- [ ] Configure Cloudflare Zero Trust SAML 2.0 / OIDC authentication (Okta / Azure AD).
-- [ ] Implement RBAC middleware and cryptographic audit signature verification.
-- [ ] Implement ERP Webhook connector engine (SAP / NetSuite / Coupa).
-- [ ] Conduct end-to-end security penetration testing and load testing under high concurrency.
+| Rejected item | Revisit when… |
+| :--- | :--- |
+| WASM SQLite + OPFS | IndexedDB demonstrably limits us (e.g. >100k records, complex local queries). |
+| Postgres + Hyperdrive | A second facility must share one authoritative dataset, **or** records exceed what KV snapshots handle comfortably. |
+| Durable Objects / bin locks | Unattended vending, or a measured collision rate on concurrent checkouts. |
+| CRDT / vector clocks | Concurrent editing of the same record becomes common (today it is rare and resolvable by LWW). |
+| SSO (SAML/OIDC) | Corporate IT mandates an IdP, or the app is onboarded to Zero Trust. |
+| Double-entry ledger | Finance requires monetary inventory valuation from this system. |
+| ERP connectors | The plant runs SAP/NetSuite/Coupa **and** finance asks for a machine feed. |
+| Logpush → SIEM | A security policy requires centralized log retention. |
+| Room switcher UI | More than one physical area/warehouse is tracked in the same deployment. |
 
 ---
 
----
-*End of Enterprise Architecture Specification.*
+## Appendix A — Superseded aspirational notes
+
+The previous revision of this document specified, in detail, a target state built
+on WASM SQLite, PostgreSQL/Aurora + Hyperdrive, Durable Objects, CRDT/vector
+clocks, SAML/OIDC, an immutable double-entry ledger, ERP webhooks and Logpush→SIEM,
+delivered over a 12-week programme.
+
+That target has been **superseded** by §4 (rejections + reasons) and §5 (the
+roadmap we actually intend to run). The prior text is preserved in git history
+(`ENTERPRISE_ARCHITECTURE_PLAN.md` before the audit commit) if the reasoning is
+ever needed for a stakeholder conversation.
+
+The **procurement workspace vision** from the old §12 remains a valid *product*
+direction and is already largely implemented: multi-line cart, live total,
+per-line partial receiving and rejection with reason, automatic stock increment,
+`Pending Delivery → Active`, and the official REQ-003 export. The remaining gaps
+there are cosmetic (carrier/ETA badge, vendor price history) rather than
+architectural.
+
+*End of Enterprise Architecture Specification (audited).*
