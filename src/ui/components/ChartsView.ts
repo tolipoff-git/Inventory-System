@@ -4,13 +4,13 @@
 
 import { T } from '../../i18n';
 import { Store } from '../../storage/store';
-import { CONFIG, S5_RUBRICS } from '../../config/constants';
+import { CONFIG } from '../../config/constants';
 import { esc } from '../../utils/formatters';
 import { showTooltip, hideTooltip } from '../../utils/tooltip';
-import { get5SRubricExplanation } from '../../operations/auditOps';
 import { workstationAndPostOf, statusBucket } from '../../operations/toolOps';
 import { renderDonutSvg, renderBarSvg, renderRadarSvg, RadarPoint } from '../../reports/radarChart';
 import { computeRiskGroups } from '../../reports/riskIndex';
+import { compute5SPillars } from '../../reports/s5Scores';
 
 export interface ChartsCallbacks {
     onFilterSelect: (type: string, value: string) => void;
@@ -183,59 +183,13 @@ export class ChartsViewComponent {
     }
 
     private compute5S(): RadarPoint[] {
-        const PILLARS = ['Sort', 'Set in Order', 'Shine', 'Standardize', 'Sustain'];
-        const validAudits = (Store.audits5s || []).filter(a =>
-            Store.workposts.some(p => p.name === a.post && p.ws === a.ws));
-
-        if (validAudits.length) {
-            const latest: Record<string, any> = {};
-            validAudits.forEach(a => {
-                const k = `${a.ws}|${a.post}`;
-                if (!latest[k] || String(a.date) > String(latest[k].date)) latest[k] = a;
-            });
-            const posts = Object.values(latest);
-
-            return PILLARS.map((p, pi) => {
-                const rid = S5_RUBRICS[pi].id;
-                const ranked = [...posts].sort((a: any, b: any) => (b.scores[rid] || 0) - (a.scores[rid] || 0));
-                const best = ranked[0];
-                const worst = ranked[ranked.length - 1];
-                const avg = posts.reduce((s, a: any) => s + (a.scores[rid] || 0), 0) / posts.length;
-                const fmt = (a: any) => `${a.ws} | ${a.post}`;
-                const bestExp = get5SRubricExplanation(pi, best.scores[rid]);
-                const worstExp = get5SRubricExplanation(pi, worst.scores[rid]);
-                const desc = posts.length > 1
-                    ? `${T('AUDIT_BEST')}: ${best.scores[rid]}/5 (${esc(bestExp)}) — ${esc(fmt(best))}<br>${T('AUDIT_WORST')}: ${worst.scores[rid]}/5 (${esc(worstExp)}) — ${esc(fmt(worst))}`
-                    : `${esc(fmt(best))} — ${T('AUDIT_SCORE')}: ${best.scores[rid]}/5 (${esc(bestExp)})`;
-                return {
-                    pillar: T(p),
-                    score: Math.max(1, Math.min(5, Math.round(avg))),
-                    desc,
-                    onClick: () => this.callbacks.onOpenAuditHistory(pi)
-                };
-            });
-        }
-
-        const active = Store.activeTools();
-        if (!active.length) {
-            return PILLARS.map(p => ({ pillar: T(p), score: 3, desc: T('No data yet.') }));
-        }
-
-        const clamp = (r: number) => Math.max(1, Math.min(5, Math.round(1 + 4 * r)));
-        const pct = (nn: number) => `${Math.round(nn * 100)}%`;
-        const withLocation = active.filter(t => t.location && t.location !== 'Pending').length / active.length;
-        const addressed = active.filter(t => t.assigneeId || (t.location && (t.location.includes('-') || Store.workstations.some(w => t.location.includes(w))))).length / active.length;
-        const avgWear = active.reduce((a, t) => a + Store.wearOf(t), 0) / active.length;
-        const standardized = active.filter(t => (t.sn || t.article) && t.category && t.spec && t.spec !== 'N/A').length / active.length;
-        const compliant = active.filter(t => t.status !== 'Overdue').length / active.length;
-
-        return [
-            { pillar: T('Sort'), score: clamp(withLocation), desc: `${pct(withLocation)} ${T('tools have a defined place.')}` },
-            { pillar: T('Set in Order'), score: clamp(addressed), desc: `${pct(addressed)} ${T('at address storage or assigned.')}` },
-            { pillar: T('Shine'), score: Math.max(1, Math.min(5, Math.round(5 - avgWear / 20))), desc: `${T('Average wear')} ${Math.round(avgWear)}%.` },
-            { pillar: T('Standardize'), score: clamp(standardized), desc: `${pct(standardized)} ${T('have SN, category and spec.')}` },
-            { pillar: T('Sustain'), score: clamp(compliant), desc: `${pct(compliant)} ${T('not overdue.')}` }
-        ];
+        // Shared with the 5S report so the radar and the document always agree.
+        return compute5SPillars().map(p => ({
+            pillar: p.pillar,
+            score: p.score,
+            desc: p.descHtml,
+            onClick: () => this.callbacks.onOpenAuditHistory(p.index)
+        }));
     }
 
     private computeCulture(): RadarPoint[] {

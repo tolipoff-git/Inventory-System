@@ -9,6 +9,7 @@ import { submit5SAudit, get5SRubricExplanation } from '../../../operations/audit
 import { esc, fmtDate } from '../../../utils/formatters';
 import { toast, printHtml } from '../../../utils/dom';
 import { exportCertificatePdf, CertificatePdfRow } from '../../../reports/certPdf';
+import { buildS5Report, renderS5ReportScreen, renderS5ReportPrint } from '../../../reports/s5Report';
 
 export class AuditModal {
     private static postAuditModalId = 'postAuditModal';
@@ -307,8 +308,7 @@ export class AuditModal {
         overlay.querySelector('#report5sCloseBtn')?.addEventListener('click', () => this.closeReport());
         overlay.querySelector('#report5sFooterCloseBtn')?.addEventListener('click', () => this.closeReport());
         overlay.querySelector('#report5sPrintBtn')?.addEventListener('click', () => {
-            const content = document.getElementById('report5sContent')?.innerHTML;
-            if (content) printHtml(content);
+            printHtml(renderS5ReportPrint(buildS5Report()));
         });
         overlay.querySelector('#report5sExportPdfBtn')?.addEventListener('click', () => {
             this.exportReportPdf();
@@ -358,158 +358,6 @@ export class AuditModal {
     private static renderReport(): void {
         const content = document.getElementById('report5sContent');
         if (!content) return;
-
-        const audits = Store.audits5s || [];
-        const active = Store.activeTools();
-
-        // Dynamic 5S pillar scores from audits or derived from store data
-        const pillarKeys = ['sort', 'setOrder', 'shine', 'standardize', 'sustain'];
-        const pillarLabels = ['1S — Sort', '2S — Set in Order', '3S — Shine', '4S — Standardize', '5S — Sustain'];
-        let scores5s: number[] = [];
-
-        if (audits.length > 0) {
-            const valid = audits.filter(a => Store.workposts.some(p => p.name === a.post && p.ws === a.ws));
-            if (valid.length) {
-                const latest: Record<string, typeof audits[0]> = {};
-                valid.forEach(a => {
-                    const k = `${a.ws}|${a.post}`;
-                    if (!latest[k] || String(a.date) > String(latest[k].date)) latest[k] = a;
-                });
-                const posts = Object.values(latest);
-                scores5s = pillarKeys.map(pid => {
-                    const s = posts.map(p => (p.scores && (p.scores as Record<string, number>)[pid]) ? (p.scores as Record<string, number>)[pid] : 0);
-                    const avg = s.length ? s.reduce((a, b) => a + b, 0) / s.length : 3;
-                    return Math.max(1, Math.min(5, Math.round(avg)));
-                });
-            } else {
-                scores5s = pillarKeys.map(() => 3);
-            }
-        }
-        if (scores5s.length === 0 || scores5s.every(s => s === 0)) {
-            // Dynamic from tool data when no audits
-            const withLocation = active.filter(t => t.location && t.location !== 'Pending').length / Math.max(1, active.length);
-            const addressed = active.filter(t => t.assigneeId || (t.location && (t.location.includes('-') || Store.workstations.some(w => t.location && t.location.includes(w))))).length / Math.max(1, active.length);
-            const avgWear = active.reduce((a, t) => a + Store.wearOf(t), 0) / Math.max(1, active.length);
-            const standardized = active.filter(t => (t.sn || t.serialNumber || t.article) && t.category && t.spec && t.spec !== 'N/A').length / Math.max(1, active.length);
-            const compliant = active.filter(t => t.status !== 'Overdue').length / Math.max(1, active.length);
-            const clamp = (r: number) => Math.max(1, Math.min(5, Math.round(1 + 4 * r)));
-            scores5s = [
-                clamp(withLocation), clamp(addressed),
-                Math.max(1, Math.min(5, Math.round(5 - avgWear / 20))),
-                clamp(standardized), clamp(compliant)
-            ];
-        }
-
-        // 5S compliance rate (% of active tools in Active/Issued/Backup)
-        const compliantCount = active.filter(t => ['Active', 'Issued', 'Backup'].includes(t.status)).length;
-        const complianceRate = Math.round((compliantCount / Math.max(1, active.length)) * 100);
-
-        // Status breakdown
-        const statusCounts: Record<string, number> = {};
-        ['Active', 'Issued', 'Backup', 'Maintenance', 'Overdue', 'Retired', 'Pending Delivery', 'Calibration', 'Decommissioned'].forEach(s => { statusCounts[s] = active.filter(t => t.status === s).length; });
-
-        // Workstation load & risk
-        const wsData = Store.workstations.map(ws => {
-            const wsTools = active.filter(t => Store.workstationOf(t) === ws);
-            const overdue = wsTools.filter(t => t.status === 'Overdue').length;
-            const load = wsTools.length;
-            const risk = overdue > 2 ? 'High' : overdue > 0 ? 'Medium' : 'Low';
-            return { ws, load, overdue, risk };
-        });
-
-        // Overdue & maintenance warnings
-        const overdueTools = active.filter(t => t.status === 'Overdue');
-        const maintenanceTools = active.filter(t => t.status === 'Maintenance');
-
-        // Kaizen recommendations
-        const recommendations: string[] = [];
-        if (overdueTools.length > 0) recommendations.push('Review overdue tool returns and enforce due-date tracking.');
-        if (maintenanceTools.length > 0) recommendations.push('Process maintenance queue promptly to restore tool availability.');
-        if (complianceRate < 80) recommendations.push('Conduct 5S re-audit and refresh labeling/shadow boards.');
-        const avgWearAll = active.reduce((a, t) => a + Store.wearOf(t), 0) / Math.max(1, active.length);
-        if (avgWearAll > 50) recommendations.push('Initiate wear-monitoring program; schedule calibration for high-wear items.');
-
-        const pillarCards = pillarLabels.map((label, idx) => {
-            const score = scores5s[idx] || 3;
-            return `
-            <div style="background:rgba(255,255,255,0.03); padding:14px; border-radius:8px; border:1px solid var(--border);">
-                <div style="font-size:0.85rem; color:var(--text-muted);">${label}</div>
-                <div style="font-size:1.6rem; font-weight:bold; color:${score >= 4 ? 'var(--success)' : score >= 3 ? 'var(--warning)' : 'var(--danger)'};">${score.toFixed(1)} / 5</div>
-            </div>`;
-        }).join('');
-
-        // Filter status table to meaningful rows
-        const statusTableRows = ['Active', 'Issued', 'Backup', 'Maintenance', 'Overdue', 'Retired', 'Pending Delivery', 'Calibration', 'Decommissioned']
-            .map(name => `
-            <tr>
-                <td style="padding:6px 10px; border-bottom:1px solid var(--border); font-weight:bold;">${name}</td>
-                <td style="padding:6px 10px; border-bottom:1px solid var(--border); text-align:center; color:${name === 'Overdue' ? 'var(--danger)' : name === 'Maintenance' ? 'var(--warning)' : 'inherit'};">${statusCounts[name] || 0}</td>
-            </tr>
-            `).join('');
-
-        const wsTableRows = wsData.map(d => `
-        <tr>
-            <td style="padding:6px 10px; border-bottom:1px solid var(--border);">${esc(d.ws)}</td>
-            <td style="padding:6px 10px; border-bottom:1px solid var(--border); text-align:center;">${d.load}</td>
-            <td style="padding:6px 10px; border-bottom:1px solid var(--border); text-align:center; color:${d.overdue > 0 ? 'var(--danger)' : 'inherit'};">${d.overdue}</td>
-            <td style="padding:6px 10px; border-bottom:1px solid var(--border); text-align:center; font-weight:bold; color:${d.risk === 'High' ? 'var(--danger)' : d.risk === 'Medium' ? 'var(--warning)' : 'var(--success)'};">${d.risk}</td>
-        </tr>
-        `).join('');
-
-        const overdueList = overdueTools.length > 0 ? overdueTools.map(t => `<li><b>${esc(t.id)}</b> — ${esc(t.name)} (Due: ${fmtDate(t.dueReturn)})</li>`).join('') : '<li>None</li>';
-        const maintList = maintenanceTools.length > 0 ? maintenanceTools.map(t => `<li><b>${esc(t.id)}</b> — ${esc(t.name)}</li>`).join('') : '<li>None</li>';
-        const recommendationsHtml = recommendations.length > 0 ? recommendations.map(r => `<li>${r}</li>`).join('') : '<li>All systems nominal.</li>';
-
-        content.innerHTML = `
-            <div style="padding:20px; font-family:var(--font-main); color:var(--text-main);">
-                <div style="text-align:center; border-bottom:2px solid var(--primary); padding-bottom:14px; margin-bottom:20px;">
-                    <h2 style="margin:0; text-transform:uppercase; letter-spacing:1px;">5S Production Engineering Audit Report</h2>
-                    <div style="color:var(--text-muted); margin-top:6px;">Audited Assets: ${active.length} | Total Audits Logged: ${audits.length} | 5S Compliance: ${complianceRate}%</div>
-                </div>
-
-                <!-- Dynamic 5S Scores -->
-                <h3 style="margin:0 0 12px; color:var(--primary-hover);">5S Audit Scores</h3>
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:25px;">
-                    ${pillarCards}
-                </div>
-
-                <!-- Status Breakdown -->
-                <h3 style="margin:0 0 12px; color:var(--primary-hover);">Status Breakdown</h3>
-                <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
-                    <thead>
-                        <tr style="background:var(--border-dark);"><th style="padding:8px 10px; text-align:left;">Status</th><th style="padding:8px 10px; text-align:center;">Count</th></tr>
-                    </thead>
-                    <tbody>${statusTableRows}</tbody>
-                </table>
-
-                <!-- Workstation Load & Risk -->
-                <h3 style="margin:20px 0 12px; color:var(--primary-hover);">Workstation Load & Loss Risk</h3>
-                <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
-                    <thead>
-                        <tr style="background:var(--border-dark);"><th style="padding:8px 10px; text-align:left;">Workstation</th><th style="padding:8px 10px; text-align:center;">Load</th><th style="padding:8px 10px; text-align:center;">Overdue</th><th style="padding:8px 10px; text-align:center;">Risk</th></tr>
-                    </thead>
-                    <tbody>${wsTableRows}</tbody>
-                </table>
-
-                <!-- Warnings -->
-                <h3 style="margin:20px 0 8px; color:var(--primary-hover);">Overdue & Maintenance Warnings</h3>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
-                    <div style="background:rgba(255,0,0,0.05); padding:12px; border-radius:6px; border:1px solid var(--border);">
-                        <strong>Overdue (${overdueTools.length})</strong>
-                        <ul style="margin:8px 0 0 16px; padding:0; font-size:0.9rem;">${overdueList}</ul>
-                    </div>
-                    <div style="background:rgba(255,165,0,0.05); padding:12px; border-radius:6px; border:1px solid var(--border);">
-                        <strong>Maintenance (${maintenanceTools.length})</strong>
-                        <ul style="margin:8px 0 0 16px; padding:0; font-size:0.9rem;">${maintList}</ul>
-                    </div>
-                </div>
-
-                <!-- Kaizen Recommendations -->
-                <h3 style="margin:20px 0 8px; color:var(--primary-hover);">Kaizen Recommendations</h3>
-                <ul style="margin:0; padding-left:18px; line-height:1.6;">${recommendationsHtml}</ul>
-
-                <p style="margin-top:24px; color:var(--text-muted); font-size:0.9rem;">This document certifies that the plant floor tooling and storage addresses have undergone rigorous 5S systematic review, maintaining visual control standards, shadow board fidelity, and calibrated accuracy.</p>
-            </div>
-        `;
+        content.innerHTML = renderS5ReportScreen(buildS5Report());
     }
 }

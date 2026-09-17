@@ -2,13 +2,27 @@
 
 ## Overview
 - **Repository:** `/home/admin/git/Inventory-System`
-- **Current Version:** `v109` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
+- **Current Version:** `v110` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
 - **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith is preserved as `index.monolith.v97.html` for reference only and is **not** the active app.
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v109)
+## Recent Accomplishments (v49 – v110)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
+
+### 0. 5S Report Restored to Monolith Depth (v110 Release)
+- **Symptom:** the modular 5S report was a thin subset of the monolith's — it had lost decommissioning statistics, procurement detail/recommendations, Kaizen advice by role, the workstation culture table, per-pillar rubric findings and the print signature block.
+- **Content restored** — new `src/reports/s5Report.ts` + `src/reports/kaizen.ts`:
+  - **Decommissioning Statistics & Dynamics** — total retired, most frequent reason, per-category counts, recently decommissioned list. `retireStats()` parses both `history` (`"<ts> | Decommissioned on … (Reason: X, Wear: N%, Insp: Y)"`) and `audit_history` (`"Decommissioned: …"` notes), plus the legacy `retireReason` field.
+  - **Procurement Recommendations + Procurement Detail** table — per position: last receipt (from `history` `"Received order …"`), consumption basis (from `procurementLog` items), needed qty (low-stock consumables topped up to `maxQty`; retired positions grouped by name).
+  - **Kaizen Recommendations** — port of the monolith's role-targeted advice module (priority 1 *act now* / 2 *plan* / 3 *sustain*, addressed to Administrator / Tool Crib Manager / Operator), with screen and print variants.
+  - **Workstation Production Culture** table (station|post, score/100) and **5S Pillars Assessment** with rubric findings.
+  - The modal's **Print** button now renders the light `#printZone` document (KPIs, all tables, Kaizen, signature lines) instead of dumping the dark modal HTML.
+- **Optimisation — shared computation, no duplication:**
+  - New `src/reports/s5Scores.ts` (`compute5SPillars()`) is the single source of truth for the 5S pillar scores used by BOTH the dashboard radar and the report; `ChartsView.compute5S()` is now a thin mapper (previously the logic lived privately in `ChartsView`, so the report could not reuse it).
+  - The report reuses `computeRiskGroups()` (`riskIndex.ts`), so the document and the risk chart always agree; Kaizen advice reuses `careOf()` and the same risk groups.
+- **i18n:** report/Kaizen prose is kept as inline `{en, ru}` pairs (exactly as the monolith's `Kaizen` module did), so every label exists in both languages by construction; the dictionary key sets are untouched (parity 622/622).
+- **Type:** added `Tool.maxQty?: number` (Min/Max consumable thresholds were previously only reachable through `any`).
 
 ### 0. Risk Radar Best/Worst Markers Visible (v109 Release)
 - **Symptom:** the "Risk Index & Incidents" radar showed no ★ best / ▼ worst markers on the rays.
