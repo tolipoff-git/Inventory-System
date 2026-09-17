@@ -8,7 +8,7 @@ import { CONFIG, S5_RUBRICS } from '../../config/constants';
 import { esc } from '../../utils/formatters';
 import { showTooltip, hideTooltip } from '../../utils/tooltip';
 import { get5SRubricExplanation } from '../../operations/auditOps';
-import { workstationAndPostOf } from '../../operations/toolOps';
+import { workstationAndPostOf, statusBucket } from '../../operations/toolOps';
 import { renderDonutSvg, renderBarSvg, renderRadarSvg, RadarPoint } from '../../reports/radarChart';
 import { computeRiskGroups } from '../../reports/riskIndex';
 
@@ -142,8 +142,8 @@ export class ChartsViewComponent {
             Overdue: 0
         };
         active.forEach(t => {
-            if (counts[t.status] !== undefined) counts[t.status]++;
-            else counts.Backup++;
+            const bucket = statusBucket(t.status);
+            counts[bucket] = (counts[bucket] || 0) + 1;
         });
 
         renderDonutSvg('chart1', counts, (status) => {

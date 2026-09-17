@@ -10,6 +10,7 @@ import { LabelModal } from './LabelModal';
 import { exportFullInventoryExcel } from '../../../reports/reportExports';
 import { printQueueLabels } from '../../../labels/labelPrint';
 import { Store } from '../../../storage/store';
+import { hardReloadPwa } from '../../../utils/pwa';
 
 export class OpsMenuModal {
     private static modalId = 'opsMenuModal';
@@ -78,7 +79,7 @@ export class OpsMenuModal {
         });
 
         modal.querySelector('#opsUpdatePwaBtn')?.addEventListener('click', () => {
-            window.location.reload();
+            hardReloadPwa();
         });
     }
 

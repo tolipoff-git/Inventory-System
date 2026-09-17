@@ -34,14 +34,17 @@ export interface RiskGroup {
  */
 export function computeRiskGroups(): RiskGroup[] {
   const active = Store.activeTools();
-  const registered = new Set(Store.workstations);
   const groups: Record<string, { ws: string; post: string; tools: Tool[] }> = {};
 
   active.forEach(t => {
     const loc = workstationAndPostOf(t);
-    const inRegistry = registered.has(loc.ws);
-    const ws = inRegistry ? loc.ws : STORAGE_BUCKET;
-    const post = inRegistry ? loc.post : '';
+    const raw = (loc.ws || '').trim();
+    // Only tools with no resolvable station fall into the shared bucket; tools
+    // assigned to a person keep their own station | post ray (even if that
+    // station is not (yet) in the registry), exactly like the monolith.
+    const isGeneric = !raw || raw === 'Unassigned' || raw === 'Unknown' || raw === 'N/A';
+    const ws = isGeneric ? STORAGE_BUCKET : raw;
+    const post = isGeneric ? '' : (loc.post || '');
     const key = `${ws} | ${post}`;
     if (!groups[key]) groups[key] = { ws, post, tools: [] };
     groups[key].tools.push(t);

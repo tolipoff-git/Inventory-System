@@ -30,11 +30,12 @@ import { SystemMenuModal } from './components/Modals/SystemMenuModal';
 import { OpsMenuModal } from './components/Modals/OpsMenuModal';
 import { EmployeeProfileModal } from './components/Modals/EmployeeProfileModal';
 import { RiskModal } from './components/Modals/RiskModal';
-import { isPermanentTool, isConsumableTool, workstationAndPostOf } from '../operations/toolOps';
+import { isPermanentTool, isConsumableTool, workstationAndPostOf, statusBucket } from '../operations/toolOps';
 import { receiveFullOrder, cancelOrder } from '../operations/orderOps';
 import { daysUntil } from '../utils/formatters';
 import { toast } from '../utils/dom';
 import { windowConfirm } from '../utils/dialogCompat';
+import { hardReloadPwa } from '../utils/pwa';
 
 export class AppUI {
     private header: HeaderComponent | null = null;
@@ -245,7 +246,7 @@ export class AppUI {
 
         // Filter predicate
         if (currentFilter.type === 'status' && currentFilter.value) {
-            tools = tools.filter(t => t.status === currentFilter.value);
+            tools = tools.filter(t => statusBucket(t.status) === currentFilter.value);
         } else if (currentFilter.type === 'workstation' && currentFilter.value) {
             tools = tools.filter(t => workstationAndPostOf(t).ws === currentFilter.value);
         } else if (currentFilter.type === 'location' && currentFilter.value) {
@@ -513,7 +514,7 @@ export class AppUI {
         };
         (window as any).doAction = (role: any, cb: any) => Auth.doAction(role, cb);
         (window as any).toggleLanguage = () => toggleLanguage();
-        (window as any).forceUpdatePWA = () => window.location.reload();
+        (window as any).forceUpdatePWA = () => hardReloadPwa();
         (window as any).T = T;
         (window as any).getLanguage = getLanguage;
         (window as any).CONFIG = CONFIG;

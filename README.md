@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v107)
+# 5S Tool Command Center — v3 (v108)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -41,8 +41,8 @@ src/
 
 ### 2. Analytics & 5S
 - Interactive click-to-filter dashboards, Production Culture Radar.
-- **Risk Index chart** — one point per **station | post** (0–100 index); tools outside
-  the registry are aggregated into a single *Storage / Crib* bucket. Clicking a node
+- **Risk Index chart** — one point per **station | post** (0–100 index); tools with no
+  resolvable station are aggregated into a single *Storage / Crib* bucket. Clicking a node
   opens a **risk-detail modal** (index, level, overdue/maintenance/wear KPIs, program,
   responsible person, risk-driver summary, per-tool table) with a shortcut to the 5S report.
 - Care Score (0-100) per employee from return-condition history.
@@ -74,6 +74,13 @@ src/
 - Worker: constant-time bearer, **origin allowlist** (`ALLOWED_ORIGIN`),
   photo mime + 5 MiB guard. KV binding via env/secret (never in VCS).
 - CORS: writes gated by token; client forwards to job-required surfaces only.
+
+### 6. Help & updates
+- **FAQ** (❓ in the header) — task-oriented how-to guide: quick start, tool actions,
+  structure, storage & labels, procurement, dashboard/risk, 5S audits, update/offline/data,
+  and a troubleshooting section. Content lives in `src/i18n/faqContent.ts`.
+- **1-click hard update** — click the version number in the header (or *Update PWA* in the
+  menus): clears caches, unregisters the service worker and reloads fresh. Data is untouched.
 
 ## Development
 

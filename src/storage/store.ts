@@ -604,6 +604,13 @@ class StoreManager {
       }
       if (!t.location) t.location = 'Main Store';
     });
+    // Personnel: normalize legacy monolith fields (`workstation`/`defaultWs`,
+    // `defaultPost`) onto the current `ws`/`post` so station/post resolve everywhere.
+    this.personnel.forEach(e => {
+      const legacy = e as any;
+      if (!e.ws && (legacy.workstation || legacy.defaultWs)) e.ws = legacy.workstation || legacy.defaultWs;
+      if (!e.post && legacy.defaultPost) e.post = legacy.defaultPost;
+    });
     // Users: any account without a real verifier must go through PIN setup
     // before it can authenticate. This covers both brand-new seed accounts
     // (shipped with an empty pwHash) and stored rows that predate the flag.

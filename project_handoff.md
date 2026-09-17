@@ -2,13 +2,22 @@
 
 ## Overview
 - **Repository:** `/home/admin/git/Inventory-System`
-- **Current Version:** `v107` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
+- **Current Version:** `v108` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
 - **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith is preserved as `index.monolith.v97.html` for reference only and is **not** the active app.
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v107)
+## Recent Accomplishments (v49 – v108)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
+
+### 0. Chart Interactivity, Personnel Field Resolution & FAQ Rewrite (v108 Release)
+Fixed regressions in the v107 chart work and rewrote the FAQ.
+- **Risk chart showed a single ray:** `computeRiskGroups()` (added in v107) folded every tool whose station was not in `Store.workstations` into one `Storage / Crib` bucket. Root cause: personnel migrated from the monolith store `workstation`/`defaultWs`/`defaultPost`, **not** `ws`/`post`, so `workstationAndPostOf()` resolved every assigned tool to `Unassigned` → one bucket. Fixes: (a) `Store.migrate()` normalizes personnel `ws`/`post` from the legacy fields; (b) `toolOps.workstationAndPostOf()` falls back to them; (c) `computeRiskGroups()` groups by `station | post` again and only buckets tools with **no** resolvable station. Result: one ray per real station/post again.
+- **Status donut “Backup” click did nothing:** the donut folds unknown statuses (`Pending Delivery`, `Calibration`) into `Backup`, but the filter matched `t.status === 'Backup'`. New shared `statusBucket()` in `toolOps` is now used by both `ChartsView.renderStatusChart()` and `app.filterAndRenderGrid()`, so a slice click always shows exactly the tools that were counted.
+- **5S audit radar ray was not interactive:** only the small node circle carried hover/click handlers. `renderRadarSvg()` now binds hover/click to the **spoke** (via a transparent 14px hit line) and the axis label as well; background rings and the score polygon are `pointer-events: none`. Whole-ray interaction now works for the 5S radar *and* the risk radar.
+- **Real 1-click PWA hard update:** the version badge, `🔄 Update PWA` (Ops menu) and `Force Update App` (System menu) previously only called `window.location.reload()`. They now call `hardReloadPwa()` (`src/utils/pwa.ts`): clear Cache Storage → unregister service workers → reload with a `?t=` cache-buster, with a 2.5 s safety timeout so it can never hang. Mirrors the monolith `hardReload`.
+- **FAQ rewritten (EN/RU):** content moved to `src/i18n/faqContent.ts` (`FAQ_BODY_EN` / `FAQ_BODY_RU`, imported by both dictionaries so the key-parity invariant holds). Rewritten as a task-oriented guide — quick start, tool actions, structure, storage/labels, procurement, dashboard/risk, 5S audits, update/offline/data, troubleshooting. Version references are generic (`v***`) instead of the stale hard-coded `v97`; internal code identifiers (`Ops.receiveOrderItem`, `getNextFreeBin()`) removed. `initFaqAccordion()` now scopes to `.faq-accordion details` (works in the modal) and the FAQ modal re-renders on language change (`applyLanguage` handles `#faqModalBody`).
+- Note: the “Workstation Tool Load” chart showing many shelf rows was caused by dangling tool locations and is resolved by the user running the Integrity **auto-fix** — no code change.
 
 ### 0. Registry Hierarchy, Personnel Assignment & Risk Detail (v107 Release)
 Restored monolith registry/chart behaviour that the modular rewrite had dropped, and added a risk-detail drill-down.
