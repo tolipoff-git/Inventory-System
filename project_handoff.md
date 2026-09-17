@@ -7,6 +7,70 @@
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
+## Session Continuity — Resume Point (2026-09-17, v111)
+
+**Read this block first after a context compaction.** It is the live state of the current
+working session; the per-release history below is the long-term record.
+
+### State
+- **Version:** `v111` (`package.json` = 111.0.0). `sw.js` `CACHE_VERSION` = `v111-467525b`.
+- **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
+- **Gates (all green at v111):** `npm run typecheck` · `npm run lint` · `npm test` (48/48) ·
+  `npm run build` · EN/RU key parity **622/622**.
+- **Deploy:** push to `main` → Cloudflare Pages auto-deploy. Release workflow is defined in
+  `AGENTS.md` (bump version → README + handoff → `bash build.sh` → feature commit →
+  `chore(pwa): refresh sw.js …` commit → push) — **run it without asking**.
+
+### Shared modules introduced this session — single sources of truth, reuse them
+- `src/reports/s5Scores.ts` → `compute5SPillars()` — 5S pillar scores; used by the dashboard
+  radar (`ChartsView.compute5S()` is now a thin mapper) **and** the 5S report.
+- `src/reports/riskIndex.ts` → `computeRiskGroups()` — station|post risk index; used by the
+  risk radar, the risk-detail modal and the report.
+- `src/reports/kaizen.ts` → `analyzeKaizen()` + `renderKaizenScreen/Print()` — role-targeted advice.
+- `src/reports/s5Report.ts` → `retireStats()`, `procurementDetail()`, `buildS5Report()`,
+  `renderS5ReportScreen()`, `renderS5ReportPrint()`.
+- `src/utils/pwa.ts` → `hardReloadPwa()` — real hard update (clear caches + unregister SW + `?t=` reload).
+- `src/i18n/faqContent.ts` → `FAQ_BODY_EN` / `FAQ_BODY_RU` (imported by both dictionaries).
+- `src/ui/components/Modals/RiskModal.ts` — risk-detail drill-down opened from the risk radar.
+
+### Next actions (agreed direction, not yet started)
+1. **Sync correctness — Phase A** (`ENTERPRISE_ARCHITECTURE_PLAN.md` §5). The one genuine
+   architectural gap: **deletes are not tombstoned** — a peer holding an older copy resurrects
+   a removed record on merge. Plan: `deletedAt` soft-delete on tools/personnel/users/registry
+   entries, filtered from all views, newest-tombstone wins in `sync/conflictResolver.ts`.
+   Also: verify every mutation path stamps `updatedAt` (via `Store.touch()`), and add
+   `/api/health` to `src/worker/index.ts`.
+2. **SOP & Standards hub — Phase A** (plan §6): move the four hardcoded SOPs out of
+   `SopModal.renderSopContent()` into `settings.sops: SopDocument[]` (bilingual EN/RU,
+   `revision`, `effectiveDate`, `approvedBy`, `status`, `appliesTo`), render from data, and add
+   an "SOP & Standards" tab to `RegistryModal`. Phase B: contextual entry point
+   (`Read SOP & Maintenance Manual` on the tool card), hub index + search, print metadata.
+
+### Decisions & assumptions to preserve
+- Report/Kaizen prose is deliberately kept as **inline `{en, ru}` pairs** inside the report
+  modules (monolith parity-by-construction) — **not** in the dictionaries. Dictionary key sets
+  stay untouched (parity 622/622). Do not "fix" this by moving the prose into i18n.
+- `Tool.maxQty?: number` was added to `types/inventory.ts` (Min/Max consumable thresholds).
+- `applyLanguage()` now removes **closed** `.modal-overlay` nodes so modals rebuild in the new
+  language on next open; static labels use `data-i18n` (chart titles, KPI labels, hints).
+- Risk radar labels truncate the **name** first, then append the ★/▼ mark (the mark used to be
+  cut off by truncation).
+- `compute5SPillars()` / `computeRiskGroups()` are the only places 5S/risk scores are computed —
+  never re-implement them in a view.
+
+### Do NOT re-open (conscious rejections — plan §4; revisit triggers in §7)
+WASM SQLite/OPFS · Postgres/Aurora + Hyperdrive · Durable Objects / bin locks · CRDT / vector
+clocks · SAML/OIDC SSO · double-entry ledger · ERP connectors (SAP/NetSuite/Coupa) ·
+Logpush→SIEM · microservice/GraphQL split. Also do not re-open the deferred rendering
+refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred Audit Items" below.
+
+### User context
+- Russian-speaking, RU-first UI. Expects the 5S report and dashboard charts to be **rich**
+  (monolith-level), not minimal.
+- Prefers pragmatic, shippable increments over enterprise patterns; dislikes over-engineering.
+- Standing instruction: perform the full release flow (bump → docs → `build.sh` → commits → push)
+  automatically, without asking.
+
 ## Recent Accomplishments (v49 – v111)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
