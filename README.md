@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v108)
+# 5S Tool Command Center — v3 (v109)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -42,9 +42,10 @@ src/
 ### 2. Analytics & 5S
 - Interactive click-to-filter dashboards, Production Culture Radar.
 - **Risk Index chart** — one point per **station | post** (0–100 index); tools with no
-  resolvable station are aggregated into a single *Storage / Crib* bucket. Clicking a node
-  opens a **risk-detail modal** (index, level, overdue/maintenance/wear KPIs, program,
-  responsible person, risk-driver summary, per-tool table) with a shortcut to the 5S report.
+  resolvable station are aggregated into a single *Storage / Crib* bucket. The best ray is
+  marked **★** (green) and the worst **▼** (red). Clicking a node opens a **risk-detail modal**
+  (index, level, overdue/maintenance/wear KPIs, program, responsible person, risk-driver
+  summary, per-tool table) with a shortcut to the 5S report.
 - Care Score (0-100) per employee from return-condition history.
 - 5S audit reports + automated procurement recommendations.
 - Photo timelines — tool condition photos embedded chronologically.

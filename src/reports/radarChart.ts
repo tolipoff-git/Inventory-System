@@ -94,9 +94,14 @@ export function renderRadarSvg(
     if (cosA > 0.3) anchor = 'start';
     else if (cosA < -0.3) anchor = 'end';
 
-    let label = `${d.pillar}${d.mark ? ' ' + d.mark : ''}`;
+    // Truncate the NAME first, then append the best/worst mark — otherwise the
+    // mark would be cut off by the truncation and never visible.
+    const mark = d.mark ? ' ' + d.mark : '';
     const maxLen = n <= 3 ? 18 : 14;
-    if (label.length > maxLen) label = label.slice(0, maxLen - 1) + '…';
+    const nameMax = Math.max(4, maxLen - mark.length);
+    let name = d.pillar;
+    if (name.length > nameMax) name = name.slice(0, Math.max(1, nameMax - 1)) + '…';
+    const label = name + mark;
     const fontSize = label.length > 12 ? '9.5px' : '11px';
 
     const text = createSvgEl('text', {

@@ -2,13 +2,18 @@
 
 ## Overview
 - **Repository:** `/home/admin/git/Inventory-System`
-- **Current Version:** `v108` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
+- **Current Version:** `v109` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
 - **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith is preserved as `index.monolith.v97.html` for reference only and is **not** the active app.
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Recent Accomplishments (v49 – v108)
+## Recent Accomplishments (v49 – v109)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
+
+### 0. Risk Radar Best/Worst Markers Visible (v109 Release)
+- **Symptom:** the "Risk Index & Incidents" radar showed no ★ best / ▼ worst markers on the rays.
+- **Root cause:** `renderRadarSvg()` (ported from the monolith, which had the same latent bug) built the label as `pillar + ' ' + mark` and **then** truncated it to 14 chars — so on any station|post name longer than ~12 chars the mark was cut off and never rendered. Node fill colour was still correct, but the glyph was gone.
+- **Fix:** truncate the **name** first, then append the mark, so ★/▼ always survives. The hover tooltip already carries the ★/▼ driver prefix, and the node/label colour marks best (green) / worst (red) as before.
 
 ### 0. Chart Interactivity, Personnel Field Resolution & FAQ Rewrite (v108 Release)
 Fixed regressions in the v107 chart work and rewrote the FAQ.
