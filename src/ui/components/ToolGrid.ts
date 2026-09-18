@@ -17,6 +17,7 @@ export interface ToolGridCallbacks {
     onOpenOrders: () => void;
     onOpenRegistries: () => void;
     onOpenArchive: () => void;
+    onOpenCalibrationSession: () => void;
 }
 
 export class ToolGridComponent {
@@ -243,7 +244,7 @@ export class ToolGridComponent {
         const mOver = maintQueue.filter(t => t.status === 'Overdue').length;
         const mCal = maintQueue.filter(t => t.status !== 'Maintenance' && t.status !== 'Overdue').length;
         const urgent = maintQueue.slice(0, 3).map(t => row(
-            `${esc(t.id)} — ${esc(t.name.split(' ').slice(0, 3).join(' '))}…`,
+            `<span data-action="tool-detail" data-id="${esc(t.id)}" style="cursor:pointer; text-decoration:underline;">${esc(t.id)} — ${esc(t.name.split(' ').slice(0, 3).join(' '))}…</span>`,
             t.status === 'Overdue' ? T('OVERDUE') : t.status === 'Maintenance' ? T('SERVICE') : `⚗ ${T('Calibration due')} ${daysUntil(t.calDue)}d`,
             t.status === 'Overdue' ? 'var(--danger)' : 'var(--warning)'
         )).join('');
@@ -276,7 +277,7 @@ export class ToolGridComponent {
             card(T('HUB_WS'), wsBody, `<button class="btn wide" id="hubViewWsBtn">${T('[View Workstations]')}</button>`, false, 'hub_ws') +
             card(T('HUB_CONS'), consBody, `<button class="btn wide" id="hubViewConsBtn">${T('[View Consumables]')}</button>`, false, 'hub_cons') +
             card(T('HUB_PROC'), procBody, `<button class="btn wide" id="hubViewProcBtn">${T('[Open Orders Registry]')}</button>`, poOpen.length > 0, 'hub_proc') +
-            card(T('HUB_MAINT'), maintBody, `<button class="btn btn-warning wide" id="hubViewMaintBtn">${T('[Open Service Queue]')}</button>`, true, 'hub_maint') +
+            card(T('HUB_MAINT'), maintBody, `<button class="btn btn-warning wide" id="hubViewMaintBtn">${T('[Open Service Queue]')}</button><button class="btn wide" id="hubCalSessionBtn">⚗ ${T('Calibration Session')}</button>`, true, 'hub_maint') +
             card(T('HUB_SOP'), sopBody, '', false, 'hub_sop');
 
         // Bind Hub card buttons
@@ -286,6 +287,7 @@ export class ToolGridComponent {
         this.hubContainer.querySelector('#hubViewConsBtn')?.addEventListener('click', () => this.callbacks.onSetFilter('consumable', 'Consumables'));
         this.hubContainer.querySelector('#hubViewProcBtn')?.addEventListener('click', () => this.callbacks.onOpenOrders());
         this.hubContainer.querySelector('#hubViewMaintBtn')?.addEventListener('click', () => this.callbacks.onSetFilter('maintq', 'Maintenance Queue'));
+        this.hubContainer.querySelector('#hubCalSessionBtn')?.addEventListener('click', () => this.callbacks.onOpenCalibrationSession());
 
         this.hubContainer.querySelector('.archive-link')?.addEventListener('click', (e) => {
             e.preventDefault();

@@ -239,7 +239,8 @@ export class AppUI {
             onOpenSop: (code) => SopModal.openSop(code),
             onOpenOrders: () => OrderModal.openList(),
             onOpenRegistries: () => Auth.doAction('Administrator', () => RegistryModal.open()),
-            onOpenArchive: () => Auth.doAction('Administrator', () => AuditLogModal.openArchive())
+            onOpenArchive: () => Auth.doAction('Administrator', () => AuditLogModal.openArchive()),
+            onOpenCalibrationSession: () => Auth.doAction('Tool Crib Manager', () => CalibrationModal.openSession())
         });
         this.toolGrid.render();
     }
