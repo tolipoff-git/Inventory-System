@@ -312,14 +312,41 @@ independently shippable and must not add a new runtime dependency.
    personnel form.
 3. **`/api/health`** ✅ (already present since v97) — service, timestamp, KV presence.
 
-### Phase B — Operability
+### Phase B — Operability *(deferred 2026-09-18 — no need yet)*
 
-4. **Sync status panel** — last push/pull, room, peer count, pending changes;
-   surface merge conflicts that lost a record (currently silent).
+4. **Sync status panel** — last push/pull, room, peer count, pending changes; surface
+   merge conflicts that lost a record (currently silent).
+   - **Most of the data already exists.** `SyncManagerInstance` exposes `status`,
+     `lastSyncedAt`, `room`, `deviceId`, `subscribeStatus(cb)` and
+     `getStatus() → { isOnline, isSyncing, pendingChangesCount }`. The panel is a *view*
+     over existing state — no new sync logic needed for the first four fields.
+   - **Peer count is the one genuinely new piece.** The ntfy relay is a public broadcast
+     topic with no peer registry; `SyncPing` carries a `deviceId` but pings are transient
+     and `_handleRemotePing()` discards them after triggering a pull. Counting peers means
+     keeping a small map of recently-seen device IDs with timestamps (and expiring them).
+   - **Conflict reporting is a signature change, not a UI change.** `mergeSyncPayloads()`
+     is a set of pure functions returning only the merged payload, so a lost local edit is
+     invisible. Surfacing it means returning a report alongside the result (which entities
+     lost, to what), which ripples into `SyncManager.triggerPull()`. Do this deliberately —
+     it is the only part of the panel that touches the merge contract.
 5. **Photos → R2** *(when volume grows)* — KV is not the right home for blobs at
    scale; IndexedDB stays the local cache.
-6. **Room switcher UI** — rooms exist in the backend but are not exposed in the
-   UI; needed only if more than one physical area is tracked.
+   - Current path: `pushPhotoToCloud()` writes a base64 data URL as JSON to the **same**
+     `/api/sync/…` route under key `photo_<ROOM>_<id>`, capped at 5 MiB
+     (`MAX_PHOTO_BASE64_CHARS`) and with a **7-day KV TTL** (`expirationTtl: 604800`).
+     So cloud photos already expire after a week by design; IndexedDB is the durable copy.
+     Moving to R2 changes the storage backend, not the client contract.
+6. **Room switcher UI** — rooms exist in the backend but are not exposed in the UI;
+   needed only if more than one physical area is tracked.
+   - **Switching already works in code:** `SyncManager.changeRoom()` → `setActiveSyncRoom()`
+     persists `inv_sync_room` and rewrites the `?room=` URL param, and `getActiveSyncRoom()`
+     reads `?room=` / `?sync=` on load — so rooms are already shareable by link. Only the
+     dropdown is missing.
+   - ⚠️ **The bearer token is global, not per-room** (`getSyncToken()` reads a single
+     `inv_sync_token`; the Worker compares it against one `SYNC_SECRET`). Any client holding
+     the token can read and write **every** room — room isolation is by key name only and is
+     client-enforced. A room switcher makes that visible to users, so if rooms are ever used
+     for real separation (not just separate areas), per-room tokens must come first.
 
 ### Phase C — Only on a real trigger (§7)
 

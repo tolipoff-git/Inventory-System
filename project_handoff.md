@@ -54,8 +54,19 @@ working session; the per-release history below is the long-term record.
      is 1000 and truncates, so a record per open would flood it and push out the operational
      entries that matter. Use `SOP_PRINT` → audit log, `SOP_VIEW` → a separate aggregated
      journal in `settings`.
-2. **Sync Phase B** (plan §5) — sync status panel (last push/pull, room, peer count, pending
-   changes, conflicts that lost a record), photos → R2 when volume grows, room switcher UI.
+2. **Sync Phase B** (plan §5). **Deferred by the user on 2026-09-18 — no need right now.**
+   Recorded in the plan with the design notes:
+   - *Status panel* — `SyncManagerInstance` already exposes `status`, `lastSyncedAt`, `room`,
+     `deviceId`, `subscribeStatus()` and `getStatus()`, so it is mostly a view. Peer count is
+     the only genuinely new state (ntfy is a public broadcast with no peer registry).
+     Conflict reporting is a **signature change** to `mergeSyncPayloads()`, not a UI change —
+     do it deliberately.
+   - *Photos → R2* — today photos are base64 JSON on the same `/api/sync/…` route, 5 MiB cap,
+     **7-day KV TTL**; IndexedDB is the durable copy.
+   - *Room switcher* — `changeRoom()` already works and rooms are shareable via `?room=`; only
+     the dropdown is missing. ⚠️ The bearer token is **global, not per-room**, so room
+     isolation is client-enforced by key name only — per-room tokens must come first if rooms
+     are ever used for real separation.
    Phase A (tombstones, `updatedAt` coverage, `/api/health`) shipped in v112.
 
 ### Decisions & assumptions to preserve
