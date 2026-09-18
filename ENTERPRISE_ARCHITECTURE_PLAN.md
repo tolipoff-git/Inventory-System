@@ -209,7 +209,7 @@ Legend: ✅ done · 🟡 partial · ⛔ deliberately not doing (§4) · 🔭 rev
 | Labels (A/B/C, QR/Code39) + queue | ✅ | Batch + queue printing |
 | 5S audits, radar, report | ✅ | Rich report restored (v110) |
 | Risk index per station/post | ✅ | Shared `computeRiskGroups()` |
-| Data-driven SOP registry | ⛔/🔭 | Plan in §6 |
+| Data-driven SOP registry | ✅ | `settings.sops`, bilingual, revisions (v113) |
 | Enterprise SSO (SAML/OIDC) | ⛔ | §4 |
 | Postgres/Aurora + Hyperdrive | ⛔ | §4 |
 | Durable Objects / bin locks | ⛔ | §4 |
@@ -331,28 +331,28 @@ independently shippable and must not add a new runtime dependency.
 
 ## 6. SOP & Standards Hub — Update Plan
 
-### 6.1 Where we are
+### 6.1 Where we were (before v113)
 
-- `SopModal` renders **four hardcoded SOPs** (`GEN`, `TW`, `BT`, `PB`) as English
+- `SopModal` rendered **four hardcoded SOPs** (`GEN`, `TW`, `BT`, `PB`) as English
   HTML strings inside the component.
-- The Category Hub has an **SOP card** with four buttons (`data-sop="…"`).
-- Print goes through `printHtml()` → the light `#printZone` form.
-- The i18n key `Read SOP & Maintenance Manual` already exists (unused as an entry point).
+- The Category Hub had an **SOP card** with four hardcoded buttons (`data-sop="…"`).
+- Print went through `printHtml()` → the light `#printZone` form.
+- The i18n key `Read SOP & Maintenance Manual` already exists (still unused as an entry point).
 
 ### 6.2 Problems
 
-| # | Problem | Consequence |
-| :--- | :--- | :--- |
-| 1 | Content lives in TypeScript source | The shop cannot edit standards; every wording change is a release |
-| 2 | English-only | Contradicts the app's RU-first audience and its 1:1 i18n rule |
-| 3 | No revision / approval metadata | Cannot claim "controlled document"; printed copies carry no revision |
-| 4 | No applicability | A battery SOP shows for a torque wrench; no link from a tool to its SOP |
-| 5 | No search, no index | Users must guess which button to press |
-| 6 | Not auditable | Opening/printing a SOP leaves no training evidence |
+| # | Problem | Consequence | Status |
+| :--- | :--- | :--- | :--- |
+| 1 | Content lives in TypeScript source | The shop cannot edit standards; every wording change is a release | ✅ fixed (v113) |
+| 2 | English-only | Contradicts the app's RU-first audience and its 1:1 i18n rule | ✅ fixed (v113) |
+| 3 | No revision / approval metadata | Cannot claim "controlled document"; printed copies carry no revision | ✅ fixed (v113) |
+| 4 | No applicability | A battery SOP shows for a torque wrench; no link from a tool to its SOP | 🟡 data model done, entry point is Phase B |
+| 5 | No search, no index | Users must guess which button to press | 🔭 Phase B |
+| 6 | Not auditable | Opening/printing a SOP leaves no training evidence | 🟡 saves are logged; view/print is Phase B |
 
 ### 6.3 Target design (phased)
 
-**Data model** — store SOPs in the `settings` store as `sops: SopDocument[]`
+**Data model** — SOPs live in the `settings` store as `sops: SopDocument[]`
 (no new object store needed; it already syncs and merges as settings):
 
 ```ts
@@ -360,10 +360,10 @@ interface SopDocument {
   id: string;                 // 'SOP-TW-01'
   titleEn: string; titleRu: string;
   bodyEn: string;  bodyRu: string;   // safe subset of HTML
-  revision: string;           // 'Rev. 3'
+  revision: string;           // '3'
   effectiveDate: string;      // ISO date
   approvedBy: string;         // name / role
-  ownerRole: 'Administrator' | 'Tool Crib Manager';
+  ownerRole: 'Administrator' | 'Tool Crib Manager' | 'Operator';
   status: 'Draft' | 'Approved' | 'Obsolete';
   appliesTo: {
     toolClasses?: string[];   // ['TW','PD']
@@ -371,33 +371,48 @@ interface SopDocument {
     stations?: string[];
     posts?: string[];
   };
-  attachments?: { id: string; name: string; photoId?: string }[];
-  links?: { labelEn: string; labelRu: string; url: string }[]; // ISO clauses, vendor manuals
+  updatedAt?: string;
 }
 ```
 
-**Phase A — make SOPs data, bilingual and editable**
+`attachments[]` / `links[]` are deliberately **not** in the shipped model — nothing
+consumes them yet, and an unused field is worse than a missing one. Add them with the
+feature that reads them (Phase B/C).
 
-1. Seed the four existing SOPs into `settings.sops` (same text, plus RU translations).
-2. Render the SOP modal from data, in the active language, with a language toggle
-   inside the modal (so a bilingual floor can compare).
-3. Add an **"SOP & Standards" tab to System Registries** (Administrator):
-   list, create, edit, duplicate-as-new-revision, mark `Approved` / `Obsolete`.
-   Every save bumps `revision` and writes to the audit log (`SOP_SAVE`).
-4. Print header with control metadata: code · revision · effective date ·
-   approved by · *"controlled document — printed copies are uncontrolled"*.
+**Phase A — make SOPs data, bilingual and editable** ✅ *(shipped in v113)*
+
+1. ✅ The four existing SOPs are seeded into `settings.sops` (`src/storage/sopSeed.ts`),
+   same text plus RU translations and real control metadata. Seeding only happens while
+   the stored list is empty, so an edited document is never overwritten.
+2. ✅ `SopModal` renders from data in the active language, with a **local EN/RU toggle**
+   (so a bilingual floor can compare without switching the whole UI).
+3. ✅ **"SOP & Standards" tab in System Registries** (Administrator): list, create, edit,
+   *New Revision* (bump + re-date + back to Draft), mark `Approved` / `Obsolete`.
+   Every change writes to the audit log (`SOP_SAVE`, `SOP_STATUS`, `SOP_REVISION`).
+4. ✅ Print header with control metadata: code · revision · effective date ·
+   approved by · status · applies-to, plus *"controlled document — printed copies are
+   uncontrolled"* on screen and in print.
+5. ✅ The Category Hub SOP card renders from `Store.approvedSops()` instead of four
+   hardcoded buttons, so a new standard appears there automatically.
+
+**Design decision — controlled documents are never deleted.** Retiring a standard means
+`status: 'Obsolete'`. That is the correct document-control semantics, and it also keeps
+the sync merge a plain union by id (`mergeSops()`, newest `updatedAt` wins) with no
+tombstone to carry — unlike the registries in §5 Phase A.
 
 **Phase B — surface SOPs where the work happens**
 
 5. **Contextual entry point:** the tool card's `Read SOP & Maintenance Manual`
    action opens the SOP(s) whose `appliesTo.toolClasses` contains the tool's
    class prefix; the station/post card offers its station/post SOPs.
-6. **SOP hub upgrade:** replace the four flat buttons with a small index —
+6. **SOP hub upgrade:** replace the flat list with a small index —
    grouped by area, with a search box (reuse the global search pattern), status
    badge (`Approved` / `Draft` / `Obsolete`) and "Rev. N · effective date".
 7. **Standards section:** a list of external references (ISO 9001 clauses,
    internal specs, supplier manuals) with `links[]`, plus optional attachments
    stored as IndexedDB blobs like tool photos.
+8. **Training evidence:** log `SOP_VIEW` / `SOP_PRINT` with the actor, so an audit can
+   show who read which revision.
 
 **Phase C — evidence & governance**
 

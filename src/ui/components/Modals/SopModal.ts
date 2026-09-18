@@ -1,13 +1,27 @@
 // ============================================================================
 // 5S Tool Command Center — SopModal Component (Standard Operating Procedures & FAQ)
+//
+// Standards are data now (`settings.sops`, see `types/sop.ts`), not hardcoded
+// HTML: the modal renders the stored document in the active language, with its
+// control metadata (code · revision · effective date · approved by · status) and
+// a local EN/RU toggle so a document can be read in the other language without
+// switching the whole UI.
 // ============================================================================
 
-import { T, initFaqAccordion } from '../../../i18n';
+import { T, initFaqAccordion, getLanguage } from '../../../i18n';
+import { Store } from '../../../storage/store';
 import { printHtml } from '../../../utils/dom';
+import { esc, fmtDate } from '../../../utils/formatters';
+import { SopDocument, appliesToLabel } from '../../../types/sop';
+import { SupportedLanguage } from '../../../i18n/types';
 
 export class SopModal {
     private static sopModalId = 'sopModal';
     private static faqModalId = 'faqModal';
+    /** Document currently shown; kept so the language toggle can re-render. */
+    private static currentCode: string | null = null;
+    /** Local view language override (null → follow the app language). */
+    private static viewLang: SupportedLanguage | null = null;
 
     public static openSop(code: string): void {
         let modal = document.getElementById(this.sopModalId);
@@ -16,7 +30,9 @@ export class SopModal {
             modal = document.getElementById(this.sopModalId);
         }
 
-        this.renderSopContent(code);
+        this.currentCode = code;
+        this.viewLang = null;
+        this.renderSopContent();
         if (modal) modal.classList.add('active');
     }
 
@@ -54,6 +70,7 @@ export class SopModal {
                 </div>
                 <div class="modal-body table-scroll" id="sopModalBody" style="max-height:70vh; line-height:1.6;"></div>
                 <div class="modal-footer">
+                    <button class="btn btn-muted" id="sopModalLangBtn"></button>
                     <button class="btn btn-warning" id="sopModalPrintBtn">🖨 ${T('Print SOP Document')}</button>
                     <button class="btn btn-muted" id="sopModalFooterCloseBtn">${T('Close')}</button>
                 </div>
@@ -64,52 +81,58 @@ export class SopModal {
 
         overlay.querySelector('#sopModalCloseBtn')?.addEventListener('click', () => this.closeSop());
         overlay.querySelector('#sopModalFooterCloseBtn')?.addEventListener('click', () => this.closeSop());
+        overlay.querySelector('#sopModalLangBtn')?.addEventListener('click', () => {
+            const effective = this.viewLang || getLanguage();
+            this.viewLang = effective === 'RU' ? 'ENG' : 'RU';
+            this.renderSopContent();
+        });
         overlay.querySelector('#sopModalPrintBtn')?.addEventListener('click', () => {
             const body = document.getElementById('sopModalBody')?.innerHTML;
             if (body) printHtml(body);
         });
     }
 
-    private static renderSopContent(code: string): void {
+    /** Control metadata block that makes the document a controlled document. */
+    private static controlHeader(sop: SopDocument, lang: SupportedLanguage): string {
+        const cell = (label: string, value: string) =>
+            `<div style="min-width:130px;"><div style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.03em;">${esc(label)}</div><div style="font-weight:600;">${esc(value)}</div></div>`;
+
+        return `
+            <div style="display:flex; flex-wrap:wrap; gap:14px 22px; padding:10px 12px; margin-bottom:14px; border:1px solid var(--border); border-left:3px solid var(--primary); border-radius:4px; background:var(--bg-elevated, rgba(127,127,127,0.06));">
+                ${cell(T('SOP Code'), sop.id)}
+                ${cell(T('Revision'), sop.revision)}
+                ${cell(T('Effective Date'), sop.effectiveDate ? fmtDate(sop.effectiveDate) : '—')}
+                ${cell(T('Approved By'), sop.approvedBy || '—')}
+                ${cell(T('Status'), T(sop.status))}
+                ${cell(T('Applies To'), appliesToLabel(sop, lang))}
+            </div>
+        `;
+    }
+
+    private static renderSopContent(): void {
         const title = document.getElementById('sopModalTitle');
         const body = document.getElementById('sopModalBody');
+        const langBtn = document.getElementById('sopModalLangBtn');
         if (!title || !body) return;
 
-        if (code === 'TW') {
-            title.textContent = '📖 SOP-TW-01: Torque Wrench Calibration & Handling';
-            body.innerHTML = `
-                <h4>1. Purpose & Scope</h4>
-                <p>Standardized procedures for using, resetting, and storing calibrated torque wrenches across assembly lines.</p>
-                <h4>2. Zeroing & Reset Requirement</h4>
-                <p>Immediately after use, every mechanical click-type torque wrench <strong>MUST</strong> be dialed back to the lowest calibrated index value (never below zero). Leaving springs tensioned causes irreversible spring fatigue and accuracy drift.</p>
-                <h4>3. Drop & Shock Protocols</h4>
-                <p>If any torque wrench experiences a drop greater than 1 meter onto concrete, it is immediately quarantined and submitted for recalibration.</p>
-            `;
-        } else if (code === 'BT') {
-            title.textContent = '📖 SOP-BT-02: Li-Ion Battery Charging & Thermal Health';
-            body.innerHTML = `
-                <h4>1. Purpose & Scope</h4>
-                <p>Prevents battery degradation and thermal runaway incidents on high-cycle power tool cells.</p>
-                <h4>2. Charging Rules</h4>
-                <p>Allow battery packs to reach room temperature (18°C–25°C) before placing on rapid chargers. Never charge packs that feel hot to the touch.</p>
-            `;
-        } else if (code === 'PB') {
-            title.textContent = '📖 SOP-PB-03: Cutting Bits & Wear Limits';
-            body.innerHTML = `
-                <h4>1. Purpose & Scope</h4>
-                <p>Defines replacement thresholds for driver bits, milling cutters, and consumables.</p>
-                <h4>2. Inspection Limits</h4>
-                <p>Bits with rounding on drive lobes exceeding 0.3mm or flank wear >0.2mm must be scrapped immediately into dedicated recycling bins.</p>
-            `;
-        } else {
-            title.textContent = '📖 SOP-GEN-00: 5S Tool Handling & Shadow Board Standards';
-            body.innerHTML = `
-                <h4>1. Standard 5S Tool Control</h4>
-                <p>Every tool in the facility has a designated home labeled with its unique Tool ID, shadow board silhouette, and address coordinates.</p>
-                <h4>2. Checkout & Cleanliness</h4>
-                <p>Tools must be checked out prior to work shift start and returned clean and wiped down before end-of-shift muster.</p>
-            `;
+        const lang: SupportedLanguage = this.viewLang || getLanguage();
+        if (langBtn) langBtn.textContent = lang === 'RU' ? T('SOP_SHOW_EN') : T('SOP_SHOW_RU');
+
+        const sop = this.currentCode ? Store.getSop(this.currentCode) : undefined;
+        if (!sop) {
+            title.textContent = this.currentCode ? `📖 ${this.currentCode}` : '📖 SOP';
+            body.innerHTML = `<p style="color:var(--text-muted);">${esc(T('SOP_NOT_FOUND'))}</p>`;
+            return;
         }
+
+        const docTitle = lang === 'RU' ? sop.titleRu : sop.titleEn;
+        const docBody = lang === 'RU' ? sop.bodyRu : sop.bodyEn;
+
+        title.textContent = `📖 ${sop.id}: ${docTitle}`;
+        body.innerHTML =
+            this.controlHeader(sop, lang) +
+            (docBody || '') +
+            `<p style="margin-top:18px; padding-top:10px; border-top:1px solid var(--border); color:var(--text-muted); font-size:0.8rem;">${esc(T('SOP_CONTROLLED_NOTE'))}</p>`;
     }
 
     private static createFaqModalDOM(): void {

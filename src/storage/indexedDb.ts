@@ -3,6 +3,7 @@ import { PurchaseOrder } from '../types/procurement';
 import { Employee, SystemUser } from '../types/personnel';
 import { AuditLogEntry, Audit5S } from '../types/audit';
 import { RegistryEvents } from '../types/registry';
+import { SopDocument } from '../types/sop';
 import { nowISO } from '../utils/formatters';
 import { SCHEMA_VERSION } from '../config/constants';
 
@@ -18,6 +19,8 @@ export interface DBState {
   wsProgram: Record<string, string>;
   /** Soft-delete tombstones for the string-array registries. */
   registryEvents?: RegistryEvents;
+  /** Controlled documents (SOP & Standards hub). */
+  sops?: SopDocument[];
   audits5s: Audit5S[];
   meta: Record<string, any>;
   labelQueue: any[];
@@ -242,7 +245,7 @@ export const AppDB = {
         }
       }
 
-      const settingsKeys: (keyof DBState)[] = ['workstations', 'workposts', 'programs', 'wsProgram', 'registryEvents', 'audits5s', 'meta', 'labelQueue', 'rollback'];
+      const settingsKeys: (keyof DBState)[] = ['workstations', 'workposts', 'programs', 'wsProgram', 'registryEvents', 'sops', 'audits5s', 'meta', 'labelQueue', 'rollback'];
       const storeSettings = tx.objectStore(this.STORES.settings);
       for (const k of settingsKeys) {
         if (state[k] !== undefined) {
@@ -292,6 +295,7 @@ export const AppDB = {
           programs: settingsMap.programs || [],
           wsProgram: settingsMap.wsProgram || {},
           registryEvents: settingsMap.registryEvents || {},
+          sops: settingsMap.sops,
           audits5s: settingsMap.audits5s || [],
           meta: settingsMap.meta || { schemaVersion: SCHEMA_VERSION },
           labelQueue: settingsMap.labelQueue || [],
@@ -325,6 +329,7 @@ export const AppDB = {
           programs: db.programs || [],
           wsProgram: db.wsProgram || {},
           registryEvents: db.registryEvents || {},
+          sops: db.sops,
           audits5s: db.audits5s || [],
           meta: db.meta || { schemaVersion: SCHEMA_VERSION },
           labelQueue: db.labelQueue || [],

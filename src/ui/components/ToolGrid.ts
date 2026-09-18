@@ -2,7 +2,7 @@
 // 5S Tool Command Center — ToolGrid Component
 // ============================================================================
 
-import { T } from '../../i18n';
+import { T, getLanguage } from '../../i18n';
 import { Store } from '../../storage/store';
 import { CONFIG } from '../../config/constants';
 import { esc, daysUntil } from '../../utils/formatters';
@@ -259,15 +259,16 @@ export class ToolGridComponent {
             ${urgent ? `<div style="margin-top:6px;">${urgent}</div>` : ''}
         `;
 
-        // 7. SOP Hub
-        const sopBody = `
-            <div style="display:flex; flex-direction:column; gap:8px; justify-content:center; height:100%;">
-                <button class="btn btn-muted" style="font-size:0.9rem;" data-sop="GEN">📖 SOP-GEN-00 (5S Handling)</button>
-                <button class="btn btn-muted" style="font-size:0.9rem;" data-sop="TW">📖 SOP-TW-01 (Torque)</button>
-                <button class="btn btn-muted" style="font-size:0.9rem;" data-sop="BT">📖 SOP-BT-02 (Battery)</button>
-                <button class="btn btn-muted" style="font-size:0.9rem;" data-sop="PB">📖 SOP-PB-03 (Bits/Wear)</button>
+        // 7. SOP Hub — rendered from the standards registry, so a document added
+        // in System Registries shows up here without a release.
+        const sopDocs = Store.approvedSops();
+        const sopBody = sopDocs.length
+            ? `
+            <div style="display:flex; flex-direction:column; gap:8px; justify-content:flex-start; height:100%; max-height:190px; overflow-y:auto;">
+                ${sopDocs.map(s => `<button class="btn btn-muted" style="font-size:0.9rem; text-align:left;" data-sop="${esc(s.id)}" title="${esc(s.id)} · ${T('Revision')} ${esc(s.revision)}">📖 ${esc(s.id)} (${esc(getLanguage() === 'RU' ? s.titleRu : s.titleEn)})</button>`).join('')}
             </div>
-        `;
+        `
+            : `<div style="color:var(--text-muted); text-align:center; padding:8px;">${T('SOP_NO_DOCS')}</div>`;
 
         this.hubContainer.innerHTML =
             card(T('HUB_TOOLS'), toolsBody, `<button class="btn wide" id="hubExploreToolsBtn">${T('[Explore Tools]')}</button>`, false, 'hub_tools') +

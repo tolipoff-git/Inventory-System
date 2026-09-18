@@ -210,6 +210,7 @@ class SyncManager {
           wsProgram: merged.settings.wsProgram,
           workposts: merged.settings.workposts,
           registryEvents: merged.settings.registryEvents,
+          sops: merged.settings.sops,
           audits5s: merged.settings.audits5s,
           meta: merged.settings.meta,
         });
@@ -287,6 +288,7 @@ class SyncManager {
         programs: Store.programs,
         wsProgram: Store.wsProgram,
         registryEvents: Store.registryEvents,
+        sops: Store.sops,
         audits5s: Store.audits5s,
         meta: Store.meta,
       },
