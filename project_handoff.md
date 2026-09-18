@@ -7,16 +7,16 @@
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Session Continuity — Resume Point (2026-09-18, v113)
+## Session Continuity — Resume Point (2026-09-18, v114)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v113` (`package.json` = 113.0.0). `sw.js` `CACHE_VERSION` = `v113-<hash>`.
+- **Version:** `v114` (`package.json` = 114.0.0). `sw.js` `CACHE_VERSION` = `v114-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
-- **Gates (all green at v113):** `npm run typecheck` · `npm run lint` · `npm test` (73/73) ·
-  `npm run build` · `npm run check:i18n` (658/658). `tsconfig.json` includes `tests`,
+- **Gates (all green at v114):** `npm run typecheck` · `npm run lint` · `npm test` (86/86) ·
+  `npm run build` · `npm run check:i18n` (668/668). `tsconfig.json` includes `tests`,
   so `typecheck` and `build` cover the test suite too — keep it that way.
 - **Deploy:** push to `main` → Cloudflare Pages auto-deploy. Release workflow is defined in
   `AGENTS.md` (bump version → README + handoff → `bash build.sh` → feature commit →
@@ -39,6 +39,9 @@ working session; the per-release history below is the long-term record.
 - `src/types/sop.ts` + `src/storage/sopSeed.ts` → the controlled-document model and the four
   seeded standards (v113). `Store.sops` / `Store.approvedSops()` / `Store.getSop()` are the
   only ways to read them; `SopModal` and the Category Hub SOP card both render from data.
+- `Store.importRegistryFromData()` / `Store.pendingRegistryImport()` (v114) — rebuild the
+  registry from data that already references it. `pendingRegistryImport()` is the read-only
+  plan used by the integrity report; keep the two in sync via `collectRegistryImport()`.
 - `scripts/check-i18n-parity.mjs` → `npm run check:i18n` — the EN/RU parity gate.
 
 ### Next actions (agreed direction, not yet started)
@@ -84,12 +87,22 @@ working session; the per-release history below is the long-term record.
   personnel use `deletedAt`; registries use `settings.registryEvents`. Never `splice()` a
   synced record out of its array — and never read `Store.personnel` directly in a view, use
   `Store.activePersonnel()`.
+- **The Risk Index chart is tool-derived, not registry-derived** (v114). It groups
+  `Store.activeTools()` by `workstationAndPostOf()`, which for an issued tool prefers the
+  **holder's** station. A station with no tools has no ray — that is intentional and matches
+  the monolith. Do not "fix" it by adding empty registry stations to the chart.
+- **Never relocate data to repair a reference.** The integrity check's old auto-fix moved
+  tools to the first registered station and destroyed their real location. The correct repair
+  is to register what the data already references (`importRegistryFromData()`).
 - **Controlled documents are never deleted** (v113). Retiring a standard means
   `status: 'Obsolete'`; that is why `mergeSops()` needs no tombstone. Standards live in
   `settings.sops` and are seeded only while the stored list is empty, so an edited document
   is never overwritten by `SEED_SOPS`.
 - `Store.save()` is the sync clock: it stamps `updatedAt` on anything that changed. Do not
   bypass it with a direct `AppDB.saveAll()`.
+- **Tests must install a fresh `IDBFactory` per test** (`globalThis.indexedDB = new IDBFactory()`
+  inside `freshStore()`), otherwise `fake-indexeddb` keeps one `inv_inventory_db` for the whole
+  file and `Store.init()` reloads the previous test's state.
 
 ### Do NOT re-open (conscious rejections — plan §4; revisit triggers in §7)
 WASM SQLite/OPFS · Postgres/Aurora + Hyperdrive · Durable Objects / bin locks · CRDT / vector
@@ -104,8 +117,25 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
 - Standing instruction: perform the full release flow (bump → docs → `build.sh` → commits → push)
   automatically, without asking.
 
-## Recent Accomplishments (v49 – v113)
+## Recent Accomplishments (v49 – v114)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
+
+### 0. Registry Import from Existing Data & Non-Destructive Integrity Repair (v114 Release)
+- **Symptom (reported):** the Risk Index chart showed some programs but not all; stations/programs added by hand in the registry never appeared there; old stations from the monolith (e.g. `ITPS | VRC`) were visible in the chart but missing from the registry, and people were assigned to them.
+- **Root cause — two separate things:**
+  1. **The chart is tool-derived, not registry-derived.** `computeRiskGroups()` (`src/reports/riskIndex.ts`) groups `Store.activeTools()` by `workstationAndPostOf(tool)`, and `toolOps.workstationAndPostOf()` prefers the **holder's** station for issued tools. A station with no tools has no risk to show, so it never gets a ray. This matches the monolith exactly (`Charts.computeCulture()` did the same) — no change was needed, only an explanation (now in the FAQ).
+  2. **The registry was missing structure that already existed in the data.** Tools and personnel carry station/post/program as free text (that is how the monolith stored them), so a station can be in daily use long before it is registered.
+- **New — `Store.importRegistryFromData()`:** rebuilds the registry from the data that already references it, **without touching a single tool or person**. Sources in order of trust: `personnel.ws`/`post` (plus legacy `workstation`/`defaultWs`/`defaultPost`), `tool.address.zone`, and `tool.location` written as `station / post`. Also creates the programs declared on tools and links each station to its program. Idempotent, snapshot-backed (undoable via *Rollback Last Cascade*), logged as `REGISTRY_IMPORT`.
+  - **Bare free-text locations are deliberately NOT registered.** `Shadow Board`, `Tool Crib`, `Calibration Lab` are storage areas, not stations — registering them is what produced the “huge list of shelves” in the workstation chart. They are reported back in `skipped` so the user can add a real station by hand if one is genuinely missing.
+  - `Store.pendingRegistryImport()` returns the same plan without mutating anything, so the integrity report and the repair always agree on what counts as missing.
+- **Fixed a data-loss bug in the Integrity Check.** Its “Auto-Fix All Issues” used to **relocate** every tool whose station was not registered to the first registered station (`Tool Gage`), silently destroying the real location — and it was the only offered repair for exactly the anomaly the user was hitting. Now:
+  - primary action is **📥 Register missing stations & posts** (non-destructive, the correct repair);
+  - the relocation survives as **🛠 Move tools to default station**, explicitly labelled and behind a confirmation that says it overwrites locations;
+  - the diagnostic now also reports unregistered stations referenced by **personnel**, and its previously hardcoded English strings are localized.
+- **UI:** the import button is in *System Registries* → **Programs & Stations** (where you look for stations) and in the Integrity Check (where the anomaly is reported).
+- **FAQ:** the troubleshooting entry no longer tells users to press the destructive “Fix”; both EN and RU now describe the non-destructive repair, and a new note explains why a hand-added station does not appear in the Risk Index chart.
+- **Tests:** `tests/registryImport.test.ts` (13 cases) — personnel/tool/address-zone sources, storage areas skipped, program creation + linking, non-destructiveness, idempotency, tombstoned personnel ignored, legacy fields, `pendingRegistryImport()` purity, rollback, audit logging, and that imported entries are marked alive so a stale tombstone cannot prune them. Suite: 73 → 86.
+- **Test isolation fix:** `fake-indexeddb` keeps the same `inv_inventory_db` across tests in a file, so `Store.init()` was reloading the previous test's persisted state. `registrySync.test.ts` and `registryImport.test.ts` now install a fresh `IDBFactory` per test.
 
 ### 0. SOP & Standards Hub — Data-Driven Controlled Documents (v113 Release)
 - **Symptom:** the four standards (`SOP-GEN-00`, `SOP-TW-01`, `SOP-BT-02`, `SOP-PB-03`) were hardcoded **English HTML strings** inside `SopModal.renderSopContent()`. The shop could not edit them, every wording change needed a release, and the RU-first audience got English documents.

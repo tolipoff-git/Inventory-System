@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v113)
+# 5S Tool Command Center — v3 (v114)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -65,6 +65,12 @@ grouped by the role that can act on it**.
   a holder must return their tools before removal (as in the legacy monolith). Registry
   entries (programs, stations, posts, program links) record a `{t, del}` event so a peer
   holding an older array can no longer resurrect a deleted entry on the next merge.
+- **📥 Register missing stations & posts** — rebuilds the registry from the data that
+  already references it: personnel `ws`/`post`, `tool.address.zone`, and tool locations
+  written as `station / post`. Non-destructive (it never rewrites a tool or a person) and
+  idempotent. Bare free-text locations (`Shadow Board`, `Tool Crib`, `Calibration Lab`) are
+  reported as storage areas instead of being registered, so the registry does not fill up
+  with shelves. Available in the *Programs & Stations* tab and in the Integrity Check.
 
 ### 3. Live multi-device sync
 - **Cloudflare Worker** (`/api/sync/:roomKey`) — room-authed (Bearer),
@@ -119,7 +125,7 @@ npm ci                    # install
 npm run dev               # vite dev server (localhost:3000/3001/5173)
 npm run typecheck         # tsc --noEmit
 npm run build             # production build (dist/)
-npm test                  # vitest 73 tests (crypto, store, conflict, tombstones, SOP, worker, migration)
+npm test                  # vitest 86 tests (crypto, store, conflict, tombstones, registry import, SOP, worker, migration)
 npm run lint              # eslint (strict; legacy no-explicit-any excluded)
 npm run check:i18n        # EN/RU key + placeholder parity gate (must stay 1:1)
 ```
@@ -140,7 +146,8 @@ Secrets required: `SYNC_SECRET`, `INVENTORY_KV_BINDING` (KV id) — set via
 - `tests/` — Vitest: crypto (hash/verify/timing), inventory (real Store+fake-indexeddb:
   seed, saveTool, qty split, over-issue, consumable clamp), conflict-resolver
   (later-wins, tie→remote, history union), **registry/personnel tombstones + `updatedAt`
-  coverage** (`registrySync.test.ts`), **SOP seeding, lifecycle and merge** (`sop.test.ts`),
+  coverage** (`registrySync.test.ts`), **registry import from existing data**
+  (`registryImport.test.ts`), **SOP seeding, lifecycle and merge** (`sop.test.ts`),
   worker auth, legacy migration.
 - `npm run check:i18n` — mechanical EN/RU parity gate: equal key sets, identical
   `{placeholder}` sets per key, no Cyrillic left in the English dictionary.
