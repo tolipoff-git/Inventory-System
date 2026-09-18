@@ -7,16 +7,16 @@
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Session Continuity — Resume Point (2026-09-17, v111)
+## Session Continuity — Resume Point (2026-09-18, v112)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v111` (`package.json` = 111.0.0). `sw.js` `CACHE_VERSION` = `v111-467525b`.
+- **Version:** `v112` (`package.json` = 112.0.0). `sw.js` `CACHE_VERSION` = `v112-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
-- **Gates (all green at v111):** `npm run typecheck` · `npm run lint` · `npm test` (48/48) ·
-  `npm run build` · EN/RU key parity **622/622**.
+- **Gates (all green at v112):** `npm run typecheck` · `npm run lint` · `npm test` (61/61) ·
+  `npm run build` · `npm run check:i18n` (622/622).
 - **Deploy:** push to `main` → Cloudflare Pages auto-deploy. Release workflow is defined in
   `AGENTS.md` (bump version → README + handoff → `bash build.sh` → feature commit →
   `chore(pwa): refresh sw.js …` commit → push) — **run it without asking**.
@@ -32,19 +32,20 @@ working session; the per-release history below is the long-term record.
 - `src/utils/pwa.ts` → `hardReloadPwa()` — real hard update (clear caches + unregister SW + `?t=` reload).
 - `src/i18n/faqContent.ts` → `FAQ_BODY_EN` / `FAQ_BODY_RU` (imported by both dictionaries).
 - `src/ui/components/Modals/RiskModal.ts` — risk-detail drill-down opened from the risk radar.
+- `src/types/registry.ts` → `REGISTRY_KEYS`, `mergeRegistryEvents()`, `isTombstoned()` — the
+  registry tombstone model (v112). `Store.applyRegistryTombstones()` is the only place they
+  are applied; `Store.activePersonnel()` is the only way to read live personnel.
+- `scripts/check-i18n-parity.mjs` → `npm run check:i18n` — the EN/RU parity gate.
 
 ### Next actions (agreed direction, not yet started)
-1. **Sync correctness — Phase A** (`ENTERPRISE_ARCHITECTURE_PLAN.md` §5). The one genuine
-   architectural gap: **deletes are not tombstoned** — a peer holding an older copy resurrects
-   a removed record on merge. Plan: `deletedAt` soft-delete on tools/personnel/users/registry
-   entries, filtered from all views, newest-tombstone wins in `sync/conflictResolver.ts`.
-   Also: verify every mutation path stamps `updatedAt` (via `Store.touch()`), and add
-   `/api/health` to `src/worker/index.ts`.
-2. **SOP & Standards hub — Phase A** (plan §6): move the four hardcoded SOPs out of
+1. **SOP & Standards hub — Phase A** (plan §6): move the four hardcoded SOPs out of
    `SopModal.renderSopContent()` into `settings.sops: SopDocument[]` (bilingual EN/RU,
    `revision`, `effectiveDate`, `approvedBy`, `status`, `appliesTo`), render from data, and add
    an "SOP & Standards" tab to `RegistryModal`. Phase B: contextual entry point
    (`Read SOP & Maintenance Manual` on the tool card), hub index + search, print metadata.
+2. **Sync Phase B** (plan §5) — sync status panel (last push/pull, room, peer count, pending
+   changes, conflicts that lost a record), photos → R2 when volume grows, room switcher UI.
+   Phase A (tombstones, `updatedAt` coverage, `/api/health`) shipped in v112.
 
 ### Decisions & assumptions to preserve
 - Report/Kaizen prose is deliberately kept as **inline `{en, ru}` pairs** inside the report
@@ -57,6 +58,12 @@ working session; the per-release history below is the long-term record.
   cut off by truncation).
 - `compute5SPillars()` / `computeRiskGroups()` are the only places 5S/risk scores are computed —
   never re-implement them in a view.
+- **Deletes are tombstones, never absence** (v112). Tools use `status: 'Decommissioned'`;
+  personnel use `deletedAt`; registries use `settings.registryEvents`. Never `splice()` a
+  synced record out of its array — and never read `Store.personnel` directly in a view, use
+  `Store.activePersonnel()`.
+- `Store.save()` is the sync clock: it stamps `updatedAt` on anything that changed. Do not
+  bypass it with a direct `AppDB.saveAll()`.
 
 ### Do NOT re-open (conscious rejections — plan §4; revisit triggers in §7)
 WASM SQLite/OPFS · Postgres/Aurora + Hyperdrive · Durable Objects / bin locks · CRDT / vector
@@ -71,8 +78,18 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
 - Standing instruction: perform the full release flow (bump → docs → `build.sh` → commits → push)
   automatically, without asking.
 
-## Recent Accomplishments (v49 – v111)
+## Recent Accomplishments (v49 – v112)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
+
+### 0. Tombstoned Deletes & Guaranteed `updatedAt` (v112 Release)
+- **Symptom:** a record deleted on one device came back after the next sync — the merge expressed removal as *absence*, so any peer still holding the old copy re-introduced it. This was the one genuine architectural gap named in `ENTERPRISE_ARCHITECTURE_PLAN.md` §0.
+- **Personnel — `deletedAt` soft delete:** `Employee.deletedAt` + `Store.removePersonnel(id)` (tombstone + `EMP_REMOVE` audit entry). The record stays in `personnel` so tool assignments and history keep resolving real names, but `Store.activePersonnel()` is now used by every list, picker and counter (registry table, checkout assignee select, staff hub, personnel XLSX sheet, Kaizen care advice, REQ003 requestor lookup, `zoneUsage`). `mergePersonnel()` compares `max(updatedAt, deletedAt)`, so a tombstone counts as an edit and a peer's stale live copy cannot undo it.
+- **Registries — `settings.registryEvents`:** programs, stations, posts and station→program links are plain string arrays merged by *union*, so a deletion could never propagate. Each structural change now records `{ t, del }` under a stable key (`src/types/registry.ts` → `REGISTRY_KEYS`); `mergeRegistryEvents()` keeps the newest event per key (ties → remote) and `Store.applyRegistryTombstones()` filters dead entries out. `Store.applyLoadedData()` is the single funnel that applies them after **both** the IndexedDB load and the sync merge, so a peer's stale array cannot resurrect anything. Renames retire the old keys (a station rename also retires its posts' keys, which embed the station name); a re-add is a newer `del: false` event and correctly wins.
+- **`updatedAt` coverage by construction:** instead of auditing call sites by hand, `Store.save()` calls `stampDirtyRecords()`, which re-stamps any tool/employee whose JSON changed since the last write. A mutation path that forgot `touch()` can no longer silently lose the edit on merge. `refreshPersistedFingerprints()` re-baselines after every load/merge/save, so normalization (`migrate()`, `recomputeStatuses()`) and applied remote data never make this device look newer than its peers.
+- **Deliberate non-changes:** tools already soft-delete via `status: 'Decommissioned'` (never spliced out, every transition stamps `updatedAt`) — a second `deletedAt` would be redundant. `users` are not part of `SyncPayload` at all (credentials stay device-local), so tombstoning them would have no sync effect.
+- **Monolith parity restored:** the employee-removal guard (`EMP_REMOVE_BLOCKED` — a holder must return their tools first) and the localized `EMP_REMOVE_CONFIRM` existed as dictionary keys but were unused by the modular `RegistryModal`; both are wired up again. Added `USER_REMOVE_CONFIRM` (EN/RU) for the RBAC tab.
+- **New gate:** `npm run check:i18n` (`scripts/check-i18n-parity.mjs`) — mechanical EN/RU parity: equal key sets, identical `{placeholder}` sets per key, no Cyrillic left in the English dictionary. 622 keys each.
+- **Tests:** `tests/registrySync.test.ts` (13 cases) — tombstone merge rules, registry prune on load/merge, re-add wins over an older tombstone, station-rename key retirement, personnel soft delete round-trip through IndexedDB, and `updatedAt` stamping. Suite: 48 → 61.
 
 ### 0. Language Switch Re-translates Charts, KPIs & Modals (v111 Release)
 - **Symptom:** in ENG mode the dashboard chart card titles (and the KPI labels) stayed Russian.

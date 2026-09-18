@@ -2,6 +2,7 @@ import { Tool } from '../types/inventory';
 import { PurchaseOrder } from '../types/procurement';
 import { Employee, SystemUser } from '../types/personnel';
 import { AuditLogEntry, Audit5S } from '../types/audit';
+import { RegistryEvents } from '../types/registry';
 import { nowISO } from '../utils/formatters';
 import { SCHEMA_VERSION } from '../config/constants';
 
@@ -15,6 +16,8 @@ export interface DBState {
   workposts: (string | { name: string; ws?: string | null })[];
   programs: string[];
   wsProgram: Record<string, string>;
+  /** Soft-delete tombstones for the string-array registries. */
+  registryEvents?: RegistryEvents;
   audits5s: Audit5S[];
   meta: Record<string, any>;
   labelQueue: any[];
@@ -239,7 +242,7 @@ export const AppDB = {
         }
       }
 
-      const settingsKeys: (keyof DBState)[] = ['workstations', 'workposts', 'programs', 'wsProgram', 'audits5s', 'meta', 'labelQueue', 'rollback'];
+      const settingsKeys: (keyof DBState)[] = ['workstations', 'workposts', 'programs', 'wsProgram', 'registryEvents', 'audits5s', 'meta', 'labelQueue', 'rollback'];
       const storeSettings = tx.objectStore(this.STORES.settings);
       for (const k of settingsKeys) {
         if (state[k] !== undefined) {
@@ -288,6 +291,7 @@ export const AppDB = {
           workposts: settingsMap.workposts || [],
           programs: settingsMap.programs || [],
           wsProgram: settingsMap.wsProgram || {},
+          registryEvents: settingsMap.registryEvents || {},
           audits5s: settingsMap.audits5s || [],
           meta: settingsMap.meta || { schemaVersion: SCHEMA_VERSION },
           labelQueue: settingsMap.labelQueue || [],
@@ -320,6 +324,7 @@ export const AppDB = {
           workposts: db.workposts || [],
           programs: db.programs || [],
           wsProgram: db.wsProgram || {},
+          registryEvents: db.registryEvents || {},
           audits5s: db.audits5s || [],
           meta: db.meta || { schemaVersion: SCHEMA_VERSION },
           labelQueue: db.labelQueue || [],

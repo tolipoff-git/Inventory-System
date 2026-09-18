@@ -3,6 +3,7 @@ import { PurchaseOrder } from '../types/procurement';
 import { Employee } from '../types/personnel';
 import { AuditLogEntry } from '../types/audit';
 import { SyncPayload } from '../types/sync';
+import { RegistryEvents, mergeRegistryEvents } from '../types/registry';
 import { AUDIT_LOG_LIMIT } from '../config/constants';
 
 export function mergeTools(localTools: Tool[], remoteTools: Tool[]): Tool[] {
@@ -84,13 +85,25 @@ export function mergePersonnel(localEmp: Employee[], remoteEmp: Employee[]): Emp
       return;
     }
 
-    const localTime = new Date(le.updatedAt || 0).getTime();
-    const remoteTime = new Date(re.updatedAt || 0).getTime();
+    // A removal is a tombstone, not an absence: the winner is still the newest
+    // revision, but `deletedAt` counts as an edit so a delete cannot be undone
+    // by a peer's stale copy. (`updatedAt` is stamped on delete as well; taking
+    // the max keeps the rule safe for records written before that was true.)
+    const localTime = revisionTime(le);
+    const remoteTime = revisionTime(re);
 
     map.set(re.id, remoteTime >= localTime ? { ...re } : { ...le });
   });
 
   return Array.from(map.values());
+}
+
+/** Newest known revision timestamp of a personnel record (edit or tombstone). */
+function revisionTime(e: Employee): number {
+  return Math.max(
+    new Date(e.updatedAt || 0).getTime() || 0,
+    new Date(e.deletedAt || 0).getTime() || 0
+  );
 }
 
 export function mergeAuditLogs(localLogs: AuditLogEntry[], remoteLogs: AuditLogEntry[]): AuditLogEntry[] {
@@ -143,6 +156,14 @@ export function mergeSettings(localSettings: Record<string, any>, remoteSettings
   const audits5s = Array.from(auditMap.values())
     .sort((a, b) => String(b?.date || '').localeCompare(String(a?.date || '')));
 
+  // Registry entries are string arrays, so they need explicit tombstones to
+  // keep a removal from being resurrected by the union below (see
+  // `types/registry.ts`).
+  const registryEvents: RegistryEvents = mergeRegistryEvents(
+    localSettings.registryEvents || {},
+    remoteSettings.registryEvents || {}
+  );
+
   return {
     ...localSettings,
     ...remoteSettings,
@@ -151,6 +172,7 @@ export function mergeSettings(localSettings: Record<string, any>, remoteSettings
     wsProgram,
     workposts,
     audits5s,
+    registryEvents,
   };
 }
 

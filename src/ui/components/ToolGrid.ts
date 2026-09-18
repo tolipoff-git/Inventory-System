@@ -156,7 +156,8 @@ export class ToolGridComponent {
         `;
 
         // 2. Staff Hub
-        const staffRows = Store.personnel.slice(0, 4).map(emp => {
+        const staff = Store.activePersonnel();
+        const staffRows = staff.slice(0, 4).map(emp => {
             const mine = active.filter(t => t.assigneeId === emp.id);
             const myOverdue = mine.filter(t => t.status === 'Overdue').length;
             const myCal = mine.filter(calSoon).length;
@@ -175,10 +176,10 @@ export class ToolGridComponent {
         }).join('');
 
         const staffBody = `
-            ${row(T('Assigned Personnel:'), Store.personnel.length, 'var(--primary-hover)')}
+            ${row(T('Assigned Personnel:'), staff.length, 'var(--primary-hover)')}
             ${row(T('Total Tools Issued:'), issuedCount, issuedCount ? 'var(--warning)' : 'var(--success)')}
             <div style="margin-top:8px;">${staffRows || `<div style="color:var(--text-muted); text-align:center; padding:8px;">${T('No personnel records.')}</div>`}</div>
-            ${Store.personnel.length > 4 ? `<div style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-top:5px;">+${Store.personnel.length - 4} ${T('more…')}</div>` : ''}
+            ${staff.length > 4 ? `<div style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-top:5px;">+${staff.length - 4} ${T('more…')}</div>` : ''}
         `;
 
         // 3. WS Hub

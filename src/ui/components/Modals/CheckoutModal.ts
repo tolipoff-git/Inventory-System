@@ -91,7 +91,7 @@ export class CheckoutModal {
         if (infoEl) infoEl.innerHTML = `<strong>${esc(tool.name)}</strong> (${esc(tool.category)})`;
 
         if (empSelect) {
-            empSelect.innerHTML = Store.personnel.map(p =>
+            empSelect.innerHTML = Store.activePersonnel().map(p =>
                 `<option value="${esc(p.id)}">${esc(p.name)} (${esc(p.initials || p.id)})</option>`
             ).join('');
         }

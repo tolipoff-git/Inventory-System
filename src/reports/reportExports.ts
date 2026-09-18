@@ -373,7 +373,8 @@ async function writeInventoryWorkbook(): Promise<void> {
   const perHeadRow = per.addRow(perHead);
   styleHeader(perHeadRow);
 
-  Store.personnel.forEach((p: any, i: number) => {
+  const personnel = Store.activePersonnel();
+  personnel.forEach((p: any, i: number) => {
     const held = Store.tools.filter(t => t.assigneeId === p.id);
     const overdue = held.filter(t => t.status === 'Overdue').length;
     const wear = Math.max(0, ...held.map((t: any) => Store.wearOf(t)));
@@ -398,7 +399,7 @@ async function writeInventoryWorkbook(): Promise<void> {
     careCell.alignment = { horizontal: 'center' };
   });
   per.views = [{ state: 'frozen', ySplit: 1 }];
-  per.autoFilter = { from: 'A1', to: `K${Store.personnel.length + 1}` };
+  per.autoFilter = { from: 'A1', to: `K${personnel.length + 1}` };
 
   // ================= SHEET 4: ARCHIVE =================
   const retired = Store.retiredTools();

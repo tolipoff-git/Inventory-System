@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v110)
+# 5S Tool Command Center — v3 (v112)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -60,12 +60,22 @@ grouped by the role that can act on it**.
   (Tool Gage, Machine Shop) and a **“No zone”** group; stations can be detached from a
   program (**— No program —**).
 - Personnel are assigned along the same hierarchy (Program → Station → Post).
+- **Removals are tombstoned, not erased.** Employees are soft-deleted (`deletedAt`) and
+  hidden from lists/pickers/counters, but stay resolvable so tool history keeps real names;
+  a holder must return their tools before removal (as in the legacy monolith). Registry
+  entries (programs, stations, posts, program links) record a `{t, del}` event so a peer
+  holding an older array can no longer resurrect a deleted entry on the next merge.
 
 ### 3. Live multi-device sync
 - **Cloudflare Worker** (`/api/sync/:roomKey`) — room-authed (Bearer),
   first-write-wins **room token** (X-Sync-Token), constant-time compare.
 - **ntfy.sh SSE** — live push; **conflict resolver** = field-level
   later-wins-per-timestamp merge, history union.
+- **Tombstoned deletes** — removals travel as data (a `deletedAt` field or a registry
+  event), so the newest revision always wins and deleted records stay deleted.
+- **`updatedAt` is guaranteed** — `Store.save()` re-stamps every record whose content
+  changed since the last write, so a mutation path that forgot `touch()` cannot silently
+  lose the edit on merge.
 - **Offline-first** — IndexedDB is source of truth; sync is opportunistic.
 
 ### 4. Labels & exports
@@ -94,8 +104,9 @@ npm ci                    # install
 npm run dev               # vite dev server (localhost:3000/3001/5173)
 npm run typecheck         # tsc --noEmit
 npm run build             # production build (dist/)
-npm test                  # vitest 48 tests (crypto, store, conflict, worker, migration)
+npm test                  # vitest 61 tests (crypto, store, conflict, tombstones, worker, migration)
 npm run lint              # eslint (strict; legacy no-explicit-any excluded)
+npm run check:i18n        # EN/RU key + placeholder parity gate (must stay 1:1)
 ```
 
 ### Deploy (Cloudflare)
@@ -113,7 +124,10 @@ Secrets required: `SYNC_SECRET`, `INVENTORY_KV_BINDING` (KV id) — set via
 ## Tests & Quality
 - `tests/` — Vitest: crypto (hash/verify/timing), inventory (real Store+fake-indexeddb:
   seed, saveTool, qty split, over-issue, consumable clamp), conflict-resolver
-  (later-wins, tie→remote, history union), worker auth, legacy migration.
+  (later-wins, tie→remote, history union), **registry/personnel tombstones + `updatedAt`
+  coverage** (`registrySync.test.ts`), worker auth, legacy migration.
+- `npm run check:i18n` — mechanical EN/RU parity gate: equal key sets, identical
+  `{placeholder}` sets per key, no Cyrillic left in the English dictionary.
 - Lint: ESLint flat config (typescript-eslint recommended + no-empty).
 - Playwright smoke: button matrix + report flows (text assertions; see
   `tests/`).
