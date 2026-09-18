@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v116)
+# 5S Tool Command Center — v3 (v117)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -136,8 +136,9 @@ grouped by the role that can act on it**.
 
 ### 6. Help & updates
 - **FAQ** (❓ in the header) — task-oriented how-to guide: quick start, tool actions,
-  structure, storage & labels, procurement, dashboard/risk, 5S audits, update/offline/data,
-  and a troubleshooting section. Content lives in `src/i18n/faqContent.ts`.
+  structure, storage & labels, **calibration & verification**, procurement, dashboard/risk,
+  5S audits, update/offline/data, and a troubleshooting section. Content lives in
+  `src/i18n/faqContent.ts`.
 - **1-click hard update** — click the version number in the header (or *Update PWA* in the
   menus): clears caches, unregisters the service worker and reloads fresh. Data is untouched.
 
