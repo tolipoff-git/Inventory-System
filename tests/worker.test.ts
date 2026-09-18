@@ -1,17 +1,19 @@
 import { describe, it, expect } from 'vitest';
-import worker from '../src/worker/index';
+import worker, { Env } from '../src/worker/index';
 
 const headers = {
   'Content-Type': 'application/json',
   'X-Device-ID': 'dev_test',
 };
 
+/** Static-asset fetcher stub — must be async to satisfy `WorkerFetcher`. */
+const assets = { fetch: async () => new Response('x') };
+
 // Photo endpoints now require the same Bearer/token auth as sync.
-const photoEnv = {
-  ASSETS: { fetch: () => new Response('x') },
+const photoEnv: Env = {
+  ASSETS: assets,
   ALLOWED_ORIGIN: 'https://inventory.pages.dev',
   SYNC_SECRET: 'topsecret',
-  INVENTORY_KV: {} as Record<string, never>,
 };
 
 function photoReq(path: string, extra?: Record<string, string>) {
@@ -25,7 +27,7 @@ describe('worker security surface', () => {
     const req = new Request('https://inv.workers.dev/api/health', {
       headers: { Origin: 'https://evil.example.com' },
     });
-    const res = await worker.fetch(req, { ASSETS: { fetch: () => new Response('x') } });
+    const res = await worker.fetch(req, { ASSETS: assets });
     expect(res.status).toBe(403);
   });
 
@@ -35,7 +37,7 @@ describe('worker security surface', () => {
       headers: { ...headers, Origin: 'https://evil.example.com', Authorization: 'Bearer topsecret' },
       body: JSON.stringify({ tools: [] }),
     });
-    const res = await worker.fetch(req, { ASSETS: { fetch: () => new Response('x') }, SYNC_SECRET: 'topsecret' });
+    const res = await worker.fetch(req, { ASSETS: assets, SYNC_SECRET: 'topsecret' });
     expect(res.status).toBe(403);
   });
 
@@ -46,7 +48,7 @@ describe('worker security surface', () => {
       body: JSON.stringify({ tools: [] }),
     });
     const res = await worker.fetch(req, {
-      ASSETS: { fetch: () => new Response('x') },
+      ASSETS: assets,
       ALLOWED_ORIGIN: 'https://inventory.pages.dev',
       SYNC_SECRET: 'topsecret',
     });
@@ -60,7 +62,7 @@ describe('worker security surface', () => {
       body: JSON.stringify({ tools: [] }),
     });
     const res = await worker.fetch(req, {
-      ASSETS: { fetch: () => new Response('x') },
+      ASSETS: assets,
       ALLOWED_ORIGIN: 'https://inventory.pages.dev',
       SYNC_SECRET: 'topsecret',
     });
@@ -74,7 +76,7 @@ describe('worker security surface', () => {
       body: JSON.stringify({ tools: [] }),
     });
     const res = await worker.fetch(req, {
-      ASSETS: { fetch: () => new Response('x') },
+      ASSETS: assets,
       ALLOWED_ORIGIN: 'https://inventory.pages.dev',
     });
     expect(res.status).toBe(503);
