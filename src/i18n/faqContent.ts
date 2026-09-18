@@ -36,6 +36,7 @@ export const FAQ_BODY_EN = `
 <li><b>[Return Tool]</b> — grade the condition (1–5 stars) and add notes. The grade feeds the holder’s Care Score.</li>
 <li><b>[Transfer / Move]</b> — change the workstation/post or the rack–shelf–bin address.</li>
 <li><b>[Service / Calibrate]</b> — send the tool to the maintenance/calibration queue; <b>[Complete Maintenance]</b> closes it and logs the result.</li>
+<li><b>⚗ Record Calibration</b> — log a verification on any tool (who, when, interval, certificate #) and print its verification tag. Works on an <b>Active</b> tool too, unlike <b>[Service / Calibrate]</b>, which first sends it to the queue.</li>
 <li><b>[Procure / Order]</b> — create a purchase request for this tool.</li>
 <li><b>Print Sticker / Label</b> — print the tool’s QR / Code39 label.</li>
 <li><b>[Decommission / Retire]</b> — write the tool off with a reason; it moves to the <b>Decommissioned Assets Archive</b> and can be restored from there.</li>
@@ -70,12 +71,28 @@ export const FAQ_BODY_EN = `
 <li><b>Find a tool or a place fast</b> — use the search box (ID, name, category, location, employee) or the <b>📷 QR</b> button to scan a tool or storage label.</li>
 <li><b>Storage summary</b> — scanning or searching a storage address opens an analytical card: tooling vs consumables balance, items on maintenance/calibration, low stock and overdue items, with shelf contents grouped into expandable sections.</li>
 <li><b>Print labels</b> — <b>Operations &amp; Reports</b> → <b>Print Storage Labels</b>, or <b>Print Sticker / Label</b> on a tool. Choose the media (Avery / bin tag / Brady) and preview before printing. Labels can be queued and printed later with the <b>🏷</b> button in the header.</li>
+<li><b>Scan a label with your phone</b> — the label QR opens the app straight at that tool or storage address (<code>…/?tool=ID</code>), even if the app is installed and offline. The in-app <b>📷 QR</b> scanner and a handheld barcode scanner resolve the same codes.</li>
+<li><b>Calibration tag</b> — besides the tool and storage labels, pick the <b>Calibration Tag (70×50&nbsp;mm)</b> media to print the verification block (who · date · valid until · certificate #) next to the QR.</li>
 </ul>
 </div>
 </details>
 
 <details class="faq-details">
-<summary class="faq-summary">5. Procurement &amp; receiving</summary>
+<summary class="faq-summary">5. Calibration &amp; verification (metrology)</summary>
+<div class="faq-content">
+<p>Every tool can carry a verification record: <b>who</b> verified it, <b>when</b>, and <b>until when</b> it is valid. The next-due date is computed from the date plus the interval.</p>
+<ol>
+<li><b>Verify one tool</b> — open the tool card → <b>⚗ Record Calibration</b>. Fill in <i>Verified by</i>, the <i>date</i>, the <i>interval (days)</i> and the certificate number. This works on any tool, even an <b>Active</b> one — a freshly installed tool still needs its first verification.</li>
+<li><b>Verify a whole shelf</b> — <b>Operations &amp; Reports</b> → <b> Calibration Session</b>, or the <b>🔧 Maintenance &amp; Calibration Queue</b> card in the Category Hub → <b> Calibration Session</b>. Pick a station, tick the tools, enter one date / inspector / interval / certificate, then <b>Apply</b>.</li>
+<li><b>Print the tags</b> — <b>Save &amp; Print Tag</b> (one tool) or <b>Apply &amp; Print Tags</b> (session) prints the <b>Calibration Tag</b> run straight away. To print later, open the tool card → <b>Print Sticker / Label</b> → <b>Calibration Tag</b>.</li>
+<li><b>Closing maintenance</b> — <b>Complete Maintenance</b> captures the same verification fields, so a repaired tool leaves the queue with a fresh due date.</li>
+</ol>
+<p>The tool card shows the verification block and the last five events. On the tag, the next-due date turns red once it has passed. The <b>Maintenance &amp; Calibration Queue</b> lists everything in service, overdue, or due for calibration within 14 days — click a row to open the tool.</p>
+</div>
+</details>
+
+<details class="faq-details">
+<summary class="faq-summary">6. Procurement &amp; receiving</summary>
 <div class="faq-content">
 <ol>
 <li><b>Create a request</b> — <b>Operations &amp; Reports</b> → <b>Procure / Order Tool</b>. Add line items (name, qty, unit price, reason, supplier link); the running total is shown. Press <b>Submit Request</b> to save it.</li>
@@ -86,7 +103,7 @@ export const FAQ_BODY_EN = `
 </details>
 
 <details class="faq-details">
-<summary class="faq-summary">6. Dashboard: charts, filters &amp; risk index</summary>
+<summary class="faq-summary">7. Dashboard: charts, filters &amp; risk index</summary>
 <div class="faq-content">
 <ul>
 <li><b>Tool Status Breakdown</b> (donut) — click a slice or its legend entry to filter the tool list by that status.</li>
@@ -99,7 +116,7 @@ export const FAQ_BODY_EN = `
 </details>
 
 <details class="faq-details">
-<summary class="faq-summary">7. 5S audits &amp; reports</summary>
+<summary class="faq-summary">8. 5S audits &amp; reports</summary>
 <div class="faq-content">
 <ol>
 <li><b>Run an audit</b> — <b>Operations &amp; Reports</b> → <b>5S Post Audit</b>: pick a workstation and post, score each of the 5 pillars (Sort, Set in Order, Shine, Standardize, Sustain) from 1 to 5, and add notes.</li>
@@ -110,7 +127,7 @@ export const FAQ_BODY_EN = `
 </details>
 
 <details class="faq-details">
-<summary class="faq-summary">8. Updating the app, offline work &amp; your data</summary>
+<summary class="faq-summary">9. Updating the app, offline work &amp; your data</summary>
 <div class="faq-content">
 <ul>
 <li><b>Check the version</b> — the number next to the title in the header (for example <b>v***</b>).</li>
@@ -122,11 +139,12 @@ export const FAQ_BODY_EN = `
 </details>
 
 <details class="faq-details">
-<summary class="faq-summary">9. If something does not work</summary>
+<summary class="faq-summary">10. If something does not work</summary>
 <div class="faq-content">
 <ul>
 <li><b>A button says “Access Denied”</b> — your role is too low. Ask an Administrator (adding tools and editing registries require the Administrator role).</li>
 <li><b>The app looks outdated after an update</b> — click the version number in the header to force a clean reload.</li>
+<li><b>A calibration due date never changes</b> — a verification only rolls the due date forward when an <b>interval (days)</b> is entered (or the tool already has one). Set the interval in <b>⚗ Record Calibration</b>.</li>
 <li><b>A tool or person points to an unknown station</b> — <b>System Management</b> → <b>🩺 Integrity Check</b>. Press <b>📥 Register missing stations &amp; posts</b>: it adds the missing stations to the registry and keeps every tool where it really is. Only if you genuinely want to relocate those tools, use <b>🛠 Move tools to default station</b> — it <b>overwrites</b> their real location, so it asks for confirmation.</li>
 <li><b>The workstation chart shows odd rows</b> — usually dangling tool locations; run the Integrity Check as above.</li>
 <li><b>You made a mistake in the registries</b> — <b>System Management</b> → <b>↩ Rollback Last Cascade</b> restores the state from before the last structural change.</li>
@@ -165,6 +183,7 @@ export const FAQ_BODY_RU = `
 <li><b>[Вернуть инструмент]</b> — оцените состояние (1–5 звёзд) и добавьте примечание. Оценка влияет на «Бережливость» сотрудника.</li>
 <li><b>[Переместить]</b> — сменить рабочую станцию/пост или адрес стеллаж–полка–ячейка.</li>
 <li><b>[Обслуживание / Калибровка]</b> — отправить в очередь ТО/калибровки; <b>[Завершить ремонт]</b> закрывает запись и фиксирует результат.</li>
+<li><b>⚗ Записать поверку</b> — зафиксировать поверку на любом инструменте (кто, когда, интервал, № свидетельства) и напечатать этикетку поверки. Работает и для <b>активного</b> инструмента, в отличие от <b>[Обслуживание / Калибровка]</b>, которая сначала отправляет его в очередь.</li>
 <li><b>[Закупка]</b> — создать заявку на закупку этого инструмента.</li>
 <li><b>Печать этикетки</b> — напечатать QR / Code39 этикетку инструмента.</li>
 <li><b>[Списать]</b> — списать инструмент с указанием причины; он переходит в <b>Архив списанных активов</b> и может быть восстановлен оттуда.</li>
@@ -199,12 +218,28 @@ export const FAQ_BODY_RU = `
 <li><b>Быстро найти инструмент или место</b> — используйте строку поиска (ID, название, категория, локация, сотрудник) или кнопку <b>📷 QR</b> для сканирования этикетки инструмента или места хранения.</li>
 <li><b>Сводка по месту хранения</b> — сканирование или поиск адреса открывает аналитическую карточку: баланс оснастки и расходников, позиции на ТО/калибровке, низкий остаток и просрочки; содержимое полок сгруппировано в раскрывающиеся блоки.</li>
 <li><b>Печать этикеток</b> — <b>Операции и отчёты</b> → <b>Печать этикеток мест хранения</b> или <b>Печать этикетки</b> в карточке инструмента. Выберите носитель (Avery / бирка ячейки / Brady) и проверьте предпросмотр. Этикетки можно поставить в очередь и напечатать позже кнопкой <b>🏷</b> в шапке.</li>
+<li><b>Скан этикетки телефоном</b> — QR на этикетке открывает приложение сразу на этом инструменте или адресе хранения (<code>…/?tool=ID</code>), даже если приложение установлено и работает офлайн. Встроенный сканер <b>📷 QR</b> и ручной сканер штрихкодов распознают те же коды.</li>
+<li><b>Этикетка поверки</b> — помимо этикеток инструмента и места хранения, выберите носитель <b>Этикетка поверки (70×50 мм)</b>, чтобы напечатать блок поверки (кто · дата · действительно до · № свидетельства) рядом с QR.</li>
 </ul>
 </div>
 </details>
 
 <details class="faq-details">
-<summary class="faq-summary">5. Закупки и приёмка</summary>
+<summary class="faq-summary">5. Поверка и калибровка приборов</summary>
+<div class="faq-content">
+<p>У каждого инструмента может быть запись о поверке: <b>кто</b> проверил, <b>когда</b> и <b>до какого срока</b> она действительна. Дата следующей поверки считается как дата + интервал.</p>
+<ol>
+<li><b>Поверить один инструмент</b> — откройте карточку → <b>⚗ Записать поверку</b>. Заполните <i>Проверил</i>, <i>дату</i>, <i>интервал (дней)</i> и № свидетельства. Работает для любого инструмента, даже <b>активного</b> — только что установленный инструмент тоже требует первой поверки.</li>
+<li><b>Поверить целую полку</b> — <b>Операции и отчёты</b> → <b>⚗ Сессия поверки</b> либо карточка <b>🔧 Очередь обслуживания и калибровки</b> в категорийном хабе → <b>⚗ Сессия поверки</b>. Выберите станцию, отметьте инструменты, укажите одну дату / исполнителя / интервал / свидетельство и нажмите <b>Применить</b>.</li>
+<li><b>Напечатать этикетки</b> — кнопка <b>Сохранить и печать этикетки</b> (один инструмент) или <b>Применить и печать этикеток</b> (сессия) печатает пачку <b>этикеток поверки</b> сразу. Позже можно напечатать из карточки: <b>Печать этикетки</b> → <b>Этикетка поверки</b>.</li>
+<li><b>Закрытие обслуживания</b> — <b>Завершить обслуживание</b> записывает те же поля поверки, поэтому отремонтированный инструмент выходит из очереди с новым сроком.</li>
+</ol>
+<p>В карточке инструмента видны блок поверки и последние пять событий. На этикетке дата «действительно до» становится красной, когда срок прошёл. <b>Очередь обслуживания и калибровки</b> перечисляет всё, что в ремонте, просрочено или требует поверки в ближайшие 14 дней — клик по строке открывает инструмент.</p>
+</div>
+</details>
+
+<details class="faq-details">
+<summary class="faq-summary">6. Закупки и приёмка</summary>
 <div class="faq-content">
 <ol>
 <li><b>Создать заявку</b> — <b>Операции и отчёты</b> → <b>Закупка инструмента</b>. Добавьте позиции (название, количество, цена за единицу, причина, ссылка на поставщика); итог считается на лету. Нажмите <b>Отправить заявку</b>, чтобы сохранить.</li>
@@ -215,7 +250,7 @@ export const FAQ_BODY_RU = `
 </details>
 
 <details class="faq-details">
-<summary class="faq-summary">6. Дашборд: графики, фильтры и индекс рисков</summary>
+<summary class="faq-summary">7. Дашборд: графики, фильтры и индекс рисков</summary>
 <div class="faq-content">
 <ul>
 <li><b>Статус инструментов</b> (пончик) — клик по сектору или подписи в легенде фильтрует список по этому статусу.</li>
@@ -228,7 +263,7 @@ export const FAQ_BODY_RU = `
 </details>
 
 <details class="faq-details">
-<summary class="faq-summary">7. 5S-аудиты и отчёты</summary>
+<summary class="faq-summary">8. 5S-аудиты и отчёты</summary>
 <div class="faq-content">
 <ol>
 <li><b>Провести аудит</b> — <b>Операции и отчёты</b> → <b>5S аудит поста</b>: выберите рабочую станцию и пост, оцените каждый из 5 столпов (Сортировка, Порядок, Чистота, Стандартизация, Совершенствование) от 1 до 5 и добавьте примечания.</li>
@@ -239,7 +274,7 @@ export const FAQ_BODY_RU = `
 </details>
 
 <details class="faq-details">
-<summary class="faq-summary">8. Обновление приложения, офлайн-работа и данные</summary>
+<summary class="faq-summary">9. Обновление приложения, офлайн-работа и данные</summary>
 <div class="faq-content">
 <ul>
 <li><b>Проверить версию</b> — номер рядом с заголовком в шапке (например, <b>v***</b>).</li>
@@ -251,11 +286,12 @@ export const FAQ_BODY_RU = `
 </details>
 
 <details class="faq-details">
-<summary class="faq-summary">9. Если что-то не работает</summary>
+<summary class="faq-summary">10. Если что-то не работает</summary>
 <div class="faq-content">
 <ul>
 <li><b>Кнопка отвечает «Доступ запрещён»</b> — у вашей роли недостаточно прав. Обратитесь к Администратору (добавление инструментов и правка справочников требуют роли Администратор).</li>
 <li><b>После обновления приложение выглядит старым</b> — кликните по номеру версии в шапке, чтобы выполнить чистую перезагрузку.</li>
+<li><b>Дата следующей поверки не меняется</b> — поверка сдвигает срок только если указан <b>интервал (дней)</b> (или он уже был задан ранее). Проверьте интервал в окне <b>⚗ Записать поверку</b>.</li>
 <li><b>Инструмент или человек ссылается на неизвестную станцию</b> — <b>Управление системой</b> → <b>🩺 Проверка целостности</b>. Нажмите <b>📥 Зарегистрировать недостающие станции и посты</b>: она добавит станции в справочник и оставит каждый инструмент там, где он реально находится. Только если вы действительно хотите перенести эти инструменты, используйте <b>🛠 Перенести инструменты на станцию по умолчанию</b> — она <b>перезапишет</b> их реальное расположение, поэтому запрашивает подтверждение.</li>
 <li><b>В графике загрузки станций странные строки</b> — обычно это «висячие» локации инструментов; выполните проверку целостности выше.</li>
 <li><b>Ошиблись в справочниках</b> — <b>Управление системой</b> → <b>↩ Откат последнего каскада</b> вернёт состояние до последнего структурного изменения.</li>

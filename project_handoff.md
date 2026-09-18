@@ -2,20 +2,20 @@
 
 ## Overview
 - **Repository:** `/home/admin/git/Inventory-System`
-- **Current Version:** `v116` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
+- **Current Version:** `v117` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
 - **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith is preserved as `index.monolith.v97.html` for reference only and is **not** the active app.
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Session Continuity — Resume Point (2026-09-18, v116)
+## Session Continuity — Resume Point (2026-09-18, v117)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v116` (`package.json` = 116.0.0). `sw.js` `CACHE_VERSION` = `v116-<hash>`.
+- **Version:** `v117` (`package.json` = 117.0.0). `sw.js` `CACHE_VERSION` = `v117-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
-- **Gates (all green at v116):** `npm run typecheck` · `npm run lint` · `npm test` (99/99) ·
+- **Gates (all green at v117):** `npm run typecheck` · `npm run lint` · `npm test` (99/99) ·
   `npm run build` · `npm run check:i18n` (693/693). `tsconfig.json` includes `tests`,
   so `typecheck` and `build` cover the test suite too — keep it that way.
 - **Deploy:** push to `main` → Cloudflare Pages auto-deploy. Release workflow is defined in
@@ -125,7 +125,15 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
 - Standing instruction: perform the full release flow (bump → docs → `build.sh` → commits → push)
   automatically, without asking.
 
-## Recent Accomplishments (v49 – v116)
+## Recent Accomplishments (v49 – v117)
+
+### 0. FAQ: Calibration & Verification Section (v117 Release)
+- Added a dedicated FAQ section **“Calibration & verification”** (EN/RU) covering the
+  per-tool record, the batch **Calibration Session**, printing the **Calibration Tag**, and
+  the verification fields captured by *Complete Maintenance*.
+- Section 2 gained the **⚗ Record Calibration** action; section 4 gained the phone-camera
+  QR deep-link and the calibration-tag media; the troubleshooting section gained the
+  “due date never changes → set an interval” entry. Sections renumbered 1–10 in both languages.
 
 ### 0. Calibration Queue Integration (v116 Release)
 - The **Maintenance & Calibration Queue** hub card (existing since the monolith) is now the
