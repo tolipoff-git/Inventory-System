@@ -4,8 +4,9 @@
 
 import { T } from '../../../i18n';
 import { Store } from '../../../storage/store';
+import { Auth } from '../../../auth/authManager';
 import { serviceTool, completeMaintenance } from '../../../operations/toolOps';
-import { esc } from '../../../utils/formatters';
+import { esc, nowISO } from '../../../utils/formatters';
 import { toast } from '../../../utils/dom';
 
 export class ServiceModal {
@@ -70,6 +71,26 @@ export class ServiceModal {
 
                     <div id="serviceCompleteSection" style="display:none; margin-top:15px; padding-top:15px; border-top:1px solid var(--border);">
                         <h4 style="margin-top:0; color:var(--success);">${T('Complete Maintenance')}</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>${T('Verified by')}:</label>
+                                <input type="text" id="serviceVerifiedBy" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>${T('Verification Date')}:</label>
+                                <input type="date" id="serviceVerifiedAt" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>${T('Interval (days)')}:</label>
+                                <input type="number" id="serviceInterval" class="form-control" min="1" value="180">
+                            </div>
+                            <div class="form-group">
+                                <label>${T('Certificate #')}:</label>
+                                <input type="text" id="serviceCertNo" class="form-control">
+                            </div>
+                        </div>
                         <div class="form-group">
                             <label>${T('Next Calibration Date (Optional):')}</label>
                             <input type="date" id="serviceNextCalDue" class="form-control">
@@ -113,6 +134,18 @@ export class ServiceModal {
 
         (document.getElementById('serviceReasonInput') as HTMLInputElement).value = '';
         (document.getElementById('serviceCompleteNotes') as HTMLInputElement).value = '';
+        (document.getElementById('serviceCertNo') as HTMLInputElement).value = '';
+        (document.getElementById('serviceNextCalDue') as HTMLInputElement).value = '';
+
+        const byEl = document.getElementById('serviceVerifiedBy') as HTMLInputElement;
+        const user = Auth.getCurrentUser();
+        byEl.value = tool.calVerifiedBy || (user && user !== 'operator' ? user : '');
+
+        const dateEl = document.getElementById('serviceVerifiedAt') as HTMLInputElement;
+        dateEl.value = nowISO().split('T')[0];
+
+        const intervalEl = document.getElementById('serviceInterval') as HTMLInputElement;
+        intervalEl.value = String(tool.calIntervalDays || 180);
     }
 
     private static async submitServiceQueue(): Promise<void> {
@@ -133,9 +166,20 @@ export class ServiceModal {
         if (!this.currentToolId) return;
         const nextCal = (document.getElementById('serviceNextCalDue') as HTMLInputElement).value;
         const notes = (document.getElementById('serviceCompleteNotes') as HTMLInputElement).value.trim();
+        const by = (document.getElementById('serviceVerifiedBy') as HTMLInputElement).value.trim();
+        const date = (document.getElementById('serviceVerifiedAt') as HTMLInputElement).value;
+        const intervalRaw = parseInt((document.getElementById('serviceInterval') as HTMLInputElement).value || '', 10);
+        const intervalDays = Number.isFinite(intervalRaw) && intervalRaw > 0 ? intervalRaw : undefined;
+        const certNo = (document.getElementById('serviceCertNo') as HTMLInputElement).value.trim() || undefined;
 
         try {
-            await completeMaintenance(this.currentToolId, notes || 'Tech', nextCal || undefined);
+            await completeMaintenance(this.currentToolId, notes || 'Tech', nextCal || undefined, {
+                by,
+                date: date || undefined,
+                intervalDays,
+                certNo,
+                notes: notes || undefined,
+            });
             toast(`Tool ${this.currentToolId} returned to Active service!`, 'success');
             this.close();
         } catch (e: any) {

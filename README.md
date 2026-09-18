@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v114)
+# 5S Tool Command Center — v3 (v115)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -86,7 +86,28 @@ grouped by the role that can act on it**.
 
 ### 4. Labels & exports
 - Label formats **A/B/C** (Code39 + QR), batch printing queue.
+- **Calibration / verification tag** (`calTag`, 70×50 mm) — prints the verification
+  block (who verified · date · valid until · certificate #) next to the QR, so a
+  scanned tag opens the full tool card.
 - **REQ003** expense template (xlsx), full **XLSX dump** (Active/Archive/Audit/Personnel).
+
+### 4a. Calibration & verification
+- **Structured verification record** per tool — `calVerifiedAt`, `calVerifiedBy`,
+  `calIntervalDays`, `calCertNo` and a `calHistory[]` log (not just a free-text
+  history line). The next due date is computed from `date + interval`.
+- **Record Calibration** on any tool (card button / tool grid), regardless of status —
+  a freshly installed tool is `Active`, not `Maintenance`, yet still needs its first
+  verification. *Complete Maintenance* captures the same fields.
+- **Calibration Session** (*Operations & Reports*) — pick a station, tick a shelf of
+  tools, stamp one date / inspector / interval / certificate, then print a run of tags.
+- The tool card shows the verification block and the last five verification events;
+  the tag turns red when the next-due date has passed.
+
+### 4b. QR round-trip (labels → card)
+- Labels encode `…/?tool=ID` / `…/?loc=LOC:…`. Opening that URL (phone camera, shared
+  link, installed PWA) routes straight to the tool card or the storage view; the
+  in-app scanner and a wedge barcode scanner resolve the same payloads, including
+  bare ids. Parsing lives in `src/utils/scanPayload.ts`.
 
 ### 4b. SOP & Standards hub
 - Standards are **data, not code** (`settings.sops`): the shop edits them in
@@ -125,7 +146,7 @@ npm ci                    # install
 npm run dev               # vite dev server (localhost:3000/3001/5173)
 npm run typecheck         # tsc --noEmit
 npm run build             # production build (dist/)
-npm test                  # vitest 86 tests (crypto, store, conflict, tombstones, registry import, SOP, worker, migration)
+npm test                  # vitest 99 tests (crypto, store, conflict, tombstones, registry import, SOP, calibration, worker, migration)
 npm run lint              # eslint (strict; legacy no-explicit-any excluded)
 npm run check:i18n        # EN/RU key + placeholder parity gate (must stay 1:1)
 ```
@@ -148,6 +169,7 @@ Secrets required: `SYNC_SECRET`, `INVENTORY_KV_BINDING` (KV id) — set via
   (later-wins, tie→remote, history union), **registry/personnel tombstones + `updatedAt`
   coverage** (`registrySync.test.ts`), **registry import from existing data**
   (`registryImport.test.ts`), **SOP seeding, lifecycle and merge** (`sop.test.ts`),
+  **scan-payload parsing + calibration recording** (`calibration.test.ts`),
   worker auth, legacy migration.
 - `npm run check:i18n` — mechanical EN/RU parity gate: equal key sets, identical
   `{placeholder}` sets per key, no Cyrillic left in the English dictionary.

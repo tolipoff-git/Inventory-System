@@ -4,7 +4,7 @@
 
 import { T } from '../../../i18n';
 import { Store } from '../../../storage/store';
-import { esc } from '../../../utils/formatters';
+import { esc, fmtDate } from '../../../utils/formatters';
 import { generateQrDataUrl } from '../../../labels/qrGenerator';
 import { printLabelsHtml, printQueueLabels, STOCKS, LabelFormat } from '../../../labels/labelPrint';
 import { toast, printHtml } from '../../../utils/dom';
@@ -75,6 +75,7 @@ export class LabelModal {
                             <option value="genericA">Generic A (Compact 38×19mm)</option>
                             <option value="genericB">Generic B (Standard 50×25mm)</option>
                             <option value="genericC">Generic C (Large 70×36mm)</option>
+                            <option value="calTag">Calibration Tag (70×50mm)</option>
                         </select>
                     </div>
 
@@ -173,6 +174,12 @@ export class LabelModal {
         const loc = tool.location || 'Main Store';
         const addr = tool.address ? `${tool.address.rack || ''} ${tool.address.shelf || ''}-${tool.address.bin || ''}`.trim() : '';
 
+        const calBlock = this.selectedFormat === 'calTag' ? `
+                    <div style="font-size:0.72rem; color:#334155; margin-top:4px; border-top:1px dashed #94a3b8; padding-top:3px;">
+                        ${T('Verified by')}: <b>${esc(tool.calVerifiedBy || '—')}</b> · ${T('Verified on')}: <b>${esc(tool.calVerifiedAt ? fmtDate(tool.calVerifiedAt) : '—')}</b><br>
+                        ${T('Next due')}: <b>${esc(tool.calDue ? fmtDate(tool.calDue) : '—')}</b>
+                    </div>` : '';
+
         container.innerHTML = `
             <div style="background:#ffffff; color:#000000; border:1px solid #94a3b8; border-radius:4px; padding:10px 14px; display:flex; align-items:center; gap:12px; width:340px; box-shadow:0 4px 12px rgba(0,0,0,0.15); font-family:var(--font-mono);">
                 <img src="${qrUrl}" style="width:72px; height:72px; flex-shrink:0;">
@@ -181,6 +188,7 @@ export class LabelModal {
                     <div style="font-size:0.82rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(tool.name)}</div>
                     <div style="font-size:0.75rem; color:#475569;">${esc(loc)} ${addr ? '· ' + esc(addr) : ''}</div>
                     <div style="font-size:0.7rem; color:#64748b; margin-top:2px;">SN: ${esc(tool.sn || tool.serialNumber || 'N/A')}</div>
+                    ${calBlock}
                 </div>
             </div>
         `;

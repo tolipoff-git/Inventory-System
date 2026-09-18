@@ -1,6 +1,6 @@
 import { Store } from '../storage/store';
 import { T } from '../i18n';
-import { esc } from '../utils/formatters';
+import { esc, fmtDate, nowISO } from '../utils/formatters';
 import { renderQrToCanvas, toolDeeplink, locationDeeplink } from './qrGenerator';
 import { Tool } from '../types/inventory';
 
@@ -57,6 +57,10 @@ export const STOCKS: Record<string, StockDefinition> = {
   },
   genC: {
     brand: 'Generic', pn: 'Type C (100×50mm)', kind: 'single', legacy: 'C', w: 100, h: 50, info: 'Shelf & bin label',
+  },
+  calTag: {
+    brand: 'Generic', pn: 'Calibration Tag (70×50mm)', kind: 'single', w: 70, h: 50,
+    info: 'Verification tag — who, when, next due + QR',
   },
   brady: {
     brand: 'Brady', pn: 'THT-119-427-2.5', kind: 'roll', w: 38.1, h: 12.7,
@@ -147,6 +151,31 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
               <canvas class="lbl-qr" data-qr-text="${esc(qrUrl)}" style="width:10mm; height:10mm;"></canvas>
             </div>
           </div>`;
+      case 'calTag': {
+        const verifiedBy = tool.calVerifiedBy || '—';
+        const verifiedAt = tool.calVerifiedAt ? fmtDate(tool.calVerifiedAt) : '—';
+        const nextDue = tool.calDue ? fmtDate(tool.calDue) : '—';
+        const overdue = Boolean(tool.calDue && tool.calDue < nowISO().split('T')[0]);
+        return `
+          <div style="display:flex; flex-direction:column; width:100%; height:100%; padding:3mm; box-sizing:border-box; font-family:sans-serif; color:#000;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #000; padding-bottom:1mm;">
+              <strong style="font-size:10px; letter-spacing:0.4px;">${T('CALIBRATION / VERIFICATION')}</strong>
+              <span style="font-size:9px; font-family:monospace; font-weight:900;">${esc(tool.id)}</span>
+            </div>
+            <div style="display:flex; gap:3mm; flex:1; padding-top:2mm;">
+              <div style="flex:1; font-size:9px; line-height:1.55; overflow:hidden;">
+                <div style="font-size:10px; font-weight:700; margin-bottom:1mm; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(tool.name)}</div>
+                <div>${T('Verified by')}: <strong>${esc(verifiedBy)}</strong></div>
+                <div>${T('Verified on')}: <strong>${esc(verifiedAt)}</strong></div>
+                <div style="color:${overdue ? '#b00020' : '#000'};">${T('Next due')}: <strong>${esc(nextDue)}</strong></div>
+                ${tool.calCertNo ? `<div>${T('Certificate')}: <strong>${esc(tool.calCertNo)}</strong></div>` : ''}
+              </div>
+              <div style="width:22mm; height:22mm; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+                <canvas class="lbl-qr" data-qr-text="${esc(qrUrl)}" style="width:21mm; height:21mm;"></canvas>
+              </div>
+            </div>
+          </div>`;
+      }
       case 'avery5161':
       case 'avery5163':
       case 'avery5366':
@@ -255,7 +284,7 @@ export function printLabelViaIframe(container: HTMLElement, stockKey: string = '
   }, 400);
 }
 
-export type LabelFormat = 'avery5161' | 'avery5163' | 'avery5366' | 'brady' | 'genericA' | 'genericB' | 'genericC';
+export type LabelFormat = 'avery5161' | 'avery5163' | 'avery5366' | 'brady' | 'genericA' | 'genericB' | 'genericC' | 'calTag';
 
 /** A queued label target: either a tool id or a `LOC:` storage-location id. */
 export interface LabelEntity {

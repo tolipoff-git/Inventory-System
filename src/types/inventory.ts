@@ -33,6 +33,21 @@ export interface ToolPhoto {
   caption?: string;
 }
 
+/**
+ * One verification / calibration event. Kept as a structured log (not just a
+ * free-text history line) so the label and the tool card can prove *who*
+ * verified the tool, *when*, and *until when* it is valid.
+ */
+export interface CalibrationRecord {
+  date: string;
+  by: string;
+  result: 'PASS' | 'FAIL' | 'FLAG';
+  certNo?: string;
+  intervalDays?: number;
+  nextDue?: string;
+  notes?: string;
+}
+
 export interface Tool {
   id: string;
   name: string;
@@ -49,6 +64,16 @@ export interface Tool {
   assignedAt?: string | null;
   dueReturn?: string | null;
   calDue?: string | null;
+  /** Date the last verification/calibration was performed (YYYY-MM-DD). */
+  calVerifiedAt?: string | null;
+  /** Who performed the last verification/calibration. */
+  calVerifiedBy?: string | null;
+  /** Recurring verification interval in days; drives the next `calDue`. */
+  calIntervalDays?: number;
+  /** Certificate / protocol number of the last verification. */
+  calCertNo?: string;
+  /** Structured verification log, newest last. */
+  calHistory?: CalibrationRecord[];
   history?: string[];
   photos?: ToolPhoto[];
   commissioned_date?: string;

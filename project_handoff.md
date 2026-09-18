@@ -2,21 +2,21 @@
 
 ## Overview
 - **Repository:** `/home/admin/git/Inventory-System`
-- **Current Version:** `v111` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
+- **Current Version:** `v115` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
 - **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith is preserved as `index.monolith.v97.html` for reference only and is **not** the active app.
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Session Continuity — Resume Point (2026-09-18, v114)
+## Session Continuity — Resume Point (2026-09-18, v115)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v114` (`package.json` = 114.0.0). `sw.js` `CACHE_VERSION` = `v114-<hash>`.
+- **Version:** `v115` (`package.json` = 115.0.0). `sw.js` `CACHE_VERSION` = `v115-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
-- **Gates (all green at v114):** `npm run typecheck` · `npm run lint` · `npm test` (86/86) ·
-  `npm run build` · `npm run check:i18n` (668/668). `tsconfig.json` includes `tests`,
+- **Gates (all green at v115):** `npm run typecheck` · `npm run lint` · `npm test` (99/99) ·
+  `npm run build` · `npm run check:i18n` (693/693). `tsconfig.json` includes `tests`,
   so `typecheck` and `build` cover the test suite too — keep it that way.
 - **Deploy:** push to `main` → Cloudflare Pages auto-deploy. Release workflow is defined in
   `AGENTS.md` (bump version → README + handoff → `bash build.sh` → feature commit →
@@ -42,6 +42,14 @@ working session; the per-release history below is the long-term record.
 - `Store.importRegistryFromData()` / `Store.pendingRegistryImport()` (v114) — rebuild the
   registry from data that already references it. `pendingRegistryImport()` is the read-only
   plan used by the integrity report; keep the two in sync via `collectRegistryImport()`.
+- `src/utils/scanPayload.ts` → `parseScanPayload()` (v115) — the only place a scanned/deep-linked
+  string is normalized to `{kind: 'tool'|'location'|'raw', value}`. Used by `AppUI.handleScanResult`
+  and the deep-link router; `ScannerModal` routes its no-callback path through `window.handleScanResult`.
+- `src/ui/components/Modals/CalibrationModal.ts` (v115) — single-tool and session verification UI.
+  Writes through `recordCalibration()` / `recordCalibrationBatch()` in `toolOps`.
+- `calDueFrom(date, intervalDays)` + `recordCalibration()` / `recordCalibrationBatch()` (v115) in
+  `src/operations/toolOps.ts` — the only place verification is recorded; `completeMaintenance()`
+  delegates the same structured fields. Labels read `tool.calVerifiedBy/At`, `calDue`, `calCertNo`.
 - `scripts/check-i18n-parity.mjs` → `npm run check:i18n` — the EN/RU parity gate.
 
 ### Next actions (agreed direction, not yet started)
@@ -117,7 +125,26 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
 - Standing instruction: perform the full release flow (bump → docs → `build.sh` → commits → push)
   automatically, without asking.
 
-## Recent Accomplishments (v49 – v114)
+## Recent Accomplishments (v49 – v115)
+
+### 0. Calibration & Verification Workflow + QR Round-Trip (v115 Release)
+- **QR round-trip restored.** Labels encode `…/?tool=ID` / `…/?loc=LOC:…`, but the modular app
+  had neither a deep-link router on load nor URL parsing in the scanner — so scanning the app's
+  own labels did nothing. Added `parseScanPayload()` (`src/utils/scanPayload.ts`), a deep-link
+  router in `AppUI.init()` (opens the tool card / storage filter, then cleans the URL), and made
+  `ScannerModal`'s no-callback path use the shared handler. Handles full URLs, `?id=`/`?name=`
+  aliases, bare `LOC:` ids and bare tool ids.
+- **Structured verification record** on `Tool`: `calVerifiedAt`, `calVerifiedBy`, `calIntervalDays`,
+  `calCertNo`, `calHistory[]`. `recordCalibration()` / `recordCalibrationBatch()` in `toolOps`
+  are the single writers; `completeMaintenance()` takes an optional `CalibrationInput`.
+  Next due = `date + interval`.
+- **`CalibrationModal`** — *Record Calibration* on the tool card / grid (works on an `Active`
+  tool, unlike *Complete Maintenance*), plus a **Calibration Session** (*Operations & Reports*)
+  that stamps a whole shelf in one go and prints a run of tags.
+- **Calibration tag** (`calTag`, 70×50 mm) prints the verification block (who · when · valid until ·
+  certificate #) beside the QR; the tool card shows the block and the last five events.
+- `ServiceModal` now captures who verified, when, the interval and the certificate when closing
+  maintenance. Added `calibration.test.ts` (13 tests).
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
 
 ### 0. Registry Import from Existing Data & Non-Destructive Integrity Repair (v114 Release)
