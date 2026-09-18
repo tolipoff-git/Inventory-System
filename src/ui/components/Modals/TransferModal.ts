@@ -5,6 +5,7 @@
 import { T } from '../../../i18n';
 import { Store } from '../../../storage/store';
 import { transferTool } from '../../../operations/toolOps';
+import { buildBinOptions, isBinOccupied } from '../binOptions';
 import { esc } from '../../../utils/formatters';
 import { toast } from '../../../utils/dom';
 
@@ -102,6 +103,11 @@ export class TransferModal {
                 this.updatePostSelect(wsSelect.value);
             });
         }
+
+        // Occupancy-aware Bin list: rebuild on every Rack/Shelf change.
+        const onLocChange = () => this.refreshBins();
+        overlay.querySelector('#transRackSelect')?.addEventListener('change', onLocChange);
+        overlay.querySelector('#transShelfSelect')?.addEventListener('change', onLocChange);
     }
 
     private static populate(tool: any): void {
@@ -142,13 +148,25 @@ export class TransferModal {
         }
 
         if (binSelect) {
-            let html = '<option value="">- Select -</option>';
-            for (let i = 1; i <= 50; i++) html += `<option value="Bin ${i}">Bin ${i}</option>`;
-            binSelect.innerHTML = html;
-            if (tool.address && tool.address.bin) binSelect.value = tool.address.bin;
+            binSelect.innerHTML = '<option value="">- Select -</option>';
         }
+        // Rebuild bins for the current Rack/Shelf, excluding the tool being moved
+        // so its own cell stays selectable.
+        this.refreshBins(tool.address?.bin || null, tool.id);
 
         (document.getElementById('transNotes') as HTMLInputElement).value = '';
+    }
+
+    /** Rebuild the Bin list for the current Rack/Shelf (occupied cells disabled). */
+    private static refreshBins(current?: string | null, excludeId?: string): void {
+        const rack = (document.getElementById('transRackSelect') as HTMLSelectElement | null)?.value || '';
+        const shelf = (document.getElementById('transShelfSelect') as HTMLSelectElement | null)?.value || '';
+        const binSelect = document.getElementById('transBinSelect') as HTMLSelectElement | null;
+        if (!binSelect) return;
+        const cur = current !== undefined ? current : binSelect.value;
+        const { html, selected } = buildBinOptions('', rack, shelf, cur, excludeId ?? this.currentToolId ?? undefined);
+        binSelect.innerHTML = html;
+        if (selected) binSelect.value = selected;
     }
 
     private static updatePostSelect(ws: string, selectedPost?: string): void {
@@ -170,6 +188,11 @@ export class TransferModal {
 
         if (!ws) {
             toast('Destination workstation is required.', 'warning');
+            return;
+        }
+
+        if (isBinOccupied(ws, rack, shelf, bin, this.currentToolId)) {
+            toast(T('BIN_TAKEN'), 'danger');
             return;
         }
 

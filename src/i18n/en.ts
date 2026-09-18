@@ -201,6 +201,7 @@ export const en: Record<string, string> = {
   "PROGRAM_HINT": "Product program the tool belongs to (USS, BAC, WABTEC…). Optional.",
   "PROGRAM_WS_POST": "Program / Workstation / Post",
   "BIN_ORGANIZER": "organizer",
+  "BIN_TAKEN": "This storage cell is already occupied — pick the next free bin.",
   "ORGANIZER_FLAG": "Organizer (holds many small items in one bin)",
   "PHOTO_QUOTA_WARN": "⚠️ Storage is nearly full (photos). Export a backup (.json) and delete old photos before adding new ones — otherwise changes cannot be saved.",
   "LOGOUT_CONFIRM": "Logout and switch to Operator role?",

@@ -61,10 +61,26 @@ export async function getQrDataUrl(text: string, size: number = 150): Promise<st
 
 export const generateQrDataUrl = getQrDataUrl;
 
+/**
+ * Base URL the QR codes point at. Prefer the origin the app is actually served
+ * from so a label printed by a preview/staging/local instance round-trips back
+ * to that same instance; the deployed constant is only a fallback for
+ * non-browser contexts (tests, exports).
+ */
+function qrBaseUrl(): string {
+  try {
+    const origin = typeof window !== 'undefined' ? window.location?.origin : '';
+    if (origin && /^https?:\/\//i.test(origin)) return origin.replace(/\/$/, '');
+  } catch {
+    /* ignore — fall through to the constant */
+  }
+  return QR_BASE_URL;
+}
+
 export function toolDeeplink(toolId: string): string {
-  return `${QR_BASE_URL}/?tool=${encodeURIComponent(toolId)}`;
+  return `${qrBaseUrl()}/?tool=${encodeURIComponent(toolId)}`;
 }
 
 export function locationDeeplink(loc: string): string {
-  return `${QR_BASE_URL}/?loc=${encodeURIComponent(loc)}`;
+  return `${qrBaseUrl()}/?loc=${encodeURIComponent(loc)}`;
 }

@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v120)
+# 5S Tool Command Center — v3 (v121)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -41,7 +41,11 @@ src/
   next-due date.
 - **Immutable audit trails** — Tool ID as primary key; System Audit Log tracks
   issuance, return, edit, retirement.
-- **Address storage** — `Zone | Rack | Shelf-Bin` coordinates on create/transfer.
+- **Address storage** — `Zone | Rack | Shelf-Bin` coordinates on create/transfer. The
+  **Bin** list is occupancy-aware: cells already taken on that Rack+Shelf are **disabled**
+  (`Bin 3 — occupied`), organizer cells are marked (`Bin 5 — 🧰 organizer`) but stay
+  selectable, and the next free cell is auto-selected while a manual pick of a still-free
+  cell is preserved. The same guard runs on submit, so two tools can never share a cell.
 - **Decommissioning** — >75% wear → auto-retire to Archive (kept, off dashboards).
 
 ### 2. Analytics & 5S
@@ -96,9 +100,16 @@ grouped by the role that can act on it**.
 
 ### 4. Labels & exports
 - Label formats **A/B/C** (Code39 + QR), batch printing queue.
+- **WYSIWYG preview** — the print dialog renders the *real* label geometry (the same
+  `buildLabelSheetHtml` output that goes to the printer), so a sheet-stock run shows the full
+  die-cut page with the label in its correct cell instead of a lone centred sample.
+- **Addresses in full** — labels never abbreviate: storage coordinates always read
+  `Rack A | Shelf 2 | Bin 3`, even for legacy rows that stored a bare `A` / `2` / `3`.
 - **Print Queue** (header 🏷 or *Operations & Reports*) — collect labels first, then generate
   the whole sheet on any wired stock (**Avery 5161** / 5163 / 5366, Brady roll, Generic A/B/C,
-  Calibration Tag) with a start-cell offset for part-used sheets.
+  Calibration Tag) with a start-cell offset for part-used sheets. Sheet geometry
+  (`.sheet-page` / `.sheet-cell`) is inlined into the print iframe, so die-cut alignment does
+  not depend on the external stylesheet resolving there.
 - **Calibration / verification tag** (`calTag`, 70×50 mm) — prints the verification
   block (who verified · date · valid until · certificate #) next to the QR, so a
   scanned tag opens the full tool card. The tag prints on a **clean white page** — the
@@ -125,12 +136,18 @@ grouped by the role that can act on it**.
   filtering), stamp one date / inspector / interval / certificate, then print a run of tags.
   The queue card lists the items due (≤14 days) or overdue; each row opens the tool card.
 - The tool card shows the verification block and the last five verification events;
-  the tag turns red when the next-due date has passed.
+  the tag turns red when the next-due date has passed. If a row carries only the structured
+  `calHistory[]` (e.g. imported from the monolith), the card and tag fall back to its newest
+  entry so “who verified” is never blank.
+- **Dates are local, not UTC** — a `YYYY-MM-DD` verification date is parsed at local
+  midnight, so a tag stamped on the 18th no longer prints as `9/17` in timezones behind UTC.
 
 ### 4b. QR round-trip (labels → card)
-- Labels encode `…/?tool=ID` / `…/?loc=LOC:…`. Opening that URL (phone camera, shared
-  link, installed PWA) routes straight to the tool card or the storage view; the
-  in-app scanner and a wedge barcode scanner resolve the same payloads, including
+- Labels encode `…/?tool=ID` / `…/?loc=LOC:…`, using the **origin the app is served from**
+  (the deployed constant is only a fallback), so a label printed by a preview/staging/local
+  instance round-trips back to that same instance rather than to production. Opening that URL
+  (phone camera, shared link, installed PWA) routes straight to the tool card or the storage
+  view; the in-app scanner and a wedge barcode scanner resolve the same payloads, including
   bare ids. Parsing lives in `src/utils/scanPayload.ts`.
 
 ### 4b. SOP & Standards hub
