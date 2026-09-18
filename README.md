@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v115)
+# 5S Tool Command Center — v3 (v116)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -98,8 +98,10 @@ grouped by the role that can act on it**.
 - **Record Calibration** on any tool (card button / tool grid), regardless of status —
   a freshly installed tool is `Active`, not `Maintenance`, yet still needs its first
   verification. *Complete Maintenance* captures the same fields.
-- **Calibration Session** (*Operations & Reports*) — pick a station, tick a shelf of
-  tools, stamp one date / inspector / interval / certificate, then print a run of tags.
+- **Calibration Session** (*Operations & Reports*, or the **Maintenance & Calibration Queue**
+  card in the Category Hub) — pick a station, tick a shelf of tools, stamp one date /
+  inspector / interval / certificate, then print a run of tags. The queue card lists the
+  items due (≤14 days) or overdue; each row opens the tool card.
 - The tool card shows the verification block and the last five verification events;
   the tag turns red when the next-due date has passed.
 
