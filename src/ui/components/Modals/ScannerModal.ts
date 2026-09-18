@@ -217,13 +217,20 @@ export class ScannerModal {
         this.close();
         if (this.onScanCallback) {
             this.onScanCallback(code);
-        } else {
-            toast(`📷 Scanned: ${code}`);
-            const globalSearch = document.getElementById('globalSearch') as HTMLInputElement;
-            if (globalSearch) {
-                globalSearch.value = code;
-                globalSearch.dispatchEvent(new Event('input'));
-            }
+            return;
+        }
+        // No caller-supplied callback (e.g. the Ops menu quick scan): route through
+        // the app's shared handler so a label URL resolves to the tool card.
+        const shared = (window as any).handleScanResult;
+        if (typeof shared === 'function') {
+            shared(code);
+            return;
+        }
+        toast(`📷 Scanned: ${code}`);
+        const globalSearch = document.getElementById('globalSearch') as HTMLInputElement;
+        if (globalSearch) {
+            globalSearch.value = code;
+            globalSearch.dispatchEvent(new Event('input'));
         }
     }
 }

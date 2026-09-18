@@ -11,6 +11,7 @@ import { Photos } from '../../../utils/photos';
 import { Tool } from '../../../types/inventory';
 import { LabelModal } from './LabelModal';
 import { ToolModal } from './ToolModal';
+import { CalibrationModal } from './CalibrationModal';
 import { generateQrDataUrl, toolDeeplink } from '../../../labels/qrGenerator';
 import { printHtml, toast } from '../../../utils/dom';
 import { windowConfirm } from '../../../utils/dialogCompat';
@@ -65,6 +66,7 @@ export class DetailModal {
                         </div>
                         <div style="display:flex; gap:8px;">
                             <button class="btn btn-warning" id="detPrintBtn">🖨 ${T('Print Sticker / Label')}</button>
+                            <button class="btn btn-warning" id="detCalibrateBtn">⚗ ${T('Record Calibration')}</button>
                             <button class="btn btn-secondary" id="detPassportBtn">📄 ${T('Tool Passport')}</button>
                             <button class="btn" id="detQueueBtn">+ 🏷 ${T('Add to Queue')}</button>
                             <button class="btn" id="detEditBtn">✏️ ${T('Edit Tool')}</button>
@@ -100,6 +102,8 @@ export class DetailModal {
                         </table>
                     </div>
 
+                    <div style="margin-bottom:15px;" id="detCalibration"></div>
+
                     <div style="margin-bottom:15px;" id="detLifecycle"></div>
 
                     <h4 style="margin:15px 0 8px; color:var(--primary-hover);">${T('Transaction History & Photos')}</h4>
@@ -125,6 +129,12 @@ export class DetailModal {
         overlay.querySelector('#detPassportBtn')?.addEventListener('click', () => {
             if (this.currentToolId) {
                 this.printPassport(this.currentToolId);
+            }
+        });
+
+        overlay.querySelector('#detCalibrateBtn')?.addEventListener('click', () => {
+            if (this.currentToolId) {
+                Auth.doAction('Tool Crib Manager', () => CalibrationModal.open(this.currentToolId!));
             }
         });
 
@@ -269,6 +279,27 @@ export class DetailModal {
                     }
                 });
             });
+        }
+
+        // Calibration / verification block
+        const calEl = document.getElementById('detCalibration');
+        if (calEl) {
+            const hist = tool.calHistory || [];
+            const overdue = Boolean(tool.calDue && tool.calDue < nowISO().split('T')[0]);
+            const rows: [string, string][] = [
+                [T('Verified by'), tool.calVerifiedBy || '—'],
+                [T('Verified on'), tool.calVerifiedAt ? fmtDate(tool.calVerifiedAt) : '—'],
+                [T('Next due'), tool.calDue ? fmtDate(tool.calDue) : '—'],
+                [T('Interval (days)'), tool.calIntervalDays ? String(tool.calIntervalDays) : '—'],
+                [T('Certificate'), tool.calCertNo || '—'],
+            ];
+            calEl.innerHTML = `
+                <h4 style="margin:0 0 8px; color:var(--primary-hover);">⚗ ${T('Calibration / Verification')}</h4>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:6px 14px; font-size:0.85rem;">
+                    ${rows.map(([k, v]) => `<div><span style="color:var(--text-muted);">${esc(k)}:</span> <strong style="${k === T('Next due') && overdue ? 'color:var(--danger);' : ''}">${esc(v)}</strong></div>`).join('')}
+                </div>
+                ${hist.length ? `<ul class="history-list" style="margin-top:8px;">${hist.slice().reverse().slice(0, 5).map(h => `<li class="history-item"><span>${esc(h.date)} — ${esc(h.result)} · ${esc(h.by || 'N/A')}${h.nextDue ? ` → ${esc(h.nextDue)}` : ''}${h.certNo ? ` [${esc(h.certNo)}]` : ''}</span></li>`).join('')}</ul>` : ''}
+            `;
         }
 
         // 5S Lifecycle

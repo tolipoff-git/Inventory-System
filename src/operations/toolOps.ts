@@ -1,4 +1,4 @@
-import { Tool } from '../types/inventory';
+import { Tool, CalibrationRecord } from '../types/inventory';
 import { Employee } from '../types/personnel';
 import { Store } from '../storage/store';
 import { CONFIG } from '../config/constants';
@@ -252,21 +252,159 @@ export async function sendToolToService(
 
 export const serviceTool = sendToolToService;
 
+/** Structured input for a verification / calibration event. */
+export interface CalibrationInput {
+  by?: string;
+  /** YYYY-MM-DD; defaults to today. */
+  date?: string;
+  intervalDays?: number;
+  certNo?: string;
+  result?: 'PASS' | 'FAIL' | 'FLAG';
+  notes?: string;
+  /** Explicit next-due override; otherwise computed from `date + intervalDays`. */
+  nextDue?: string;
+}
+
+/** `date + intervalDays`, or `undefined` when no usable interval is given. */
+export function calDueFrom(dateISO: string, intervalDays?: number): string | undefined {
+  if (!intervalDays || intervalDays <= 0) return undefined;
+  const base = new Date(`${dateISO}T00:00:00`);
+  if (isNaN(base.getTime())) return undefined;
+  return new Date(base.getTime() + intervalDays * CONFIG.DAY_MS).toISOString().split('T')[0];
+}
+
+/**
+ * Record a verification / calibration event on a tool.
+ *
+ * This is the single source of truth for the calibration block printed on the
+ * tag and shown on the tool card: it stamps `calVerifiedAt` / `calVerifiedBy`,
+ * appends to the structured `calHistory`, and rolls `calDue` forward from the
+ * interval. Works on any tool regardless of status (a freshly installed tool is
+ * `Active`, not `Maintenance`, yet still needs its first verification).
+ */
+export async function recordCalibration(
+  toolId: string,
+  input: CalibrationInput = {}
+): Promise<boolean> {
+  const tool = Store.getTool(toolId);
+  if (!tool) return false;
+
+  const date = input.date || nowISO().split('T')[0];
+  const by = (input.by || '').trim();
+  const result = input.result || 'PASS';
+  const intervalDays = input.intervalDays && input.intervalDays > 0
+    ? input.intervalDays
+    : tool.calIntervalDays;
+  const nextDue = input.nextDue || calDueFrom(date, intervalDays);
+
+  tool.calVerifiedAt = date;
+  if (by) tool.calVerifiedBy = by;
+  if (intervalDays) tool.calIntervalDays = intervalDays;
+  if (input.certNo) tool.calCertNo = input.certNo;
+  if (nextDue) tool.calDue = nextDue;
+
+  if (!Array.isArray(tool.calHistory)) tool.calHistory = [];
+  const rec: CalibrationRecord = {
+    date,
+    by,
+    result,
+    certNo: input.certNo,
+    intervalDays,
+    nextDue,
+    notes: input.notes,
+  };
+  tool.calHistory.push(rec);
+
+  Store.touch(tool);
+  Store.toolEvent(tool, `Calibration ${result} by ${by || 'N/A'} on ${date}${nextDue ? ` (next due ${nextDue})` : ''}`);
+  Store.log('TOOL_CALIBRATION', `${tool.id} ${result} by ${by || 'N/A'} → due ${nextDue || 'n/a'}`);
+  await Store.save();
+  return true;
+}
+
+/**
+ * Batch verification: stamp the same date / inspector / interval onto many tools
+ * (a shelf of crimpers verified in one session) and return the ids that were
+ * actually updated.
+ */
+export async function recordCalibrationBatch(
+  toolIds: string[],
+  input: CalibrationInput = {}
+): Promise<string[]> {
+  const date = input.date || nowISO().split('T')[0];
+  const by = (input.by || '').trim();
+  const result = input.result || 'PASS';
+  const updated: string[] = [];
+
+  for (const id of toolIds) {
+    const tool = Store.getTool(id);
+    if (!tool) continue;
+
+    const intervalDays = input.intervalDays && input.intervalDays > 0
+      ? input.intervalDays
+      : tool.calIntervalDays;
+    const nextDue = input.nextDue || calDueFrom(date, intervalDays);
+
+    tool.calVerifiedAt = date;
+    if (by) tool.calVerifiedBy = by;
+    if (intervalDays) tool.calIntervalDays = intervalDays;
+    if (input.certNo) tool.calCertNo = input.certNo;
+    if (nextDue) tool.calDue = nextDue;
+
+    if (!Array.isArray(tool.calHistory)) tool.calHistory = [];
+    const rec: CalibrationRecord = { date, by, result, certNo: input.certNo, intervalDays, nextDue, notes: input.notes };
+    tool.calHistory.push(rec);
+
+    Store.touch(tool);
+    Store.toolEvent(tool, `Calibration ${result} by ${by || 'N/A'} on ${date}${nextDue ? ` (next due ${nextDue})` : ''}`);
+    updated.push(tool.id);
+  }
+
+  if (updated.length) {
+    Store.log('TOOL_CALIBRATION_BATCH', `${updated.length} tool(s) verified by ${by || 'N/A'} on ${date}`);
+    await Store.save();
+  }
+  return updated;
+}
+
 export async function completeMaintenance(
   toolId: string,
   inspectorOrNotes: string = 'Tech',
-  nextCalDate?: string
+  nextCalDate?: string,
+  cal?: CalibrationInput
 ): Promise<boolean> {
   const tool = Store.getTool(toolId);
   if (!tool) return false;
   if (tool.status !== 'Maintenance' && tool.status !== 'Overdue') return false;
 
   tool.status = 'Active';
-  if (nextCalDate) {
-    tool.calDue = nextCalDate;
-  } else {
-    tool.calDue = new Date(Date.now() + 180 * CONFIG.DAY_MS).toISOString().split('T')[0];
-  }
+
+  const date = (cal && cal.date) || nowISO().split('T')[0];
+  const by = ((cal && cal.by) || inspectorOrNotes || '').trim();
+  const intervalDays = cal && cal.intervalDays && cal.intervalDays > 0
+    ? cal.intervalDays
+    : tool.calIntervalDays;
+  const nextDue = nextCalDate
+    || (cal && cal.nextDue)
+    || calDueFrom(date, intervalDays)
+    || new Date(Date.now() + 180 * CONFIG.DAY_MS).toISOString().split('T')[0];
+  tool.calDue = nextDue;
+
+  // Structured calibration record — this is what the verification tag prints.
+  tool.calVerifiedAt = date;
+  if (by) tool.calVerifiedBy = by;
+  if (intervalDays) tool.calIntervalDays = intervalDays;
+  if (cal && cal.certNo) tool.calCertNo = cal.certNo;
+  if (!Array.isArray(tool.calHistory)) tool.calHistory = [];
+  tool.calHistory.push({
+    date,
+    by,
+    result: (cal && cal.result) || 'PASS',
+    certNo: cal && cal.certNo,
+    intervalDays,
+    nextDue,
+    notes: (cal && cal.notes) || inspectorOrNotes,
+  });
 
   if (!Array.isArray(tool.audit_history)) tool.audit_history = [];
   tool.audit_history.push({

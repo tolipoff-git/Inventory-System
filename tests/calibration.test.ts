@@ -1,0 +1,176 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import { IDBFactory } from 'fake-indexeddb';
+import { Store } from '../src/storage/store';
+import { AppDB } from '../src/storage/indexedDb';
+import { Tool } from '../src/types/inventory';
+import { parseScanPayload } from '../src/utils/scanPayload';
+import { calDueFrom, recordCalibration, recordCalibrationBatch, completeMaintenance } from '../src/operations/toolOps';
+
+globalThis.indexedDB = new IDBFactory();
+AppDB._db = null;
+AppDB._failed = false;
+
+const origErr = console.error;
+console.error = (msg: unknown, ...rest: unknown[]) => {
+  const s = String(msg);
+  if (s.includes('[AppDB') || s.includes('IndexedDB')) return;
+  origErr.call(console, msg, ...rest);
+};
+
+async function freshStore(): Promise<void> {
+  globalThis.indexedDB = new IDBFactory();
+  AppDB._db = null;
+  AppDB._failed = false;
+  Store.tools = [];
+  Store.personnel = [];
+  Store.users = [];
+  Store.auditLog = [];
+  Store.workstations = [];
+  Store.workposts = [];
+  Store.programs = [];
+  Store.wsProgram = {};
+  Store.registryEvents = {};
+  Store.sops = [];
+  Store.audits5s = [];
+  Store.meta = { schemaVersion: Store.meta.schemaVersion };
+  Store.labelQueue = [];
+  await Store.init();
+  Store.tools = [];
+  Store.personnel = [];
+  Store.workstations = [];
+  Store.workposts = [];
+  Store.programs = [];
+  Store.wsProgram = {};
+  Store.registryEvents = {};
+}
+
+beforeEach(async () => {
+  await freshStore();
+});
+
+function tool(on: Partial<Tool> & { id: string }): Tool {
+  return {
+    name: 'Tool',
+    type: 'Permanent',
+    category: 'Hand Tools',
+    location: 'Shadow Board',
+    status: 'Active',
+    ...on,
+  };
+}
+
+describe('parseScanPayload', () => {
+  it('resolves a tool label URL to a tool id', () => {
+    expect(parseScanPayload('https://inventory-system.tolipoff.workers.dev/?tool=TW-001'))
+      .toEqual({ kind: 'tool', value: 'TW-001' });
+  });
+
+  it('resolves a location label URL to a location id', () => {
+    const url = 'https://inventory-system.tolipoff.workers.dev/?loc=' + encodeURIComponent('LOC:rack:A:Rack A:Shelf 2:Bin 3');
+    expect(parseScanPayload(url)).toEqual({ kind: 'location', value: 'LOC:rack:A:Rack A:Shelf 2:Bin 3' });
+  });
+
+  it('accepts the legacy ?id= / ?name= aliases', () => {
+    expect(parseScanPayload('https://x/?id=SK-100')).toEqual({ kind: 'tool', value: 'SK-100' });
+    expect(parseScanPayload('https://x/?name=LOC:shelf:Z')).toEqual({ kind: 'location', value: 'LOC:shelf:Z' });
+  });
+
+  it('accepts a bare query fragment (no scheme)', () => {
+    expect(parseScanPayload('?tool=TW-002')).toEqual({ kind: 'tool', value: 'TW-002' });
+  });
+
+  it('accepts a bare LOC: id and a bare tool id', () => {
+    expect(parseScanPayload('LOC:rack:A:Rack A:Shelf 2:Bin 3')).toEqual({ kind: 'location', value: 'LOC:rack:A:Rack A:Shelf 2:Bin 3' });
+    expect(parseScanPayload('CRIMP-12')).toEqual({ kind: 'tool', value: 'CRIMP-12' });
+  });
+
+  it('falls back to raw for anything unrecognized', () => {
+    expect(parseScanPayload('hello world')).toEqual({ kind: 'raw', value: 'hello world' });
+    expect(parseScanPayload('')).toEqual({ kind: 'raw', value: '' });
+  });
+});
+
+describe('calDueFrom', () => {
+  it('adds the interval in days to the verification date', () => {
+    expect(calDueFrom('2026-01-01', 180)).toBe('2026-06-30');
+  });
+
+  it('returns undefined without a usable interval', () => {
+    expect(calDueFrom('2026-01-01', 0)).toBeUndefined();
+    expect(calDueFrom('2026-01-01', undefined)).toBeUndefined();
+  });
+});
+
+describe('recordCalibration', () => {
+  it('stamps the structured verification fields and rolls calDue forward', async () => {
+    Store.tools = [tool({ id: 'CRIMP-1' })];
+
+    const ok = await recordCalibration('CRIMP-1', {
+      by: 'Ivanov',
+      date: '2026-01-01',
+      intervalDays: 180,
+      certNo: 'CERT-42',
+      result: 'PASS',
+    });
+
+    expect(ok).toBe(true);
+    const t = Store.getTool('CRIMP-1')!;
+    expect(t.calVerifiedAt).toBe('2026-01-01');
+    expect(t.calVerifiedBy).toBe('Ivanov');
+    expect(t.calIntervalDays).toBe(180);
+    expect(t.calCertNo).toBe('CERT-42');
+    expect(t.calDue).toBe('2026-06-30');
+    expect(t.calHistory).toHaveLength(1);
+    expect(t.calHistory![0]).toMatchObject({ date: '2026-01-01', by: 'Ivanov', result: 'PASS', nextDue: '2026-06-30' });
+    expect(Store.auditLog.find(l => l.action === 'TOOL_CALIBRATION')).toBeTruthy();
+  });
+
+  it('works on an Active tool (a freshly installed tool is not in Maintenance)', async () => {
+    Store.tools = [tool({ id: 'CRIMP-2', status: 'Active' })];
+    expect(await recordCalibration('CRIMP-2', { by: 'Petrov', date: '2026-02-01', intervalDays: 365 })).toBe(true);
+    expect(Store.getTool('CRIMP-2')!.calDue).toBe('2027-02-01');
+  });
+
+  it('returns false for an unknown tool', async () => {
+    expect(await recordCalibration('NOPE-1', {})).toBe(false);
+  });
+});
+
+describe('recordCalibrationBatch', () => {
+  it('stamps every selected tool with the same session data', async () => {
+    Store.tools = [tool({ id: 'CRIMP-1' }), tool({ id: 'CRIMP-2' }), tool({ id: 'CRIMP-3' })];
+
+    const updated = await recordCalibrationBatch(['CRIMP-1', 'CRIMP-2', 'MISSING-9'], {
+      by: 'Ivanov',
+      date: '2026-03-01',
+      intervalDays: 90,
+    });
+
+    expect(updated).toEqual(['CRIMP-1', 'CRIMP-2']);
+    expect(Store.getTool('CRIMP-1')!.calDue).toBe('2026-05-30');
+    expect(Store.getTool('CRIMP-2')!.calVerifiedBy).toBe('Ivanov');
+    expect(Store.getTool('CRIMP-3')!.calVerifiedAt).toBeUndefined();
+    expect(Store.auditLog.find(l => l.action === 'TOOL_CALIBRATION_BATCH')).toBeTruthy();
+  });
+});
+
+describe('completeMaintenance with calibration input', () => {
+  it('records who verified and when, and computes the next due from the interval', async () => {
+    Store.tools = [tool({ id: 'CRIMP-4', status: 'Maintenance' })];
+
+    const ok = await completeMaintenance('CRIMP-4', 'Calibrated to ±2%', undefined, {
+      by: 'Sidorov',
+      date: '2026-04-01',
+      intervalDays: 180,
+      certNo: 'CERT-7',
+    });
+
+    expect(ok).toBe(true);
+    const t = Store.getTool('CRIMP-4')!;
+    expect(t.status).toBe('Active');
+    expect(t.calVerifiedAt).toBe('2026-04-01');
+    expect(t.calVerifiedBy).toBe('Sidorov');
+    expect(t.calDue).toBe('2026-09-28');
+    expect(t.calHistory).toHaveLength(1);
+  });
+});

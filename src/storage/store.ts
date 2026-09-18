@@ -952,6 +952,7 @@ class StoreManager {
     this.tools.forEach(t => {
       if (!t.commissioned_date) t.commissioned_date = '2025-05-10';
       if (!Array.isArray(t.audit_history)) t.audit_history = [];
+      if (!Array.isArray(t.calHistory)) t.calHistory = [];
       if (!Array.isArray(t.history)) t.history = [];
       if (!t.serialNumber && !(t as any).sn) {
         const rnd = Math.random().toString(36).substring(2, 10).toUpperCase();

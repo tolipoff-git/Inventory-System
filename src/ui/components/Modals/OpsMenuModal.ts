@@ -7,6 +7,7 @@ import { ScannerModal } from './ScannerModal';
 import { AuditModal } from './AuditModal';
 import { OrderModal } from './OrderModal';
 import { LabelModal } from './LabelModal';
+import { CalibrationModal } from './CalibrationModal';
 import { exportFullInventoryExcel } from '../../../reports/reportExports';
 import { printQueueLabels } from '../../../labels/labelPrint';
 import { Store } from '../../../storage/store';
@@ -73,6 +74,11 @@ export class OpsMenuModal {
             LabelModal.openLocationLabels();
         });
 
+        modal.querySelector('#opsCalibrationSessionBtn')?.addEventListener('click', () => {
+            this.close();
+            CalibrationModal.openSession();
+        });
+
         modal.querySelector('#opsPrintQueueBtn')?.addEventListener('click', async () => {
             this.close();
             await printQueueLabels();
@@ -107,6 +113,7 @@ export class OpsMenuModal {
                     <button class="btn" id="opsOrdersBtn">📦 ${T('Purchase Orders')}</button>
                     <button class="btn" id="opsPostAuditBtn">📋 ${T('5S Post Audit')}</button>
                     <button class="btn btn-warning" id="opsStorageLabelsBtn">🖨 ${T('Print Storage Labels')}</button>
+                    <button class="btn btn-warning" id="opsCalibrationSessionBtn">⚗ ${T('Calibration Session')}</button>
                     <button class="btn btn-secondary" id="opsPrintQueueBtn" style="${qLen > 0 ? '' : 'display:none;'}">🏷 ${T('Print Label Queue')} (${qLen})</button>
                     <button class="btn btn-danger" id="opsUpdatePwaBtn">🔄 ${T('Update PWA')}</button>
                 </div>

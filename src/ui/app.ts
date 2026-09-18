@@ -30,9 +30,11 @@ import { SystemMenuModal } from './components/Modals/SystemMenuModal';
 import { OpsMenuModal } from './components/Modals/OpsMenuModal';
 import { EmployeeProfileModal } from './components/Modals/EmployeeProfileModal';
 import { RiskModal } from './components/Modals/RiskModal';
+import { CalibrationModal } from './components/Modals/CalibrationModal';
 import { isPermanentTool, isConsumableTool, workstationAndPostOf, statusBucket } from '../operations/toolOps';
 import { receiveFullOrder, cancelOrder } from '../operations/orderOps';
 import { daysUntil } from '../utils/formatters';
+import { parseScanPayload } from '../utils/scanPayload';
 import { toast } from '../utils/dom';
 import { windowConfirm } from '../utils/dialogCompat';
 import { hardReloadPwa } from '../utils/pwa';
@@ -71,6 +73,39 @@ export class AppUI {
 
         // Initialize Gate
         GateModal.initGate();
+
+        // Open a tool / location from a QR deep link (?tool= / ?loc=).
+        this.handleDeepLink();
+    }
+
+    /**
+     * QR deep-link router. Labels encode `…/?tool=ID` or `…/?loc=LOC:…`; opening
+     * that URL (phone camera, shared link, installed PWA) must land on the tool
+     * card or the storage view. The monolith had this in `init()`; the modular
+     * entry point dropped it, so external scans did nothing.
+     */
+    private handleDeepLink(): void {
+        const params = new URLSearchParams(location.search);
+        const toolId = params.get('tool') || params.get('id');
+        const locId = params.get('loc') || params.get('name');
+        if (!toolId && !locId) return;
+
+        const cleanUrl = () => {
+            try { window.history.replaceState({}, document.title, window.location.pathname); } catch { /* ignore */ }
+        };
+
+        if (toolId) {
+            const tool = Store.getTool(toolId);
+            if (tool) {
+                DetailModal.open(tool.id);
+            } else {
+                toast(`${T('Tool not found:')} ${toolId}`, 'warning');
+            }
+            cleanUrl();
+        } else if (locId) {
+            this.setFilter('location_qr', locId);
+            cleanUrl();
+        }
     }
 
     private setupThemeAndMode(): void {
@@ -300,18 +335,34 @@ export class AppUI {
     }
 
     public handleScanResult(code: string): void {
-        if (code.startsWith('LOC:')) {
-            this.setFilter('location_qr', code);
+        // Labels encode a full URL; wedge scanners / manual entry give a bare id.
+        const payload = parseScanPayload(code);
+
+        if (payload.kind === 'tool') {
+            const tool = Store.getTool(payload.value);
+            if (tool) {
+                DetailModal.open(tool.id);
+                return;
+            }
+        } else if (payload.kind === 'location') {
+            this.setFilter('location_qr', payload.value);
             return;
         }
 
-        const tool = Store.getTool(code);
+        const raw = payload.kind === 'raw' ? payload.value : code;
+
+        if (raw.startsWith('LOC:')) {
+            this.setFilter('location_qr', raw);
+            return;
+        }
+
+        const tool = Store.getTool(raw);
         if (tool) {
             DetailModal.open(tool.id);
             return;
         }
 
-        const emp = Store.getEmp(code);
+        const emp = Store.getEmp(raw);
         if (emp) {
             EmployeeProfileModal.open(emp.id);
             return;
@@ -320,7 +371,7 @@ export class AppUI {
         // Fallback: search query
         const searchInput = document.querySelector<HTMLInputElement>('#globalSearch');
         if (searchInput) {
-            searchInput.value = code;
+            searchInput.value = raw;
             this.filterAndRenderGrid();
         }
     }
@@ -345,6 +396,12 @@ export class AppUI {
             case 'service':
             case 'complete-maint':
                 Auth.doAction('Tool Crib Manager', () => ServiceModal.open(id));
+                break;
+            case 'calibrate':
+                Auth.doAction('Tool Crib Manager', () => CalibrationModal.open(id));
+                break;
+            case 'calibration-session':
+                Auth.doAction('Tool Crib Manager', () => CalibrationModal.openSession());
                 break;
             case 'retire':
                 Auth.doAction('Administrator', () => RetireModal.open(id));
@@ -513,6 +570,7 @@ export class AppUI {
             if (el) el.classList.remove('active');
         };
         (window as any).doAction = (role: any, cb: any) => Auth.doAction(role, cb);
+        (window as any).handleScanResult = (code: string) => this.handleScanResult(code);
         (window as any).toggleLanguage = () => toggleLanguage();
         (window as any).forceUpdatePWA = () => hardReloadPwa();
         (window as any).T = T;
