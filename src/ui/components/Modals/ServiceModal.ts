@@ -4,9 +4,9 @@
 
 import { T } from '../../../i18n';
 import { Store } from '../../../storage/store';
-import { Auth } from '../../../auth/authManager';
 import { serviceTool, completeMaintenance } from '../../../operations/toolOps';
 import { esc, nowISO } from '../../../utils/formatters';
+import { verifierOptionsHtml, defaultVerifier } from '../../../utils/personnelPicker';
 import { toast } from '../../../utils/dom';
 
 export class ServiceModal {
@@ -74,7 +74,7 @@ export class ServiceModal {
                         <div class="form-row">
                             <div class="form-group">
                                 <label>${T('Verified by')}:</label>
-                                <input type="text" id="serviceVerifiedBy" class="form-control">
+                                <select id="serviceVerifiedBy" class="form-control">${verifierOptionsHtml(defaultVerifier())}</select>
                             </div>
                             <div class="form-group">
                                 <label>${T('Verification Date')}:</label>
@@ -137,9 +137,10 @@ export class ServiceModal {
         (document.getElementById('serviceCertNo') as HTMLInputElement).value = '';
         (document.getElementById('serviceNextCalDue') as HTMLInputElement).value = '';
 
-        const byEl = document.getElementById('serviceVerifiedBy') as HTMLInputElement;
-        const user = Auth.getCurrentUser();
-        byEl.value = tool.calVerifiedBy || (user && user !== 'operator' ? user : '');
+        const byEl = document.getElementById('serviceVerifiedBy') as HTMLSelectElement;
+        const wantBy = defaultVerifier(tool.calVerifiedBy);
+        byEl.innerHTML = verifierOptionsHtml(wantBy);
+        byEl.value = wantBy;
 
         const dateEl = document.getElementById('serviceVerifiedAt') as HTMLInputElement;
         dateEl.value = nowISO().split('T')[0];
@@ -166,7 +167,7 @@ export class ServiceModal {
         if (!this.currentToolId) return;
         const nextCal = (document.getElementById('serviceNextCalDue') as HTMLInputElement).value;
         const notes = (document.getElementById('serviceCompleteNotes') as HTMLInputElement).value.trim();
-        const by = (document.getElementById('serviceVerifiedBy') as HTMLInputElement).value.trim();
+        const by = (document.getElementById('serviceVerifiedBy') as HTMLSelectElement).value.trim();
         const date = (document.getElementById('serviceVerifiedAt') as HTMLInputElement).value;
         const intervalRaw = parseInt((document.getElementById('serviceInterval') as HTMLInputElement).value || '', 10);
         const intervalDays = Number.isFinite(intervalRaw) && intervalRaw > 0 ? intervalRaw : undefined;

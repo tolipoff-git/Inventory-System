@@ -7,6 +7,7 @@ import { Store } from '../../storage/store';
 import { CONFIG } from '../../config/constants';
 import { esc, daysUntil } from '../../utils/formatters';
 import { orderStatusKey } from '../../operations/orderOps';
+import { requiresCalibration } from '../../operations/toolOps';
 import { Tool } from '../../types/inventory';
 
 export interface ToolGridCallbacks {
@@ -360,7 +361,7 @@ export class ToolGridComponent {
                         ${maintBtn}
                         <button class="btn btn-warning wide" data-action="procure" data-id="${esc(tool.id)}">${T('[Procure / Order]')}</button>
                         <button class="btn wide" data-action="print-label" data-id="${esc(tool.id)}">${T('Print Sticker / Label')}</button>
-                        <button class="btn wide" data-action="calibrate" data-id="${esc(tool.id)}">⚗ ${T('Record Calibration')}</button>
+                        ${requiresCalibration(tool) ? `<button class="btn wide" data-action="calibrate" data-id="${esc(tool.id)}">⚗ ${T('Record Calibration')}</button>` : ''}
                         <button class="btn btn-danger wide" data-action="retire" data-id="${esc(tool.id)}">${T('[Decommission / Retire]')}</button>
                     `}
                 </div>

@@ -2,21 +2,21 @@
 
 ## Overview
 - **Repository:** `/home/admin/git/Inventory-System`
-- **Current Version:** `v119` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
+- **Current Version:** `v120` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
 - **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith is preserved as `index.monolith.v97.html` for reference only and is **not** the active app.
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Session Continuity — Resume Point (2026-09-18, v119)
+## Session Continuity — Resume Point (2026-09-18, v120)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v119` (`package.json` = 119.0.0). `sw.js` `CACHE_VERSION` = `v119-<hash>`.
+- **Version:** `v120` (`package.json` = 120.0.0). `sw.js` `CACHE_VERSION` = `v120-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
-- **Gates (all green at v119):** `npm run typecheck` · `npm run lint` · `npm test` (105/105) ·
-  `npm run build` · `npm run check:i18n` (695/695). `tsconfig.json` includes `tests`,
+- **Gates (all green at v120):** `npm run typecheck` · `npm run lint` · `npm test` (108/108) ·
+  `npm run build` · `npm run check:i18n` (697/697). `tsconfig.json` includes `tests`,
   so `typecheck` and `build` cover the test suite too — keep it that way.
 - **Deploy:** push to `main` → Cloudflare Pages auto-deploy. Release workflow is defined in
   `AGENTS.md` (bump version → README + handoff → `bash build.sh` → feature commit →
@@ -125,7 +125,23 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
 - Standing instruction: perform the full release flow (bump → docs → `build.sh` → commits → push)
   automatically, without asking.
 
-## Recent Accomplishments (v49 – v119)
+## Recent Accomplishments (v49 – v120)
+
+### 0. Calibration: Personnel Picker, Clean Label, Class Gating (v120 Release)
+- **Who verified is now a person, not a login.** `src/utils/personnelPicker.ts`
+  (`verifierOptionsHtml` / `defaultVerifier`) drives the *Verified by* select in
+  `CalibrationModal` **and** `ServiceModal` from `Store.activePersonnel()` — the tag reads
+  “Igor Tolipov”, not “admin”. The logged-in user is preselected only if they exist in
+  personnel; the field is required before saving (`VERIFIER_REQUIRED`).
+- **Label print is on plain white.** The iframe in `printLabelViaIframe` now neutralises the
+  app shell: `html/body` forced to white/block and `html::before/::after`, `body::before/::after`
+  set to `content:none`. The tron theme paints a fixed SVG line grid on `body::before` and a
+  radial gradient on `body`, which was bleeding onto the printed label.
+- **Calibration action only for verification classes.** `CONFIG.CALIBRATION_PREFIXES =
+  ['TW','CT','DC','CA','GA']` + `requiresCalibration(tool)` gate the *Record Calibration*
+  button on the tool card, the grid card and the detail modal. Extend the array to add a
+  class (e.g. `TM` tape measures).
+- `tests/calibration.test.ts` +3 tests (class gating, verifier options/default).
 
 ### 0. Cross-Register Tool Search (v119 Release)
 - **Why "Torq" found nothing:** a tool stores only the class *prefix* (`TW-006`); the class

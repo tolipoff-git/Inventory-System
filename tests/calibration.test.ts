@@ -4,7 +4,8 @@ import { Store } from '../src/storage/store';
 import { AppDB } from '../src/storage/indexedDb';
 import { Tool } from '../src/types/inventory';
 import { parseScanPayload } from '../src/utils/scanPayload';
-import { calDueFrom, recordCalibration, recordCalibrationBatch, completeMaintenance, toolMatchesQuery } from '../src/operations/toolOps';
+import { calDueFrom, recordCalibration, recordCalibrationBatch, completeMaintenance, toolMatchesQuery, requiresCalibration } from '../src/operations/toolOps';
+import { verifierOptionsHtml, defaultVerifier } from '../src/utils/personnelPicker';
 
 globalThis.indexedDB = new IDBFactory();
 AppDB._db = null;
@@ -193,6 +194,40 @@ describe('toolMatchesQuery (cross-register search)', () => {
   it('matches everything on an empty query', () => {
     expect(toolMatchesQuery(tool({ id: 'TW-003' }), '')).toBe(true);
     expect(toolMatchesQuery(tool({ id: 'TW-003' }), '   ')).toBe(true);
+  });
+});
+
+describe('requiresCalibration (button gating)', () => {
+  it('is true only for verification classes', () => {
+    for (const id of ['TW-001', 'CT-100', 'DC-100', 'CA-100', 'GA-100']) {
+      expect(requiresCalibration(tool({ id })), id).toBe(true);
+    }
+    // Socket head, hand tool, consumable — no calibration tag.
+    for (const id of ['SK-100', 'HT-100', 'BW-100', 'PB-100', 'CN-100']) {
+      expect(requiresCalibration(tool({ id })), id).toBe(false);
+    }
+  });
+});
+
+describe('verifier picker', () => {
+  it('lists active personnel and preselects the recorded verifier', () => {
+    Store.personnel = [
+      { id: 'EMP-1', name: 'Igor Tolipov', role: 'Administrator' },
+      { id: 'EMP-2', name: 'Ivan Petrov', role: 'Operator' },
+    ];
+
+    const html = verifierOptionsHtml('Igor Tolipov');
+    expect(html).toContain('>Igor Tolipov<');
+    expect(html).toContain('>Ivan Petrov<');
+    expect(html).toContain('value="Igor Tolipov" selected');
+    expect(html).toContain('value=""');
+  });
+
+  it('defaults to the recorded verifier and otherwise stays empty', () => {
+    Store.personnel = [{ id: 'EMP-1', name: 'Igor Tolipov', role: 'Administrator' }];
+    expect(defaultVerifier('Igor Tolipov')).toBe('Igor Tolipov');
+    // 'admin' is not a person in the registry, so no person is auto-selected.
+    expect(defaultVerifier('')).toBe('');
   });
 });
 
