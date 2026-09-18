@@ -447,9 +447,14 @@ class StoreManager {
     });
   }
 
-  public getOrganizerBins(rack?: string, shelf?: string): number[] {
+  /**
+   * Bin numbers that hold an organizer on a shelf (Rack+Shelf).
+   * `excludeId` skips the record being edited so its own bin is not reported
+   * as occupied while its address is re-validated.
+   */
+  public getOrganizerBins(rack?: string, shelf?: string, excludeId?: string): number[] {
     const bins = this.tools
-      .filter(t => t.organizer && t.address && (t.address.rack || '') === (rack || '') && (t.address.shelf || '') === (shelf || '') && t.address.bin)
+      .filter(t => t.id !== excludeId && t.organizer && t.address && (t.address.rack || '') === (rack || '') && (t.address.shelf || '') === (shelf || '') && t.address.bin)
       .map(t => {
         const m = t.address!.bin!.match(/\d+/);
         return m ? parseInt(m[0], 10) : null;
@@ -458,10 +463,16 @@ class StoreManager {
     return [...new Set(bins)].sort((a, b) => a - b);
   }
 
-  public getUsedBins(_zone?: string, rack?: string, shelf?: string): number[] {
-    const orgBins = new Set(this.getOrganizerBins(rack, shelf));
+  /**
+   * Occupied bin numbers on a shelf, ascending. Keyed by Rack+Shelf (the zone is
+   * deliberately ignored: `address.zone` does not always match the workstation
+   * list, while rack letters are unique). Organizer bins are not blocking — more
+   * items can be added inside them. `excludeId` skips the record being edited.
+   */
+  public getUsedBins(_zone?: string, rack?: string, shelf?: string, excludeId?: string): number[] {
+    const orgBins = new Set(this.getOrganizerBins(rack, shelf, excludeId));
     const used = this.tools
-      .filter(t => !t.organizer && t.address && (t.address.rack || '') === (rack || '') && (t.address.shelf || '') === (shelf || '') && t.address.bin)
+      .filter(t => t.id !== excludeId && !t.organizer && t.address && (t.address.rack || '') === (rack || '') && (t.address.shelf || '') === (shelf || '') && t.address.bin)
       .map(t => {
         const m = t.address!.bin!.match(/\d+/);
         return m ? parseInt(m[0], 10) : null;
@@ -470,9 +481,9 @@ class StoreManager {
     return [...new Set(used)].sort((a, b) => a - b);
   }
 
-  public getNextFreeBin(zone?: string, rack?: string, shelf?: string): string {
+  public getNextFreeBin(zone?: string, rack?: string, shelf?: string, excludeId?: string): string {
     if (!rack && !shelf) return '1';
-    const used = [...this.getUsedBins(zone, rack, shelf), ...this.getOrganizerBins(rack, shelf)].sort((a, b) => a - b);
+    const used = [...this.getUsedBins(zone, rack, shelf, excludeId), ...this.getOrganizerBins(rack, shelf, excludeId)].sort((a, b) => a - b);
     let next = 1;
     for (let i = 0; i < used.length; i++) {
       if (used[i] === next) next++;

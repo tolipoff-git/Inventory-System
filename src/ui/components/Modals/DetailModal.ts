@@ -291,10 +291,16 @@ export class DetailModal {
         const calEl = document.getElementById('detCalibration');
         if (calEl) {
             const hist = tool.calHistory || [];
+            // Older records (or rows imported from the monolith) may carry only the
+            // structured history and not the flat fields — fall back to the newest
+            // log entry so the card never shows an empty "who verified" line.
+            const latest = hist.length ? hist[hist.length - 1] : undefined;
+            const verifiedBy = tool.calVerifiedBy || latest?.by || '';
+            const verifiedAt = tool.calVerifiedAt || latest?.date || '';
             const overdue = Boolean(tool.calDue && tool.calDue < nowISO().split('T')[0]);
             const rows: [string, string][] = [
-                [T('Verified by'), tool.calVerifiedBy || '—'],
-                [T('Verified on'), tool.calVerifiedAt ? fmtDate(tool.calVerifiedAt) : '—'],
+                [T('Verified by'), verifiedBy || '—'],
+                [T('Verified on'), verifiedAt ? fmtDate(verifiedAt) : '—'],
                 [T('Next due'), tool.calDue ? fmtDate(tool.calDue) : '—'],
                 [T('Interval (days)'), tool.calIntervalDays ? String(tool.calIntervalDays) : '—'],
                 [T('Certificate'), tool.calCertNo || '—'],

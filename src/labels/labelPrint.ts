@@ -77,10 +77,26 @@ export const STOCKS: Record<string, StockDefinition> = {
   },
 };
 
+/**
+ * Prefix a storage-address component with its full word, unless it already
+ * carries it. Stored values may be `Rack A`/`Shelf 2`/`Bin 3` (current form) or
+ * bare `A`/`2`/`3` (legacy monolith rows) — labels must always read in full,
+ * never as an abbreviation.
+ */
+function addrPart(value: string | undefined, word: string): string {
+  const s = (value || '').trim();
+  if (!s) return '';
+  return new RegExp(`^${word}\\b`, 'i').test(s) ? s : `${word} ${s}`;
+}
+
 export function addrLine(tool: Tool): string {
   const a = tool.address;
   if (a && (a.rack || a.shelf || a.bin)) {
-    return [a.rack, a.shelf, a.bin].filter(Boolean).join(' | ');
+    return [
+      addrPart(a.rack, 'Rack'),
+      addrPart(a.shelf, 'Shelf'),
+      addrPart(a.bin, 'Bin'),
+    ].filter(Boolean).join(' | ');
   }
   return tool.location || '—';
 }
@@ -116,7 +132,7 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
               <div>
                 <strong style="font-size:11px;">SHADOW BOARD A-FRAME</strong>
                 <div style="margin-top:2px;">Prefix: <strong>${esc(tool.id.split('-')[0] || '*')}</strong></div>
-                <div>Location: <strong>${esc(tool.location || entityId)}</strong></div>
+                <div>Location: <strong>${esc(addrLine(tool))}</strong></div>
               </div>
               <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                 <div style="font-size:8px;">Check-in / Out →</div>
@@ -152,8 +168,14 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
             </div>
           </div>`;
       case 'calTag': {
-        const verifiedBy = tool.calVerifiedBy || '—';
-        const verifiedAt = tool.calVerifiedAt ? fmtDate(tool.calVerifiedAt) : '—';
+        // Flat fields first; fall back to the newest structured record so a tag
+        // never prints an empty "who verified" line.
+        const latest = Array.isArray(tool.calHistory) && tool.calHistory.length
+          ? tool.calHistory[tool.calHistory.length - 1]
+          : undefined;
+        const verifiedBy = tool.calVerifiedBy || latest?.by || '—';
+        const verifiedAtRaw = tool.calVerifiedAt || latest?.date || '';
+        const verifiedAt = verifiedAtRaw ? fmtDate(verifiedAtRaw) : '—';
         const nextDue = tool.calDue ? fmtDate(tool.calDue) : '—';
         const overdue = Boolean(tool.calDue && tool.calDue < nowISO().split('T')[0]);
         return `
@@ -195,8 +217,15 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
   } else {
     // Location Label
     const qrUrl = locationDeeplink(entityId);
+    // `LOC:TYPE:Zone:Rack:Shelf:Bin:RESP` — the type token is dropped, and the
+    // positional rack/shelf/bin parts are spelled out in full.
     const parts = entityId.replace(/^LOC:[^:]*:/, '').split(':').filter(Boolean);
-    const labelTitle = parts.join(' | ') || entityId;
+    const labelTitle = [
+      parts[0],
+      addrPart(parts[1], 'Rack'),
+      addrPart(parts[2], 'Shelf'),
+      addrPart(parts[3], 'Bin'),
+    ].filter(Boolean).join(' | ') || entityId;
 
     return `
       <div style="display:flex; width:100%; height:100%; align-items:center; justify-content:space-between; padding:2mm 4mm; box-sizing:border-box;">
@@ -285,6 +314,20 @@ export function printLabelViaIframe(container: HTMLElement, stockKey: string = '
           display: none !important;
           background: none !important;
         }
+        /* Critical sheet geometry, inlined so the die-cut alignment never
+           depends on the external stylesheet resolving inside the iframe. */
+        .sheet-mode { display: block !important; }
+        .sheet-page {
+          position: relative !important;
+          width: 215.9mm !important;
+          height: 279.4mm !important;
+          background: #ffffff !important;
+          margin: 0 auto !important;
+          overflow: hidden !important;
+        }
+        .sheet-cell { outline: none !important; border: none !important; }
+        .sheet-page > .sheet-cell { position: absolute !important; }
+        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .sheet-mode, .sheet-mode * { color: #000000 !important; }
       </style>
     </head>

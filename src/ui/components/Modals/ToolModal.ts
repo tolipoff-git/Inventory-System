@@ -8,6 +8,7 @@ import { CONFIG } from '../../../config/constants';
 import { esc, nowISO } from '../../../utils/formatters';
 import { Tool } from '../../../types/inventory';
 import { suggestToolId, calDueFrom } from '../../../operations/toolOps';
+import { buildBinOptions, isBinOccupied } from '../binOptions';
 import { toast } from '../../../utils/dom';
 
 export class ToolModal {
@@ -182,6 +183,11 @@ export class ToolModal {
             });
         }
 
+        // Occupancy-aware Bin list: rebuild on every Rack/Shelf change.
+        const onAddLocChange = () => this.refreshBins('addTool');
+        overlay.querySelector('#addToolRack')?.addEventListener('change', onAddLocChange);
+        overlay.querySelector('#addToolShelf')?.addEventListener('change', onAddLocChange);
+
         // Type drives which classes are offered; the class drives the auto ID and
         // the default category (monolith parity: `Ops.onToolClassChange`).
         const typeSelect = overlay.querySelector<HTMLSelectElement>('#addToolType');
@@ -307,6 +313,11 @@ export class ToolModal {
                 this.updatePostSelect(wsSelect.value, 'editToolPost');
             });
         }
+
+        // Occupancy-aware Bin list; the tool's own bin must not block itself.
+        const onEditLocChange = () => this.refreshBins('editTool', undefined, this.editingToolId || undefined);
+        overlay.querySelector('#editToolRack')?.addEventListener('change', onEditLocChange);
+        overlay.querySelector('#editToolShelf')?.addEventListener('change', onEditLocChange);
     }
 
     private static populateDropdowns(prefix: 'addTool' | 'editTool'): void {
@@ -346,11 +357,9 @@ export class ToolModal {
         }
 
         if (binSelect) {
-            let html = '<option value="">- Select -</option>';
-            for (let i = 1; i <= 50; i++) {
-                html += `<option value="Bin ${i}">Bin ${i}</option>`;
-            }
-            binSelect.innerHTML = html;
+            // The real option list is built by `refreshBins` (occupancy-aware);
+            // start from the empty placeholder so nothing is preselected yet.
+            binSelect.innerHTML = '<option value="">- Select -</option>';
         }
 
         // Category datalist
@@ -366,6 +375,24 @@ export class ToolModal {
         if (!postSelect) return;
         const posts = Store.postsForZone(ws);
         postSelect.innerHTML = posts.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+    }
+
+    /**
+     * Rebuild the Bin select for the current Rack/Shelf: occupied cells are
+     * disabled and labelled, organizer cells are marked, and the first free cell
+     * is auto-selected (monolith `Ops.refreshAddToolBins` parity). Passing
+     * `current` preserves a manual pick of a still-free cell; omitting it keeps
+     * whatever the user has already chosen.
+     */
+    private static refreshBins(prefix: 'addTool' | 'editTool', current?: string | null, excludeId?: string): void {
+        const rack = (document.getElementById(`${prefix}Rack`) as HTMLSelectElement | null)?.value || '';
+        const shelf = (document.getElementById(`${prefix}Shelf`) as HTMLSelectElement | null)?.value || '';
+        const binSelect = document.getElementById(`${prefix}Bin`) as HTMLSelectElement | null;
+        if (!binSelect) return;
+        const cur = current !== undefined ? current : binSelect.value;
+        const { html, selected } = buildBinOptions('', rack, shelf, cur, excludeId);
+        binSelect.innerHTML = html;
+        if (selected) binSelect.value = selected;
     }
 
     /**
@@ -413,6 +440,8 @@ export class ToolModal {
         (document.getElementById('addToolInterval') as HTMLInputElement).value = '0';
         (document.getElementById('addToolCalDue') as HTMLInputElement).value = '';
         (document.getElementById('addToolMinQty') as HTMLInputElement).value = '0';
+        // Auto-select the next free cell for the (empty) Rack/Shelf selection.
+        this.refreshBins('addTool', null);
     }
 
     private static populateEditForm(tool: Tool): void {
@@ -433,7 +462,6 @@ export class ToolModal {
         const postSelect = document.getElementById('editToolPost') as HTMLSelectElement;
         const rackSelect = document.getElementById('editToolRack') as HTMLSelectElement;
         const shelfSelect = document.getElementById('editToolShelf') as HTMLSelectElement;
-        const binSelect = document.getElementById('editToolBin') as HTMLSelectElement;
 
         const wsp = Store.workstationAndPostOf(tool);
         if (wsSelect && wsp.ws) wsSelect.value = wsp.ws;
@@ -443,8 +471,10 @@ export class ToolModal {
         if (tool.address) {
             if (rackSelect && tool.address.rack) rackSelect.value = tool.address.rack;
             if (shelfSelect && tool.address.shelf) shelfSelect.value = tool.address.shelf;
-            if (binSelect && tool.address.bin) binSelect.value = tool.address.bin;
         }
+        // Rebuild bins for the restored Rack/Shelf, excluding this tool itself so
+        // its own cell stays selectable, and keep its current bin.
+        this.refreshBins('editTool', tool.address?.bin || null, tool.id);
     }
 
     private static async submitAdd(): Promise<void> {
@@ -479,6 +509,13 @@ export class ToolModal {
 
         if (Store.getTool(id)) {
             toast(`${T('TOOL_EXISTS')} ${id}`, 'danger');
+            return;
+        }
+
+        // The chosen cell must still be free (the disabled option already
+        // prevents this, but a stale list must not create a duplicate address).
+        if (isBinOccupied(ws, rack, shelf, bin)) {
+            toast(T('BIN_TAKEN'), 'danger');
             return;
         }
 
@@ -547,6 +584,11 @@ export class ToolModal {
 
         if (!name) {
             toast(T('TOOL_NAME_REQUIRED'), 'danger');
+            return;
+        }
+
+        if (isBinOccupied(ws, rack, shelf, bin, tool.id)) {
+            toast(T('BIN_TAKEN'), 'danger');
             return;
         }
 

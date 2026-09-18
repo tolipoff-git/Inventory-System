@@ -15,10 +15,23 @@ export function js(s: any): string {
   return esc(String(s ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
 }
 
-/** Date parser returning Date or null */
+/**
+ * Date parser returning Date or null.
+ *
+ * Date-only strings (`YYYY-MM-DD`) are parsed as **local** midnight. `new
+ * Date('2026-09-18')` is defined as UTC midnight, so in any timezone behind UTC
+ * `fmtDate` rendered the previous day — a verification stamped on the 18th
+ * printed as `9/17/2026`. Timestamps (with time/`Z`) keep native parsing.
+ */
 export function d(v: any): Date | null {
   if (!v) return null;
-  const dt = new Date(v);
+  let dt: Date;
+  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.trim())) {
+    const [y, m, day] = v.trim().split('-').map(Number);
+    dt = new Date(y, m - 1, day);
+  } else {
+    dt = new Date(v);
+  }
   return isNaN(dt.getTime()) ? null : dt;
 }
 

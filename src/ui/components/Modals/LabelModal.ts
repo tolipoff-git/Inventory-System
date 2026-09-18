@@ -4,9 +4,9 @@
 
 import { T } from '../../../i18n';
 import { Store } from '../../../storage/store';
-import { esc, fmtDate } from '../../../utils/formatters';
+import { esc } from '../../../utils/formatters';
 import { generateQrDataUrl } from '../../../labels/qrGenerator';
-import { printLabelsHtml, printQueueLabels, STOCKS, LabelFormat } from '../../../labels/labelPrint';
+import { printLabelsHtml, printQueueLabels, buildLabelSheetHtml, drawAllQrsInContainer, STOCKS, LabelFormat } from '../../../labels/labelPrint';
 import { toast, printHtml } from '../../../utils/dom';
 
 export class LabelModal {
@@ -259,32 +259,28 @@ export class LabelModal {
         }
     }
 
+    /**
+     * Live preview of the *actual* layout that will be printed — the monolith
+     * rendered the real sheet here, so the operator sees the correct Avery cell
+     * (and not a lone centred label) before pressing Print.
+     */
     private static async updatePreview(tool: any): Promise<void> {
         const container = document.getElementById('labelPreviewContainer');
         if (!container) return;
 
-        const qrUrl = await generateQrDataUrl(tool.id);
-        const loc = tool.location || 'Main Store';
-        const addr = tool.address ? `${tool.address.rack || ''} ${tool.address.shelf || ''}-${tool.address.bin || ''}`.trim() : '';
+        const stock = STOCKS[this.selectedFormat] || STOCKS.avery5161;
+        const html = buildLabelSheetHtml(
+            [{ id: tool.id, type: 'tool' }],
+            this.selectedFormat,
+            { start: this.readStartPosition() }
+        );
 
-        const calBlock = this.selectedFormat === 'calTag' ? `
-                    <div style="font-size:0.72rem; color:#334155; margin-top:4px; border-top:1px dashed #94a3b8; padding-top:3px;">
-                        ${T('Verified by')}: <b>${esc(tool.calVerifiedBy || '—')}</b> · ${T('Verified on')}: <b>${esc(tool.calVerifiedAt ? fmtDate(tool.calVerifiedAt) : '—')}</b><br>
-                        ${T('Next due')}: <b>${esc(tool.calDue ? fmtDate(tool.calDue) : '—')}</b>
-                    </div>` : '';
-
-        container.innerHTML = `
-            <div style="background:#ffffff; color:#000000; border:1px solid #94a3b8; border-radius:4px; padding:10px 14px; display:flex; align-items:center; gap:12px; width:340px; box-shadow:0 4px 12px rgba(0,0,0,0.15); font-family:var(--font-mono);">
-                <img src="${qrUrl}" style="width:72px; height:72px; flex-shrink:0;">
-                <div style="text-align:left; overflow:hidden; line-height:1.3;">
-                    <div style="font-weight:bold; font-size:1.05rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(tool.id)}</div>
-                    <div style="font-size:0.82rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(tool.name)}</div>
-                    <div style="font-size:0.75rem; color:#475569;">${esc(loc)} ${addr ? '· ' + esc(addr) : ''}</div>
-                    <div style="font-size:0.7rem; color:#64748b; margin-top:2px;">SN: ${esc(tool.sn || tool.serialNumber || 'N/A')}</div>
-                    ${calBlock}
-                </div>
-            </div>
-        `;
+        // Sheet stock is a full Letter page (~1056px tall at 96dpi) — shrink it to
+        // fit the modal; roll / single stock is shown close to 1:1.
+        const zoom = stock.kind === 'sheet' ? 0.3 : stock.w < 40 ? 2.2 : 1;
+        container.innerHTML = `<div class="sheet-mode" style="zoom:${zoom}; flex:0 0 auto;">${html}</div>`;
+        const inner = container.querySelector<HTMLElement>('.sheet-mode');
+        if (inner) await drawAllQrsInContainer(inner);
     }
 
     private static async executePrint(): Promise<void> {
@@ -430,8 +426,8 @@ export class LabelModal {
             <div style="background:#fff; color:#000; border:2px solid #000; border-radius:6px; padding:10px 14px; display:flex; align-items:center; gap:12px; width:340px; box-shadow:0 2px 8px rgba(0,0,0,0.1); font-family:var(--font-mono);">
                 <img src="${qrUrl}" style="width:72px; height:72px; flex-shrink:0;">
                 <div style="line-height:1.3; overflow:hidden;">
-                    <div style="font-weight:bold; font-size:1.05rem;">📍 ${esc(type)} ${esc(rack)}</div>
-                    <div style="font-size:0.85rem;">${esc(zone)} · Sh ${esc(shelf)} · B ${esc(bin)}</div>
+                    <div style="font-weight:bold; font-size:1.05rem;">📍 ${esc(type)} · Rack ${esc(rack)}</div>
+                    <div style="font-size:0.85rem;">${esc(zone)} · Shelf ${esc(shelf)} · Bin ${esc(bin)}</div>
                     <div style="font-size:0.72rem; color:#64748b; margin-top:2px;">Resp: ${esc(resp)}</div>
                 </div>
             </div>
@@ -454,7 +450,7 @@ export class LabelModal {
                 <div style="width:320px; border:2px solid #000; border-radius:6px; padding:12px; display:flex; align-items:center; gap:12px; background:#fff;">
                     <img src="${qrUrl}" style="width:85px; height:85px;">
                     <div>
-                        <div style="font-weight:bold; font-size:1.15rem;">📍 ${esc(type)} ${esc(rack)}</div>
+                        <div style="font-weight:bold; font-size:1.15rem;">📍 ${esc(type)} · Rack ${esc(rack)}</div>
                         <div style="font-size:0.9rem;">${esc(zone)} · Shelf ${esc(shelf)} · Bin ${esc(bin)}</div>
                         <div style="font-size:0.75rem; color:#555; margin-top:4px;">Resp: ${esc(resp)}</div>
                     </div>

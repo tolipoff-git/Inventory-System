@@ -7,16 +7,16 @@
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Session Continuity — Resume Point (2026-09-18, v120)
+## Session Continuity — Resume Point (2026-09-18, v121)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v120` (`package.json` = 120.0.0). `sw.js` `CACHE_VERSION` = `v120-<hash>`.
+- **Version:** `v121` (`package.json` = 121.0.0). `sw.js` `CACHE_VERSION` = `v121-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
-- **Gates (all green at v120):** `npm run typecheck` · `npm run lint` · `npm test` (108/108) ·
-  `npm run build` · `npm run check:i18n` (697/697). `tsconfig.json` includes `tests`,
+- **Gates (all green at v121):** `npm run typecheck` · `npm run lint` · `npm test` (119/119) ·
+  `npm run build` · `npm run check:i18n` (698/698). `tsconfig.json` includes `tests`,
   so `typecheck` and `build` cover the test suite too — keep it that way.
 - **Deploy:** push to `main` → Cloudflare Pages auto-deploy. Release workflow is defined in
   `AGENTS.md` (bump version → README + handoff → `bash build.sh` → feature commit →
@@ -51,6 +51,17 @@ working session; the per-release history below is the long-term record.
   `src/operations/toolOps.ts` — the only place verification is recorded; `completeMaintenance()`
   delegates the same structured fields. Labels read `tool.calVerifiedBy/At`, `calDue`, `calCertNo`.
 - `scripts/check-i18n-parity.mjs` → `npm run check:i18n` — the EN/RU parity gate.
+- `src/ui/components/binOptions.ts` (v121) → `buildBinOptions()` / `isBinOccupied()` — the only
+  place the Bin `<option>` list is built. Used by `ToolModal` (add + edit) and `TransferModal`;
+  `Store.getUsedBins/getOrganizerBins/getNextFreeBin` take an optional `excludeId` so a record
+  being edited is not counted as occupying its own cell.
+- `src/utils/formatters.ts` → `d()` (v121) parses a bare `YYYY-MM-DD` at **local** midnight.
+  Every date display (`fmtDate`, `daysUntil`, statuses, reports) goes through it — do not
+  reintroduce `new Date('YYYY-MM-DD')` (that is UTC midnight and shifts the day backwards in
+  any timezone behind UTC).
+- `src/labels/labelPrint.ts` → `addrLine()` (v121) spells storage coordinates out in full
+  (`Rack A | Shelf 2 | Bin 3`) even for legacy bare `A`/`2`/`3` values; reuse it for any new
+  address rendering instead of joining `address.*` by hand.
 
 ### Next actions (agreed direction, not yet started)
 1. **SOP hub — Phase B** (plan §6). **Deferred by the user on 2026-09-18 — no need right now.**
@@ -125,7 +136,34 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
 - Standing instruction: perform the full release flow (bump → docs → `build.sh` → commits → push)
   automatically, without asking.
 
-## Recent Accomplishments (v49 – v120)
+## Recent Accomplishments (v49 – v121)
+
+### 0. Labels WYSIWYG, Local Dates, Occupied-Bin Guard (v121 Release)
+- **Label print = the real sheet.** The print dialog preview now renders the actual
+  `buildLabelSheetHtml()` output (the same geometry that prints), so sheet stock shows the full
+  die-cut Letter page with the label in its correct cell instead of a lone centred sample card.
+  The print iframe also **inlines the critical sheet geometry** (`.sheet-mode`, `.sheet-page`,
+  `.sheet-cell`) so alignment cannot depend on the external stylesheet resolving inside it.
+- **Full address wording.** `addrLine()` prefixes `Rack`/`Shelf`/`Bin` when a stored value is
+  bare (`A` → `Rack A`), so labels never show an abbreviation; the location label, the `genB`
+  A-frame label and the location preview/print cards all use it (`Sh`/`B` abbreviations removed).
+- **Dates are local, not UTC.** `d()` now parses a bare `YYYY-MM-DD` at local midnight. The
+  verification tag stamped on the 18th printed `9/17` in every timezone behind UTC; the tool
+  card, the tag and every report now agree with the calendar.
+- **Verifier never blank.** The tool card and the calibration tag fall back to the newest
+  `calHistory[]` entry when the flat `calVerifiedBy`/`calVerifiedAt` fields are empty (legacy /
+  monolith-imported rows), instead of printing an empty "who verified" line.
+- **QR points at the app that printed it.** `toolDeeplink()` / `locationDeeplink()` use the
+  current `location.origin` (deployed constant only as a fallback), so a label printed by a
+  local/staging instance round-trips to that instance rather than to production.
+- **Occupied bins cannot be double-booked.** `buildBinOptions()` rebuilds the Bin select on
+  every Rack/Shelf change: taken cells are `disabled` and labelled (`Bin 3 — occupied`),
+  organizer cells are marked (`Bin 5 — 🧰 organizer`) but stay selectable, the next free cell is
+  auto-selected and a manual pick of a still-free cell survives the change — the monolith's
+  `Ops.refreshAddToolBins()` behaviour, restored. `submitAdd` / `submitEdit` / `TransferModal`
+  re-check with `isBinOccupied()` as defence in depth.
+- **Tests:** +11 (`tests/address.test.ts`) pinning local date parsing, full address wording and
+  the bin-occupancy rules (used/next-free, disabled options, self-exclusion, organizer bins).
 
 ### 0. Calibration: Personnel Picker, Clean Label, Class Gating (v120 Release)
 - **Who verified is now a person, not a login.** `src/utils/personnelPicker.ts`
