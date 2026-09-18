@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v121)
+# 5S Tool Command Center — v3 (v122)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -105,6 +105,11 @@ grouped by the role that can act on it**.
   die-cut page with the label in its correct cell instead of a lone centred sample.
 - **Addresses in full** — labels never abbreviate: storage coordinates always read
   `Rack A | Shelf 2 | Bin 3`, even for legacy rows that stored a bare `A` / `2` / `3`.
+- **Anchored, never centred** — roll/single stock (Brady roll, Generic A/B/C, Calibration Tag)
+  is printed at the **page origin**. When a printer rejects the custom `@page` size and falls
+  back to Letter/A4, the label lands in the top-left label position instead of floating in the
+  middle of the sheet. The verification-tag format is also only offered for classes that
+  require verification.
 - **Print Queue** (header 🏷 or *Operations & Reports*) — collect labels first, then generate
   the whole sheet on any wired stock (**Avery 5161** / 5163 / 5366, Brady roll, Generic A/B/C,
   Calibration Tag) with a start-cell offset for part-used sheets. Sheet geometry
@@ -136,9 +141,11 @@ grouped by the role that can act on it**.
   filtering), stamp one date / inspector / interval / certificate, then print a run of tags.
   The queue card lists the items due (≤14 days) or overdue; each row opens the tool card.
 - The tool card shows the verification block and the last five verification events;
-  the tag turns red when the next-due date has passed. If a row carries only the structured
-  `calHistory[]` (e.g. imported from the monolith), the card and tag fall back to its newest
-  entry so “who verified” is never blank.
+  the tag turns red when the next-due date has passed. The block is rendered **only for
+  verification classes** (TW/CT/DC/CA/GA) — a socket head or a hammer no longer carries an
+  empty “Calibration / Verification” section (a tool that keeps real verification data still
+  shows it). If a row carries only the structured `calHistory[]` (e.g. imported from the
+  monolith), the card and tag fall back to its newest entry so “who verified” is never blank.
 - **Dates are local, not UTC** — a `YYYY-MM-DD` verification date is parsed at local
   midnight, so a tag stamped on the 18th no longer prints as `9/17` in timezones behind UTC.
 

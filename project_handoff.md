@@ -7,15 +7,15 @@
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Session Continuity — Resume Point (2026-09-18, v121)
+## Session Continuity — Resume Point (2026-09-18, v122)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v121` (`package.json` = 121.0.0). `sw.js` `CACHE_VERSION` = `v121-<hash>`.
+- **Version:** `v122` (`package.json` = 122.0.0). `sw.js` `CACHE_VERSION` = `v122-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
-- **Gates (all green at v121):** `npm run typecheck` · `npm run lint` · `npm test` (119/119) ·
+- **Gates (all green at v122):** `npm run typecheck` · `npm run lint` · `npm test` (120/120) ·
   `npm run build` · `npm run check:i18n` (698/698). `tsconfig.json` includes `tests`,
   so `typecheck` and `build` cover the test suite too — keep it that way.
 - **Deploy:** push to `main` → Cloudflare Pages auto-deploy. Release workflow is defined in
@@ -136,7 +136,20 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
 - Standing instruction: perform the full release flow (bump → docs → `build.sh` → commits → push)
   automatically, without asking.
 
-## Recent Accomplishments (v49 – v121)
+## Recent Accomplishments (v49 – v122)
+
+### 0. Anchored Labels, Verification Gating (v122 Release)
+- **Roll/single labels are anchored, never centred.** `buildLabelSheetHtml()` no longer emits
+  `margin:0 auto` for non-sheet stock, and the print iframe forces
+  `.sheet-mode > .sheet-cell { margin: 0 !important; }`. A Calibration Tag / Brady / Generic
+  label now prints at the **page origin**, so when a printer rejects the custom `@page` size
+  (70×50 mm) and falls back to Letter/A4 the label no longer floats in the middle of the sheet.
+- **Verification block only where it belongs.** `DetailModal` renders the
+  *Calibration / Verification* section only for `requiresCalibration(tool)` classes
+  (TW/CT/DC/CA/GA) — or when the tool actually holds verification data, so legacy rows are
+  never hidden. The **Calibration Tag** format is likewise hidden (and disabled) in the label
+  dialog for classes that do not need verification, falling back to Avery 5161.
+- **Tests:** +1 pinning the anchored (non-centred) roll/single layout.
 
 ### 0. Labels WYSIWYG, Local Dates, Occupied-Bin Guard (v121 Release)
 - **Label print = the real sheet.** The print dialog preview now renders the actual

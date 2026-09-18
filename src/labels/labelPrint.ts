@@ -327,6 +327,10 @@ export function printLabelViaIframe(container: HTMLElement, stockKey: string = '
         }
         .sheet-cell { outline: none !important; border: none !important; }
         .sheet-page > .sheet-cell { position: absolute !important; }
+        /* Single / roll stock: anchor the label to the page origin instead of
+           centring it, so a tag never prints in the middle of a full sheet when
+           the printer falls back to its default paper size. */
+        .sheet-mode > .sheet-cell { margin: 0 !important; }
         * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .sheet-mode, .sheet-mode * { color: #000000 !important; }
       </style>
@@ -445,8 +449,11 @@ export function buildLabelSheetHtml(
     ).join('');
   }
 
+  // Roll / single stock: one label per page, anchored at the page origin (not
+  // centred) so a tag never lands in the middle of a full sheet when the printer
+  // falls back to its default paper size.
   return entities.map((e, i) =>
-    `<div class="sheet-cell" style="position:relative; width:${stock.w}mm; height:${stock.h}mm; overflow:hidden; margin:0 auto;${i < entities.length - 1 ? ' page-break-after:always;' : ''}">${renderLabelCell(format, e.id, e.type)}</div>`
+    `<div class="sheet-cell" style="position:relative; width:${stock.w}mm; height:${stock.h}mm; overflow:hidden;${i < entities.length - 1 ? ' page-break-after:always;' : ''}">${renderLabelCell(format, e.id, e.type)}</div>`
   ).join('');
 }
 

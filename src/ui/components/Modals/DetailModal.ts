@@ -287,31 +287,43 @@ export class DetailModal {
             });
         }
 
-        // Calibration / verification block
+        // Calibration / verification block.
+        // Only classes that actually require verification (TW/CT/DC/CA/GA) show it;
+        // a socket head or a hammer has no such data and must not carry an empty
+        // "Calibration / Verification" section. A tool that is no longer gated but
+        // *does* hold verification history keeps the block, so legacy data is
+        // never hidden.
         const calEl = document.getElementById('detCalibration');
         if (calEl) {
             const hist = tool.calHistory || [];
-            // Older records (or rows imported from the monolith) may carry only the
-            // structured history and not the flat fields — fall back to the newest
-            // log entry so the card never shows an empty "who verified" line.
-            const latest = hist.length ? hist[hist.length - 1] : undefined;
-            const verifiedBy = tool.calVerifiedBy || latest?.by || '';
-            const verifiedAt = tool.calVerifiedAt || latest?.date || '';
-            const overdue = Boolean(tool.calDue && tool.calDue < nowISO().split('T')[0]);
-            const rows: [string, string][] = [
-                [T('Verified by'), verifiedBy || '—'],
-                [T('Verified on'), verifiedAt ? fmtDate(verifiedAt) : '—'],
-                [T('Next due'), tool.calDue ? fmtDate(tool.calDue) : '—'],
-                [T('Interval (days)'), tool.calIntervalDays ? String(tool.calIntervalDays) : '—'],
-                [T('Certificate'), tool.calCertNo || '—'],
-            ];
-            calEl.innerHTML = `
+            const hasCalData = Boolean(
+                tool.calVerifiedAt || tool.calVerifiedBy || tool.calDue || tool.calCertNo || hist.length
+            );
+            if (!requiresCalibration(tool) && !hasCalData) {
+                calEl.innerHTML = '';
+            } else {
+                // Older records (or rows imported from the monolith) may carry only the
+                // structured history and not the flat fields — fall back to the newest
+                // log entry so the card never shows an empty "who verified" line.
+                const latest = hist.length ? hist[hist.length - 1] : undefined;
+                const verifiedBy = tool.calVerifiedBy || latest?.by || '';
+                const verifiedAt = tool.calVerifiedAt || latest?.date || '';
+                const overdue = Boolean(tool.calDue && tool.calDue < nowISO().split('T')[0]);
+                const rows: [string, string][] = [
+                    [T('Verified by'), verifiedBy || '—'],
+                    [T('Verified on'), verifiedAt ? fmtDate(verifiedAt) : '—'],
+                    [T('Next due'), tool.calDue ? fmtDate(tool.calDue) : '—'],
+                    [T('Interval (days)'), tool.calIntervalDays ? String(tool.calIntervalDays) : '—'],
+                    [T('Certificate'), tool.calCertNo || '—'],
+                ];
+                calEl.innerHTML = `
                 <h4 style="margin:0 0 8px; color:var(--primary-hover);">⚗ ${T('Calibration / Verification')}</h4>
                 <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:6px 14px; font-size:0.85rem;">
                     ${rows.map(([k, v]) => `<div><span style="color:var(--text-muted);">${esc(k)}:</span> <strong style="${k === T('Next due') && overdue ? 'color:var(--danger);' : ''}">${esc(v)}</strong></div>`).join('')}
                 </div>
                 ${hist.length ? `<ul class="history-list" style="margin-top:8px;">${hist.slice().reverse().slice(0, 5).map(h => `<li class="history-item"><span>${esc(h.date)} — ${esc(h.result)} · ${esc(h.by || 'N/A')}${h.nextDue ? ` → ${esc(h.nextDue)}` : ''}${h.certNo ? ` [${esc(h.certNo)}]` : ''}</span></li>`).join('')}</ul>` : ''}
             `;
+            }
         }
 
         // 5S Lifecycle
