@@ -7,8 +7,8 @@ import { CONFIG } from '../../config/constants';
 import { Auth } from '../../auth/authManager';
 import { SyncManagerInstance } from '../../sync/syncManager';
 import { SyncModal } from './Modals/SyncModal';
+import { LabelModal } from './Modals/LabelModal';
 import { Store } from '../../storage/store';
-import { printQueueLabels } from '../../labels/labelPrint';
 import { hardReloadPwa } from '../../utils/pwa';
 
 export interface HeaderCallbacks {
@@ -122,7 +122,7 @@ export class HeaderComponent {
 
         const qBtn = this.container.querySelector('#headerQueueBtn');
         if (qBtn) {
-            qBtn.addEventListener('click', () => printQueueLabels());
+            qBtn.addEventListener('click', () => LabelModal.openQueue());
         }
 
         const faqBtn = this.container.querySelector('#faqBtn');

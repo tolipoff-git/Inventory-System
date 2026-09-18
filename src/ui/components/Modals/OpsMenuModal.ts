@@ -9,7 +9,6 @@ import { OrderModal } from './OrderModal';
 import { LabelModal } from './LabelModal';
 import { CalibrationModal } from './CalibrationModal';
 import { exportFullInventoryExcel } from '../../../reports/reportExports';
-import { printQueueLabels } from '../../../labels/labelPrint';
 import { Store } from '../../../storage/store';
 import { hardReloadPwa } from '../../../utils/pwa';
 
@@ -79,9 +78,9 @@ export class OpsMenuModal {
             CalibrationModal.openSession();
         });
 
-        modal.querySelector('#opsPrintQueueBtn')?.addEventListener('click', async () => {
+        modal.querySelector('#opsPrintQueueBtn')?.addEventListener('click', () => {
             this.close();
-            await printQueueLabels();
+            LabelModal.openQueue();
         });
 
         modal.querySelector('#opsUpdatePwaBtn')?.addEventListener('click', () => {

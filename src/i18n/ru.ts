@@ -694,5 +694,6 @@ export const ru: Record<string, string> = {
   "Apply & Print Tags": "Применить и печать этикеток",
   "CALIBRATION_SAVED": "Поверка записана:",
   "CALIBRATION_NO_SELECTION": "Выберите хотя бы один инструмент.",
-  "CALIBRATION_FAILED": "Не удалось записать поверку"
+  "CALIBRATION_FAILED": "Не удалось записать поверку",
+  "LABEL_QUEUE_CLEARED": "Очередь этикеток очищена."
 };

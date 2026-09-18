@@ -12,6 +12,7 @@ import { toast, printHtml } from '../../../utils/dom';
 export class LabelModal {
     private static printModalId = 'printLabelModal';
     private static locModalId = 'locationLabelModal';
+    private static queueModalId = 'queueLabelModal';
     private static currentToolId: string | null = null;
     private static selectedFormat: LabelFormat = 'avery5161';
 
@@ -51,6 +52,98 @@ export class LabelModal {
     public static closeLocationLabels(): void {
         const modal = document.getElementById(this.locModalId);
         if (modal) modal.classList.remove('active');
+    }
+
+    /**
+     * Print the whole label queue on a chosen stock — the monolith's "Print Queue".
+     * The header 🏷 button opens this so the sheet can be generated *after* the
+     * labels have been collected, on Avery 5161 or any other wired format.
+     */
+    public static openQueue(): void {
+        if (!Store.labelQueue?.length) {
+            toast(T('LABEL_QUEUE_EMPTY'), 'info');
+            return;
+        }
+        document.getElementById(this.queueModalId)?.remove();
+        this.createQueueModalDOM();
+        document.getElementById(this.queueModalId)?.classList.add('active');
+    }
+
+    public static closeQueue(): void {
+        document.getElementById(this.queueModalId)?.classList.remove('active');
+    }
+
+    private static createQueueModalDOM(): void {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.id = this.queueModalId;
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) this.closeQueue();
+        });
+
+        const q = Store.labelQueue || [];
+        // Curated list: the canonical stocks, without the legacy aliases (brady/
+        // brady119, genA/genericA) that would otherwise appear twice.
+        const formats: LabelFormat[] = ['avery5161', 'avery5163', 'avery5366', 'brady', 'genericA', 'genericB', 'genericC', 'calTag'];
+        const options = formats
+            .map(k => {
+                const s = STOCKS[k];
+                return `<option value="${k}"${k === this.selectedFormat ? ' selected' : ''}>${esc(s.brand)} ${esc(s.pn)} — ${esc(s.info)}</option>`;
+            })
+            .join('');
+
+        overlay.innerHTML = `
+            <div class="modal" style="max-width:540px;">
+                <div class="modal-header">
+                    <h3 class="modal-title">🏷 ${T('Print Queue')} (${q.length})</h3>
+                    <button class="close-btn" id="queueCloseBtn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group" style="text-align:left;">
+                        <label>${T('Select Label Stock / Format:')}</label>
+                        <select id="queueFormatSelect" class="form-control">${options}</select>
+                    </div>
+                    <div class="form-group" style="text-align:left;" id="queueStartGroup">
+                        <label>${T('Start position')}:</label>
+                        <input type="number" id="queueStartInput" class="form-control" value="1" min="1">
+                    </div>
+                    <div style="text-align:left; font-size:0.85rem; color:var(--text-muted); max-height:150px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; padding:8px;">
+                        ${q.map(id => `<div style="font-family:monospace;">• ${esc(id)}</div>`).join('')}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-muted" id="queueCancelBtn">${T('Close')}</button>
+                    <button class="btn btn-danger" id="queueClearBtn">${T('Clear')}</button>
+                    <button class="btn btn-success" id="queuePrintBtn">🖨 ${T('Print Now')}</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        const fmtSel = overlay.querySelector<HTMLSelectElement>('#queueFormatSelect');
+        const startGroup = overlay.querySelector<HTMLElement>('#queueStartGroup');
+        const syncStart = () => {
+            const stock = STOCKS[(fmtSel?.value || 'avery5161') as LabelFormat];
+            if (startGroup) startGroup.style.display = stock && stock.kind === 'sheet' ? '' : 'none';
+        };
+        fmtSel?.addEventListener('change', syncStart);
+        syncStart();
+
+        overlay.querySelector('#queueCloseBtn')?.addEventListener('click', () => this.closeQueue());
+        overlay.querySelector('#queueCancelBtn')?.addEventListener('click', () => this.closeQueue());
+        overlay.querySelector('#queueClearBtn')?.addEventListener('click', () => {
+            Store.clearLabelQueue();
+            toast(T('LABEL_QUEUE_CLEARED'), 'info');
+            this.closeQueue();
+        });
+        overlay.querySelector('#queuePrintBtn')?.addEventListener('click', async () => {
+            const format = (fmtSel?.value || 'avery5161') as LabelFormat;
+            this.selectedFormat = format;
+            const raw = parseInt((overlay.querySelector('#queueStartInput') as HTMLInputElement | null)?.value || '1', 10);
+            const start = Number.isFinite(raw) && raw > 0 ? raw : 1;
+            this.closeQueue();
+            await printQueueLabels(format, { start });
+        });
     }
 
     private static createPrintModalDOM(): void {

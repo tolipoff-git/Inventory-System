@@ -216,7 +216,9 @@ export async function drawAllQrsInContainer(container: HTMLElement): Promise<voi
   for (const cv of Array.from(canvases)) {
     const text = cv.dataset.qrText;
     if (text) {
-      await renderQrToCanvas(cv, text, Math.max(cv.width || 100, 80));
+      // Pixel buffer only — the displayed size comes from the inline mm style /
+      // CSS, which `renderQrToCanvas` restores after rendering (see there).
+      await renderQrToCanvas(cv, text, 300);
     }
   }
 }
@@ -382,8 +384,8 @@ export function buildLabelSheetHtml(
     ).join('');
   }
 
-  return entities.map(e =>
-    `<div class="sheet-cell" style="position:relative; width:${stock.w}mm; height:${stock.h}mm; overflow:hidden; margin:0 auto; page-break-after:always;">${renderLabelCell(format, e.id, e.type)}</div>`
+  return entities.map((e, i) =>
+    `<div class="sheet-cell" style="position:relative; width:${stock.w}mm; height:${stock.h}mm; overflow:hidden; margin:0 auto;${i < entities.length - 1 ? ' page-break-after:always;' : ''}">${renderLabelCell(format, e.id, e.type)}</div>`
   ).join('');
 }
 

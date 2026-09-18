@@ -86,8 +86,11 @@ describe('label sheet layout (Avery die-cut alignment)', () => {
     const cells = cellsOf(html);
     expect(cells).toHaveLength(3);
     expect(html).toContain(`width:${STOCKS.brady.w}mm; height:${STOCKS.brady.h}mm`);
-    // Each roll label is on its own page.
-    expect(cells.every(c => c.includes('page-break-after:always'))).toBe(true);
+    // Each roll label starts a new page — except the last, which would otherwise
+    // print a trailing blank page.
+    expect(cells[0]).toContain('page-break-after:always');
+    expect(cells[1]).toContain('page-break-after:always');
+    expect(cells[2]).not.toContain('page-break-after:always');
   });
 
   it('renders location labels, which are queued as LOC: ids', () => {
@@ -96,5 +99,23 @@ describe('label sheet layout (Avery die-cut alignment)', () => {
     expect(html).toContain('LOCATION / STORAGE BIN');
     // The LOC prefix and the leading type token are stripped for the caption.
     expect(html).toContain('A | Rack A | Shelf 2 | Bin 3');
+  });
+
+  it('does not add a page break after the last single-stock label (no trailing blank page)', () => {
+    const html = buildLabelSheetHtml([{ id: 'TW-001', type: 'tool' }, { id: 'TW-002', type: 'tool' }], 'calTag');
+    const cells = cellsOf(html);
+    expect(cells).toHaveLength(2);
+    expect(cells[0]).toContain('page-break-after:always');
+    expect(cells[1]).not.toContain('page-break-after:always');
+  });
+
+  it('renders the calibration tag with the verification block', () => {
+    const html = buildLabelSheetHtml([{ id: 'TW-001', type: 'tool' }], 'calTag');
+    expect(cellsOf(html)).toHaveLength(1);
+    expect(html).toContain('CALIBRATION / VERIFICATION');
+    expect(html).toContain('Verified by');
+    expect(html).toContain('Next due');
+    // Sized as a 70x50mm single tag.
+    expect(html).toContain('width:70mm; height:50mm');
   });
 });
