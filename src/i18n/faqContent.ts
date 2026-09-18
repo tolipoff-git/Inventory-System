@@ -55,8 +55,10 @@ export const FAQ_BODY_EN = `
 <li><b>Move a station to another program</b> — the <b>⇄</b> button on the station. Pick a program, or <b>— No program —</b> to detach it (Tool Gage is an area, not a program).</li>
 <li><b>Move a post to another station</b> — the <b>⇄</b> button on the post. People and tools follow automatically.</li>
 <li><b>Rename / delete</b> — <b>✏️</b> / <b>✖</b>. Deleting a station also removes its posts; the integrity check will find any dangling people or tools.</li>
+<li><b>The registry is missing stations that clearly exist</b> — press <b>📥 Register missing stations &amp; posts</b> (top of the <i>Programs &amp; Stations</i> tab, or in the Integrity Check). It reads the stations, posts and programs that tools and people <i>already</i> reference and adds them to the registry — <b>without changing a single tool or person</b>. Use this after importing old data, or when the risk chart shows a station you cannot find in the registry.</li>
 </ul>
 <p><b>Assign a person</b> — <b>Personnel</b> tab: choose Program → Station → Post, then <b>+ Add</b>. Click <b>✏️</b> on a row to change an assignment.</p>
+<p><b>Why a station I added does not appear in the Risk Index chart:</b> that chart is built from <b>tool locations</b> (and, for issued tools, from the holder's station), not from the registry. A station with no tools on it has no risk to show, so it stays out of the chart until something is placed there. The registry and the chart agree once the tools point at registered stations.</p>
 </div>
 </details>
 
@@ -125,7 +127,7 @@ export const FAQ_BODY_EN = `
 <ul>
 <li><b>A button says “Access Denied”</b> — your role is too low. Ask an Administrator (adding tools and editing registries require the Administrator role).</li>
 <li><b>The app looks outdated after an update</b> — click the version number in the header to force a clean reload.</li>
-<li><b>A tool or person points to an unknown station</b> — <b>System Management</b> → <b>🩺 Integrity Check</b>, then press <b>Fix</b> (or <b>Auto-fix</b>) to repair dangling references.</li>
+<li><b>A tool or person points to an unknown station</b> — <b>System Management</b> → <b>🩺 Integrity Check</b>. Press <b>📥 Register missing stations &amp; posts</b>: it adds the missing stations to the registry and keeps every tool where it really is. Only if you genuinely want to relocate those tools, use <b>🛠 Move tools to default station</b> — it <b>overwrites</b> their real location, so it asks for confirmation.</li>
 <li><b>The workstation chart shows odd rows</b> — usually dangling tool locations; run the Integrity Check as above.</li>
 <li><b>You made a mistake in the registries</b> — <b>System Management</b> → <b>↩ Rollback Last Cascade</b> restores the state from before the last structural change.</li>
 <li><b>You are stuck or locked out</b> — press <b>🔒 Lock</b> and sign in again; a forgotten PIN must be reset by an Administrator.</li>
@@ -182,8 +184,10 @@ export const FAQ_BODY_RU = `
 <li><b>Перенести станцию в другую программу</b> — кнопка <b>⇄</b> у станции. Выберите программу или <b>— Без программы —</b>, чтобы отвязать станцию (Tool Gage — это участок, а не программа).</li>
 <li><b>Перенести пост в другую станцию</b> — кнопка <b>⇄</b> у поста. Люди и инструменты переходят автоматически.</li>
 <li><b>Переименовать / удалить</b> — <b>✏️</b> / <b>✖</b>. Удаление станции удаляет и её посты; проверка целостности найдёт «висячие» ссылки у людей и инструментов.</li>
+<li><b>В справочнике нет станций, которые явно существуют</b> — нажмите <b>📥 Зарегистрировать недостающие станции и посты</b> (вверху вкладки <i>Программы и станции</i> или в проверке целостности). Она читает станции, посты и программы, на которые <i>уже</i> ссылаются инструменты и люди, и добавляет их в справочник — <b>не меняя ни один инструмент и ни одного человека</b>. Используйте после переноса старых данных или когда на графике рисков видна станция, которой нет в справочнике.</li>
 </ul>
 <p><b>Назначить человека</b> — вкладка <b>Персонал</b>: выберите Программа → Станция → Пост, затем <b>+ Добавить</b>. Клик по <b>✏️</b> в строке меняет привязку.</p>
+<p><b>Почему добавленная станция не появляется на графике «Индекс рисков»:</b> этот график строится по <b>расположению инструментов</b> (а для выданных — по станции держателя), а не по справочнику. У станции без инструментов нет риска, который можно показать, поэтому она не попадает на график, пока туда что-нибудь не поставят. Справочник и график сходятся, когда инструменты указывают на зарегистрированные станции.</p>
 </div>
 </details>
 
@@ -252,7 +256,7 @@ export const FAQ_BODY_RU = `
 <ul>
 <li><b>Кнопка отвечает «Доступ запрещён»</b> — у вашей роли недостаточно прав. Обратитесь к Администратору (добавление инструментов и правка справочников требуют роли Администратор).</li>
 <li><b>После обновления приложение выглядит старым</b> — кликните по номеру версии в шапке, чтобы выполнить чистую перезагрузку.</li>
-<li><b>Инструмент или человек ссылается на неизвестную станцию</b> — <b>Управление системой</b> → <b>🩺 Проверка целостности</b>, затем <b>Исправить</b> (или <b>Автоисправление</b>) для устранения «висячих» ссылок.</li>
+<li><b>Инструмент или человек ссылается на неизвестную станцию</b> — <b>Управление системой</b> → <b>🩺 Проверка целостности</b>. Нажмите <b>📥 Зарегистрировать недостающие станции и посты</b>: она добавит станции в справочник и оставит каждый инструмент там, где он реально находится. Только если вы действительно хотите перенести эти инструменты, используйте <b>🛠 Перенести инструменты на станцию по умолчанию</b> — она <b>перезапишет</b> их реальное расположение, поэтому запрашивает подтверждение.</li>
 <li><b>В графике загрузки станций странные строки</b> — обычно это «висячие» локации инструментов; выполните проверку целостности выше.</li>
 <li><b>Ошиблись в справочниках</b> — <b>Управление системой</b> → <b>↩ Откат последнего каскада</b> вернёт состояние до последнего структурного изменения.</li>
 <li><b>Заблокировались / не можете войти</b> — нажмите <b>🔒 Заблокировать</b> и войдите заново; забытый PIN сбрасывает Администратор.</li>

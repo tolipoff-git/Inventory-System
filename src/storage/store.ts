@@ -15,6 +15,21 @@ export interface WorkpostItem {
   ws: string | null;
 }
 
+/** Names that mean "no station" rather than naming one. */
+const PLACEHOLDER_STATIONS = ['Unassigned', 'Unknown', 'N/A', 'Storage / Crib'];
+
+/** Outcome of `Store.importRegistryFromData()` / `Store.pendingRegistryImport()`. */
+export interface RegistryImportResult {
+  stations: number;
+  posts: number;
+  programs: number;
+  links: number;
+  /** Names of the stations that are missing, for the integrity report. */
+  stationNames: string[];
+  /** Free-text locations that look like storage areas, not stations. */
+  skipped: string[];
+}
+
 export type StoreSubscriber = (state: DBState) => void;
 
 class StoreManager {
@@ -680,6 +695,164 @@ class StoreManager {
       if (L && L.parts[0] === name) tools++;
     });
     return { posts, emp, tools };
+  }
+
+  /**
+   * Rebuild the registry from the data that already references it.
+   *
+   * Tools and personnel carry their station / post / program as free text (that is
+   * how the legacy monolith stored them), so a station can be in daily use long
+   * before it is registered. This adds every referenced-but-unregistered station,
+   * post and program **without touching the references** — the non-destructive
+   * counterpart of the integrity check's "move to default station" repair.
+   *
+   * Sources, in order of trust:
+   *   • `personnel.ws` / `personnel.post` — structured fields, always a station;
+   *   • `tool.address.zone` — structured, always a station;
+   *   • `tool.location` containing an explicit ` / ` or ` - ` separator — the part
+   *     before it is the station, the part after it is the post.
+   *
+   * A bare free-text location (`Shadow Board`, `Tool Crib`, `Calibration Lab`) is a
+   * storage area, not a station, so it is reported in `skipped` instead of being
+   * registered — otherwise the registry fills up with shelves.
+   */
+  public importRegistryFromData(): RegistryImportResult {
+    const plan = this.collectRegistryImport();
+    const result: RegistryImportResult = {
+      stations: plan.stations.length,
+      posts: plan.posts.length,
+      programs: plan.programs.length,
+      links: plan.links.length,
+      stationNames: plan.stations,
+      skipped: plan.skipped,
+    };
+
+    if (!result.stations && !result.posts && !result.programs && !result.links) return result;
+
+    this.snapshot('import registry from data');
+    plan.stations.forEach(ws => {
+      this.workstations.push(ws);
+      this.markRegistry(REGISTRY_KEYS.workstation(ws), false);
+    });
+    plan.posts.forEach(p => {
+      this.workposts.push({ name: p.name, ws: p.ws });
+      this.markRegistry(REGISTRY_KEYS.workpost(p.name, p.ws), false);
+    });
+    plan.programs.forEach(prog => {
+      this.programs.push(prog);
+      this.markRegistry(REGISTRY_KEYS.program(prog), false);
+    });
+    plan.links.forEach(l => {
+      this.wsProgram[l.ws] = l.program;
+      this.markRegistry(REGISTRY_KEYS.wsProgram(l.ws), false);
+    });
+
+    this.log('REGISTRY_IMPORT',
+      `stations: ${result.stations}, posts: ${result.posts}, programs: ${result.programs}, links: ${result.links}`);
+    this.save();
+    return result;
+  }
+
+  /**
+   * What `importRegistryFromData()` *would* add, without changing anything. The
+   * integrity check reports from this so the anomaly list and the repair always
+   * agree on what counts as a missing station.
+   */
+  public pendingRegistryImport(): RegistryImportResult {
+    const plan = this.collectRegistryImport();
+    return {
+      stations: plan.stations.length,
+      posts: plan.posts.length,
+      programs: plan.programs.length,
+      links: plan.links.length,
+      stationNames: plan.stations,
+      skipped: plan.skipped,
+    };
+  }
+
+  /** Pure computation of the import plan — no mutation, no logging, no save. */
+  private collectRegistryImport(): {
+    stations: string[];
+    posts: { name: string; ws: string }[];
+    programs: string[];
+    links: { ws: string; program: string }[];
+    skipped: string[];
+  } {
+    const stations: string[] = [];
+    const posts: { name: string; ws: string }[] = [];
+    const programs: string[] = [];
+    const links: { ws: string; program: string }[] = [];
+    const skipped = new Set<string>();
+    /** First program declared by a tool at each station, used to link it. */
+    const stationProgram: Record<string, string> = {};
+
+    const hasStation = (ws: string) => this.workstations.includes(ws) || stations.includes(ws);
+    const addStation = (ws: string) => { if (!hasStation(ws)) stations.push(ws); };
+    const addPost = (post: string, ws: string) => {
+      if (!post) return;
+      if (this.postExists(post, ws)) return;
+      if (posts.some(p => p.name === post && p.ws === ws)) return;
+      posts.push({ name: post, ws });
+    };
+    const noteProgram = (ws: string, prog?: string | null) => {
+      const clean = (prog || '').trim();
+      if (ws && clean && !stationProgram[ws]) stationProgram[ws] = clean;
+    };
+
+    // 1. Personnel — the most reliable source, and the one the risk chart uses
+    //    for assigned tools (`workstationAndPostOf` prefers the holder's station).
+    this.personnel.forEach(e => {
+      if (e.deletedAt) return;
+      const legacy = e as any;
+      const ws = (e.ws || legacy.workstation || legacy.defaultWs || '').trim();
+      const post = (e.post || legacy.defaultPost || '').trim();
+      if (!this.isRegisterableStation(ws)) return;
+      addStation(ws);
+      addPost(post, ws);
+    });
+
+    // 2. Tools — structured address zone, then an explicit `station / post` location.
+    this.tools.forEach(t => {
+      const zone = (t.address?.zone || '').trim();
+      if (this.isRegisterableStation(zone)) addStation(zone);
+
+      const loc = (t.location || '').trim();
+      const parts = loc.includes(' / ') ? loc.split(' / ') : loc.includes(' - ') ? loc.split(' - ') : null;
+      if (parts && parts.length > 1) {
+        const ws = parts[0].trim();
+        const post = parts.slice(1).join(' / ').trim();
+        if (this.isRegisterableStation(ws)) {
+          addStation(ws);
+          addPost(post, ws);
+          noteProgram(ws, t.program);
+        }
+      } else if (loc && loc !== 'Tool Gage' && !this.workstations.includes(loc) && !PLACEHOLDER_STATIONS.includes(loc)) {
+        // A bare free-text location that is not a registered station is a storage
+        // area (Shadow Board, Tool Crib, Calibration Lab) — report it, never
+        // register it, or the registry fills up with shelves.
+        skipped.add(loc);
+      }
+    });
+
+    // 3. Programs declared on tools, then link each station to its program.
+    this.tools.forEach(t => {
+      const prog = (t.program || '').trim();
+      if (prog && !this.programs.includes(prog) && !programs.includes(prog)) programs.push(prog);
+    });
+    Object.entries(stationProgram).forEach(([ws, prog]) => {
+      if (!this.wsProgram[ws] && (this.programs.includes(prog) || programs.includes(prog))) {
+        links.push({ ws, program: prog });
+      }
+    });
+
+    return { stations, posts, programs, links, skipped: [...skipped].sort() };
+  }
+
+  /** A name is registerable when it is a real station, not a placeholder or area. */
+  private isRegisterableStation(name: string): boolean {
+    const clean = (name || '').trim();
+    if (!clean) return false;
+    return !PLACEHOLDER_STATIONS.includes(clean);
   }
 
   public addToLabelQueue(id: string): void {

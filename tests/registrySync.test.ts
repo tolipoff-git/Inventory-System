@@ -19,6 +19,10 @@ console.error = (msg: unknown, ...rest: unknown[]) => {
 };
 
 async function freshStore(): Promise<void> {
+  // A brand-new IDBFactory per test: fake-indexeddb otherwise keeps the same
+  // `inv_inventory_db` across tests in this file, so `Store.init()` would reload
+  // the previous test's persisted state.
+  globalThis.indexedDB = new IDBFactory();
   AppDB._db = null;
   AppDB._failed = false;
   Store.tools = [];

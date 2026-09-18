@@ -100,6 +100,10 @@ export class RegistryModal {
                         <div style="color:var(--text-muted); font-size:0.85rem; margin-bottom:10px;">
                             ${T('STRUCTURE_HINT')}
                         </div>
+                        <div style="margin-bottom:12px; padding:10px 12px; border:1px solid var(--border); border-left:3px solid var(--primary); border-radius:4px;">
+                            <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:8px;">${T('REGISTRY_IMPORT_HINT')}</div>
+                            <button class="btn btn-success" id="regImportBtn">${T('REGISTRY_IMPORT')}</button>
+                        </div>
                         <ul class="history-list" id="regWsList"></ul>
                     </div>
 
@@ -181,6 +185,7 @@ export class RegistryModal {
         overlay.querySelector('#regEmpSaveBtn')?.addEventListener('click', () => this.saveEmp());
         overlay.querySelector('#regEmpCancelBtn')?.addEventListener('click', () => this.cancelEditEmp());
         overlay.querySelector('#regProgAddBtn')?.addEventListener('click', () => this.addProgram());
+        overlay.querySelector('#regImportBtn')?.addEventListener('click', () => this.importRegistry());
         overlay.querySelector('#regRbacAddBtn')?.addEventListener('click', () => this.addRbacUser());
         overlay.querySelector('#regSopAddBtn')?.addEventListener('click', () => this.openSopEdit(null));
 
@@ -585,6 +590,31 @@ export class RegistryModal {
         await Store.save();
         toast(`Program ${prog} added!`, 'success');
         this.renderWs();
+    }
+
+    /**
+     * Register the stations / posts / programs that tools and personnel already
+     * reference. Non-destructive: it never rewrites a tool or a person.
+     */
+    private static async importRegistry(): Promise<void> {
+        const res = Store.importRegistryFromData();
+
+        if (res.stations || res.posts || res.programs || res.links) {
+            toast(T('REGISTRY_IMPORT_DONE')
+                .replace('{stations}', String(res.stations))
+                .replace('{posts}', String(res.posts))
+                .replace('{programs}', String(res.programs))
+                .replace('{links}', String(res.links)), 'success');
+        } else {
+            toast(T('REGISTRY_IMPORT_NONE'), 'warning');
+        }
+
+        if (res.skipped.length) {
+            toast(T('REGISTRY_IMPORT_SKIPPED').replace('{list}', res.skipped.slice(0, 6).join(', ')), 'warning');
+        }
+
+        this.renderWs();
+        this.renderWp();
     }
 
     // --- Workposts Tab ---
