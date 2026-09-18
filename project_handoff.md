@@ -16,7 +16,8 @@ working session; the per-release history below is the long-term record.
 - **Version:** `v112` (`package.json` = 112.0.0). `sw.js` `CACHE_VERSION` = `v112-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
 - **Gates (all green at v112):** `npm run typecheck` · `npm run lint` · `npm test` (61/61) ·
-  `npm run build` · `npm run check:i18n` (622/622).
+  `npm run build` · `npm run check:i18n` (622/622). `tsconfig.json` now includes `tests`,
+  so `typecheck` covers the test suite too — keep it that way.
 - **Deploy:** push to `main` → Cloudflare Pages auto-deploy. Release workflow is defined in
   `AGENTS.md` (bump version → README + handoff → `bash build.sh` → feature commit →
   `chore(pwa): refresh sw.js …` commit → push) — **run it without asking**.
@@ -90,6 +91,7 @@ The application has undergone massive functional and architectural expansion. Th
 - **Monolith parity restored:** the employee-removal guard (`EMP_REMOVE_BLOCKED` — a holder must return their tools first) and the localized `EMP_REMOVE_CONFIRM` existed as dictionary keys but were unused by the modular `RegistryModal`; both are wired up again. Added `USER_REMOVE_CONFIRM` (EN/RU) for the RBAC tab.
 - **New gate:** `npm run check:i18n` (`scripts/check-i18n-parity.mjs`) — mechanical EN/RU parity: equal key sets, identical `{placeholder}` sets per key, no Cyrillic left in the English dictionary. 622 keys each.
 - **Tests:** `tests/registrySync.test.ts` (13 cases) — tombstone merge rules, registry prune on load/merge, re-add wins over an older tombstone, station-rename key retirement, personnel soft delete round-trip through IndexedDB, and `updatedAt` stamping. Suite: 48 → 61.
+- **Test suite is now typechecked:** `tsconfig.json` `include` gained `tests`, which surfaced two latent errors that `npm run typecheck` had been silently skipping — a duplicate `id: on.id` before `...on` in `tests/conflictResolver.test.ts`, and a synchronous `ASSETS.fetch` stub in `tests/worker.test.ts` that did not satisfy `WorkerFetcher` (`Promise<Response>`). Both fixed; `npm run build` now typechecks the tests as well.
 
 ### 0. Language Switch Re-translates Charts, KPIs & Modals (v111 Release)
 - **Symptom:** in ENG mode the dashboard chart card titles (and the KPI labels) stayed Russian.

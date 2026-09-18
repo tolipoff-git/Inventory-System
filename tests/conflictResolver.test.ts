@@ -5,7 +5,6 @@ import { SyncPayload } from '../src/types/sync';
 
 function tool(on: Partial<Tool> & { id: string }, updatedAt: string): Tool {
   return {
-    id: on.id,
     name: 'Base Tool',
     type: 'Permanent',
     category: 'Hand Tools',
