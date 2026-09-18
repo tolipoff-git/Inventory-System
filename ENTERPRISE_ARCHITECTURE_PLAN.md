@@ -400,26 +400,42 @@ feature that reads them (Phase B/C).
 the sync merge a plain union by id (`mergeSops()`, newest `updatedAt` wins) with no
 tombstone to carry — unlike the registries in §5 Phase A.
 
-**Phase B — surface SOPs where the work happens**
+**Phase B — surface SOPs where the work happens** *(deferred 2026-09-18 — no need yet)*
 
-5. **Contextual entry point:** the tool card's `Read SOP & Maintenance Manual`
-   action opens the SOP(s) whose `appliesTo.toolClasses` contains the tool's
-   class prefix; the station/post card offers its station/post SOPs.
+5. **Contextual entry point (do this first — cheapest, highest value).** The tool card
+   (`ToolGrid.renderTools()`) has no SOP action, so a user must already know *which*
+   document they need and go hunting in the Category Hub. Add a button that opens the
+   standards whose `appliesTo.toolClasses` contains the tool's ID prefix (same
+   `(t.id || '').split('-')[0]` pattern the reports use) — `TW-DRILL-001` → `SOP-TW-01` —
+   plus any unrestricted document. This is what makes `appliesTo` earn its keep; today it
+   is only printed in the document header.
+   - The i18n key `Read SOP & Maintenance Manual` already exists in **both** dictionaries
+     (`en.ts`, `ru.ts`) and is referenced by **no code** — a leftover from the monolith.
+     Verified 2026-09-18. It is the intended label for this button; do not add a new key.
 6. **SOP hub upgrade:** replace the flat list with a small index —
    grouped by area, with a search box (reuse the global search pattern), status
    badge (`Approved` / `Draft` / `Obsolete`) and "Rev. N · effective date".
+   Only worth doing once the registry holds more than a handful of documents.
 7. **Standards section:** a list of external references (ISO 9001 clauses,
    internal specs, supplier manuals) with `links[]`, plus optional attachments
    stored as IndexedDB blobs like tool photos.
-8. **Training evidence:** log `SOP_VIEW` / `SOP_PRINT` with the actor, so an audit can
-   show who read which revision.
 
-**Phase C — evidence & governance**
+**Phase C — evidence & governance** *(deferred 2026-09-18)*
 
-8. **Acknowledgement log:** record `SOP_VIEW` / `SOP_PRINT` in the audit log with
-   actor and revision — gives training/traceability evidence for audits.
+8. **Acknowledgement log** — who read/printed which revision, for audit evidence.
+   ⚠️ **Do not implement this by writing `SOP_VIEW` into the audit log.**
+   `AUDIT_LOG_LIMIT` is 1000 and the log is truncated, so a record per document open
+   would flood it within weeks and push out the operational entries that actually
+   matter (issuance, returns, decommissioning, registry changes) — making the audit
+   trail *worse*. Instead:
+   - `SOP_PRINT` → the audit log (printing is rare and is the meaningful act of
+     acknowledgement);
+   - `SOP_VIEW` → a separate acknowledgement journal in `settings` (e.g.
+     `sopAcknowledgements`), aggregated per actor × document × revision with a
+     last-seen timestamp, so it never displaces operational history.
 9. **Obsolete handling:** superseded SOPs remain retrievable but are visibly
-   marked and excluded from contextual prompts.
+   marked and excluded from contextual prompts. (Partially done: `approvedSops()`
+   already excludes them from the Category Hub card.)
 
 ### 6.4 Deliberately out of scope for the SOP hub
 

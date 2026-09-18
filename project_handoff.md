@@ -42,10 +42,18 @@ working session; the per-release history below is the long-term record.
 - `scripts/check-i18n-parity.mjs` → `npm run check:i18n` — the EN/RU parity gate.
 
 ### Next actions (agreed direction, not yet started)
-1. **SOP hub — Phase B** (plan §6): contextual entry point on the tool card (the
-   `Read SOP & Maintenance Manual` key already exists), a hub index + search, and
-   `SOP_VIEW` / `SOP_PRINT` acknowledgement logging for training evidence. Phase A shipped
-   in v113.
+1. **SOP hub — Phase B** (plan §6). **Deferred by the user on 2026-09-18 — no need right now.**
+   Recorded in the plan with the design notes, so it is not lost:
+   - *Contextual entry point first* (cheapest, highest value): a tool-card button that opens
+     the standards matching the tool's ID prefix via `appliesTo.toolClasses`. The label key
+     `Read SOP & Maintenance Manual` already exists in both dictionaries and is used by **no
+     code** — it is the intended label, do not add a new key.
+   - *Index + search in the hub* — only worth it once the registry holds more than a handful
+     of documents.
+   - *Acknowledgement log* — ⚠️ do **not** write `SOP_VIEW` into the audit log: `AUDIT_LOG_LIMIT`
+     is 1000 and truncates, so a record per open would flood it and push out the operational
+     entries that matter. Use `SOP_PRINT` → audit log, `SOP_VIEW` → a separate aggregated
+     journal in `settings`.
 2. **Sync Phase B** (plan §5) — sync status panel (last push/pull, room, peer count, pending
    changes, conflicts that lost a record), photos → R2 when volume grows, room switcher UI.
    Phase A (tombstones, `updatedAt` coverage, `/api/health`) shipped in v112.
