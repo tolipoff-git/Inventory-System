@@ -6,6 +6,7 @@ import { T } from '../../../i18n';
 import { Store } from '../../../storage/store';
 import { esc } from '../../../utils/formatters';
 import { generateQrDataUrl } from '../../../labels/qrGenerator';
+import { requiresCalibration } from '../../../operations/toolOps';
 import { printLabelsHtml, printQueueLabels, buildLabelSheetHtml, drawAllQrsInContainer, STOCKS, LabelFormat } from '../../../labels/labelPrint';
 import { toast, printHtml } from '../../../utils/dom';
 
@@ -29,6 +30,22 @@ export class LabelModal {
 
         await this.updatePreview(tool);
         this.updateQueueState();
+
+        // The verification tag is only meaningful for classes that require
+        // verification — hide it for a socket head / hammer and fall back to a
+        // plain tool label if it was the last-used format.
+        const needsCal = requiresCalibration(tool);
+        const calOpt = modal?.querySelector<HTMLOptionElement>('#labelFormatSelect option[value="calTag"]');
+        if (calOpt) {
+            calOpt.disabled = !needsCal;
+            calOpt.hidden = !needsCal;
+            if (!needsCal && this.selectedFormat === 'calTag') {
+                this.selectedFormat = 'avery5161';
+                const sel = modal?.querySelector<HTMLSelectElement>('#labelFormatSelect');
+                if (sel) sel.value = 'avery5161';
+            }
+        }
+
         if (modal) modal.classList.add('active');
     }
 

@@ -109,6 +109,14 @@ describe('label sheet layout (Avery die-cut alignment)', () => {
     expect(cells[1]).not.toContain('page-break-after:always');
   });
 
+  it('anchors roll/single stock at the page origin — never centred on a full sheet', () => {
+    // A centred 70x50 tag printed in the middle of a Letter sheet when the printer
+    // rejected the custom @page size.
+    const html = buildLabelSheetHtml([{ id: 'TW-001', type: 'tool' }], 'calTag');
+    expect(html).not.toContain('margin:0 auto');
+    expect(html).toContain('position:relative');
+  });
+
   it('renders the calibration tag with the verification block', () => {
     const html = buildLabelSheetHtml([{ id: 'TW-001', type: 'tool' }], 'calTag');
     expect(cellsOf(html)).toHaveLength(1);
