@@ -112,7 +112,7 @@ export function analyzeKaizen(): KaizenRecommendation[] {
   }
 
   // 6. Personnel care score
-  const lowCare = Store.personnel.filter(e => careOf(e).score < 75);
+  const lowCare = Store.activePersonnel().filter(e => careOf(e).score < 75);
   if (lowCare.length) {
     const names = lowCare.map(e => e.name).slice(0, 2).join(', ') + (lowCare.length > 2 ? '…' : '');
     add(2, ['Administrator'],

@@ -176,6 +176,7 @@ export const en: Record<string, string> = {
   "Restore backup from": "Restore backup from",
   "Current data will be REPLACED.": "Current data will be REPLACED.",
   "USER_EXISTS": "Username already exists!",
+  "USER_REMOVE_CONFIRM": "Remove user {name}? Their sign-in will stop working on this device.",
   "ADMIN_NODELETE": "Cannot delete default admin account.",
   "Delete user": "Delete user",
   "BARCODE_UNKNOWN": "Barcode not recognized in system.",

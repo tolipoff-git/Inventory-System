@@ -176,6 +176,7 @@ export const ru: Record<string, string> = {
   "Restore backup from": "Восстановить бэкап от",
   "Current data will be REPLACED.": "Текущие данные будут ЗАМЕЩЕНЫ.",
   "USER_EXISTS": "Пользователь уже существует!",
+  "USER_REMOVE_CONFIRM": "Удалить пользователя {name}? Вход с этого устройства станет невозможен.",
   "ADMIN_NODELETE": "Нельзя удалить учётную запись администратора по умолчанию.",
   "Delete user": "Удалить пользователя",
   "BARCODE_UNKNOWN": "Штрихкод не найден в системе.",

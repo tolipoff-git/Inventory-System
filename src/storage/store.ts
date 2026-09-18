@@ -2,6 +2,7 @@ import { Tool } from '../types/inventory';
 import { PurchaseOrder } from '../types/procurement';
 import { Employee, SystemUser } from '../types/personnel';
 import { AuditLogEntry, Audit5S } from '../types/audit';
+import { RegistryEvents, REGISTRY_KEYS, isTombstoned } from '../types/registry';
 import { AppDB, DBState } from './indexedDb';
 import { SEED_USERS, SEED_WORKSTATIONS, SEED_TOOLS } from './seedData';
 import { CONFIG } from '../config/constants';
@@ -19,6 +20,15 @@ class StoreManager {
   private _subscribers: Set<StoreSubscriber> = new Set();
   private _dbChannel: BroadcastChannel | null = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('inv_db_sync') : null;
   private _rollbackSnap: any = null;
+  /**
+   * Last-persisted JSON per record, used by `stampDirtyRecords()` to guarantee
+   * that every mutation — whatever path it took — advances `updatedAt`. Without
+   * this a forgotten `touch()` silently loses the edit on the next sync merge.
+   */
+  private _persisted: { tools: Map<string, string>; personnel: Map<string, string> } = {
+    tools: new Map(),
+    personnel: new Map(),
+  };
 
   public users: SystemUser[] = [];
   public workstations: string[] = [];
@@ -28,6 +38,7 @@ class StoreManager {
   public labelQueue: string[] = [];
   public programs: string[] = [];
   public wsProgram: Record<string, string> = {};
+  public registryEvents: RegistryEvents = {};
   public auditLog: AuditLogEntry[] = [];
   public procurementLog: PurchaseOrder[] = [];
   public audits5s: Audit5S[] = [];
@@ -74,6 +85,7 @@ class StoreManager {
       workposts: this.workposts.map(p => (typeof p === 'string' ? { name: p, ws: null } : { name: p.name, ws: p.ws || null })),
       programs: this.programs,
       wsProgram: this.wsProgram,
+      registryEvents: this.registryEvents,
       audits5s: this.audits5s,
       meta: this.meta,
       labelQueue: this.labelQueue,
@@ -91,6 +103,10 @@ class StoreManager {
     this.applyLoadedData(data);
     this.migrate();
     this.recomputeStatuses();
+    // Everything above is normalization, not user intent — treat the result as
+    // the persisted baseline so `migrate()`/`recomputeStatuses()` cannot make
+    // this device look newer than its peers.
+    this.refreshPersistedFingerprints();
     this.notify();
   }
 
@@ -113,10 +129,17 @@ class StoreManager {
 
     this.programs = Array.isArray(data.programs) ? data.programs : [];
     this.wsProgram = data.wsProgram && typeof data.wsProgram === 'object' ? data.wsProgram : {};
+    this.registryEvents = data.registryEvents && typeof data.registryEvents === 'object' ? data.registryEvents : {};
     this.audits5s = Array.isArray(data.audits5s) ? data.audits5s : [];
     this.meta = data.meta && typeof data.meta === 'object' ? data.meta : { schemaVersion: CONFIG.SCHEMA_VERSION };
     this.labelQueue = Array.isArray(data.labelQueue) ? data.labelQueue : [];
     this._rollbackSnap = data.rollback || null;
+
+    // Apply registry tombstones last: this is the single funnel for both the
+    // IndexedDB load and the sync merge, so a removed program / station / post
+    // can never be resurrected by a peer's stale array.
+    this.applyRegistryTombstones();
+    this.refreshPersistedFingerprints();
   }
 
   public async save(): Promise<void> {
@@ -124,6 +147,10 @@ class StoreManager {
     if (this.auditLog.length > CONFIG.AUDIT_LOG_LIMIT) {
       this.auditLog = this.auditLog.slice(-CONFIG.AUDIT_LOG_LIMIT);
     }
+
+    // Safety net: stamp every record that changed since the last write, so a
+    // mutation path that forgot `touch()` still wins the next LWW merge.
+    this.stampDirtyRecords();
 
     const state: Partial<DBState> = {
       tools: this.tools,
@@ -135,6 +162,7 @@ class StoreManager {
       workposts: this.workposts.map(p => ({ name: p.name, ws: p.ws || null })),
       programs: this.programs,
       wsProgram: this.wsProgram,
+      registryEvents: this.registryEvents,
       audits5s: this.audits5s,
       meta: this.meta,
       labelQueue: this.labelQueue,
@@ -142,6 +170,7 @@ class StoreManager {
     };
 
     await AppDB.saveAll(state);
+    this.refreshPersistedFingerprints();
     if (this._dbChannel) {
       this._dbChannel.postMessage({ type: 'db_saved', ts: Date.now() });
     }
@@ -235,6 +264,30 @@ class StoreManager {
     );
   }
 
+  /**
+   * Personnel that still exist for the user. Tombstoned (removed) employees stay
+   * in `personnel` so tool assignments and history keep resolving their names,
+   * but must never show up in lists, pickers or counters.
+   */
+  public activePersonnel(): Employee[] {
+    return this.personnel.filter(e => !e.deletedAt);
+  }
+
+  /**
+   * Soft-delete an employee. The record is kept with a `deletedAt` tombstone so a
+   * peer holding an older copy cannot resurrect it on the next sync merge.
+   */
+  public removePersonnel(id: string): boolean {
+    const emp = this.personnel.find(p => p.id === id);
+    if (!emp || emp.deletedAt) return false;
+    const now = nowISO();
+    emp.deletedAt = now;
+    emp.updatedAt = now;
+    this.log('EMP_REMOVE', `${emp.id} ${emp.name}`);
+    this.save();
+    return true;
+  }
+
   public empName(id: string | null | undefined): string {
     if (!id) return 'Unknown';
     const e = this.getEmp(id);
@@ -263,6 +316,53 @@ class StoreManager {
 
   public touch(tool: Tool): void {
     tool.updatedAt = nowISO();
+  }
+
+  /** Mark a registry key as created (`del: false`) or removed (`del: true`). */
+  private markRegistry(key: string, del: boolean): void {
+    this.registryEvents[key] = { t: nowISO(), del };
+  }
+
+  /** Drop every registry entry that currently carries a tombstone. */
+  private applyRegistryTombstones(): void {
+    const dead = (key: string) => isTombstoned(this.registryEvents, key);
+    this.programs = this.programs.filter(p => !dead(REGISTRY_KEYS.program(p)));
+    this.workstations = this.workstations.filter(ws => !dead(REGISTRY_KEYS.workstation(ws)));
+    this.workposts = this.workposts.filter(p =>
+      !dead(REGISTRY_KEYS.workpost(p.name, p.ws)) &&
+      // A removed station takes its posts with it, even if a peer only sent us
+      // the station tombstone.
+      !(p.ws && dead(REGISTRY_KEYS.workstation(p.ws)))
+    );
+    Object.keys(this.wsProgram).forEach(ws => {
+      if (dead(REGISTRY_KEYS.wsProgram(ws)) || dead(REGISTRY_KEYS.workstation(ws))) delete this.wsProgram[ws];
+    });
+  }
+
+  /**
+   * Advance `updatedAt` on every tool/employee whose content changed since the
+   * last write. This is what makes "every mutation path stamps `updatedAt`"
+   * true by construction instead of by convention.
+   */
+  private stampDirtyRecords(): void {
+    const now = nowISO();
+    const stamp = <T extends { id?: string; updatedAt?: string }>(list: T[], prev: Map<string, string>): void => {
+      list.forEach(rec => {
+        if (!rec || !rec.id) return;
+        const before = prev.get(rec.id);
+        if (before === undefined || JSON.stringify(rec) !== before) rec.updatedAt = now;
+      });
+    };
+    stamp(this.tools, this._persisted.tools);
+    stamp(this.personnel, this._persisted.personnel);
+  }
+
+  /** Re-baseline the change detector against the current in-memory state. */
+  private refreshPersistedFingerprints(): void {
+    this._persisted = {
+      tools: new Map(this.tools.filter(t => t && t.id).map(t => [t.id, JSON.stringify(t)])),
+      personnel: new Map(this.personnel.filter(p => p && p.id).map(p => [p.id, JSON.stringify(p)])),
+    };
   }
 
   public recomputeStatuses(): void {
@@ -335,6 +435,7 @@ class StoreManager {
 
   public addProgram(name: string): void {
     this.programs.push(name);
+    this.markRegistry(REGISTRY_KEYS.program(name), false);
     this.log('REGISTRY_ADD', `programs: ${name}`);
     this.save();
   }
@@ -350,6 +451,8 @@ class StoreManager {
         moved++;
       }
     });
+    this.markRegistry(REGISTRY_KEYS.program(oldName), true);
+    this.markRegistry(REGISTRY_KEYS.program(newName), false);
     this.log('REG_RENAME_PROG', `${oldName} → ${newName} (stations: ${moved})`);
     this.save();
     return { stations: moved };
@@ -365,6 +468,7 @@ class StoreManager {
         released++;
       }
     });
+    this.markRegistry(REGISTRY_KEYS.program(name), true);
     this.log('REGISTRY_REMOVE', `programs: ${name} (${released} stations unassigned)`);
     this.save();
     return { released };
@@ -374,6 +478,7 @@ class StoreManager {
     this.snapshot(`set program of ${ws}`);
     if (prog) this.wsProgram[ws] = prog;
     else delete this.wsProgram[ws];
+    this.markRegistry(REGISTRY_KEYS.wsProgram(ws), !prog);
     this.log('REG_SET_PROG', `${ws} → ${prog || 'no program'}`);
     this.save();
   }
@@ -385,13 +490,18 @@ class StoreManager {
   /** Add a station, optionally assigning it to a program (null → "no program" group). */
   public addWorkstation(name: string, program: string | null = null): void {
     if (!this.workstations.includes(name)) this.workstations.push(name);
-    if (program && this.programs.includes(program)) this.wsProgram[name] = program;
+    this.markRegistry(REGISTRY_KEYS.workstation(name), false);
+    if (program && this.programs.includes(program)) {
+      this.wsProgram[name] = program;
+      this.markRegistry(REGISTRY_KEYS.wsProgram(name), false);
+    }
     this.log('REGISTRY_ADD', `workstations: ${name}${program ? ` (${program})` : ''}`);
     this.save();
   }
 
   public addWorkpost(name: string, ws: string | null): void {
     this.workposts.push({ name, ws: ws || null });
+    this.markRegistry(REGISTRY_KEYS.workpost(name, ws), false);
     this.log('REGISTRY_ADD', `workposts: ${name} (${ws || 'no zone'})`);
     this.save();
   }
@@ -404,8 +514,17 @@ class StoreManager {
     if (this.wsProgram[oldName]) {
       this.wsProgram[newName] = this.wsProgram[oldName];
       delete this.wsProgram[oldName];
+      this.markRegistry(REGISTRY_KEYS.wsProgram(oldName), true);
+      this.markRegistry(REGISTRY_KEYS.wsProgram(newName), false);
     }
-    this.workposts.forEach(p => { if (p.ws === oldName) p.ws = newName; });
+    // Post keys embed their station, so a rename has to retire the old keys.
+    this.workposts.forEach(p => {
+      if (p.ws === oldName) {
+        this.markRegistry(REGISTRY_KEYS.workpost(p.name, oldName), true);
+        this.markRegistry(REGISTRY_KEYS.workpost(p.name, newName), false);
+        p.ws = newName;
+      }
+    });
     this.personnel.forEach(e => { if (e.ws === oldName) e.ws = newName; });
     this.tools.forEach(t => {
       if (t.address && t.address.zone === oldName) t.address.zone = newName;
@@ -415,6 +534,8 @@ class StoreManager {
         t.location = L.parts.join(L.sep || ' / ');
       }
     });
+    this.markRegistry(REGISTRY_KEYS.workstation(oldName), true);
+    this.markRegistry(REGISTRY_KEYS.workstation(newName), false);
     this.log('REG_RENAME_WS', `${oldName} → ${newName}`);
     this.save();
   }
@@ -435,6 +556,8 @@ class StoreManager {
         t.location = L.parts.join(L.sep || ' / ');
       }
     });
+    this.markRegistry(REGISTRY_KEYS.workpost(oldName, ws), true);
+    this.markRegistry(REGISTRY_KEYS.workpost(newName, ws), false);
     this.log('REG_RENAME_WP', `${oldName} → ${newName}`);
     this.save();
   }
@@ -457,6 +580,8 @@ class StoreManager {
         }
       });
     }
+    this.markRegistry(REGISTRY_KEYS.workpost(name, fromWs), true);
+    this.markRegistry(REGISTRY_KEYS.workpost(name, toWs), false);
     this.log('REG_MOVE_WP', `${name}: ${fromWs || 'no zone'} → ${toWs || 'no zone'}`);
     this.save();
   }
@@ -464,10 +589,14 @@ class StoreManager {
   /** Remove a station: its posts are removed in cascade (dangling refs are left for integrity scan). */
   public removeWorkstation(name: string): { posts: number } {
     this.snapshot(`remove zone ${name}`);
-    const posts = this.workposts.filter(p => p.ws === name).length;
+    const doomed = this.workposts.filter(p => p.ws === name);
+    const posts = doomed.length;
+    doomed.forEach(p => this.markRegistry(REGISTRY_KEYS.workpost(p.name, name), true));
     this.workposts = this.workposts.filter(p => p.ws !== name);
     this.workstations = this.workstations.filter(w => w !== name);
     delete this.wsProgram[name];
+    this.markRegistry(REGISTRY_KEYS.workstation(name), true);
+    this.markRegistry(REGISTRY_KEYS.wsProgram(name), true);
     this.log('REGISTRY_REMOVE', `workstations: ${name} (${posts} posts)`);
     this.save();
     return { posts };
@@ -478,6 +607,7 @@ class StoreManager {
     const before = this.workposts.length;
     this.workposts = this.workposts.filter(p => !(p.name === name && p.ws === (ws || null)));
     const removed = before - this.workposts.length;
+    this.markRegistry(REGISTRY_KEYS.workpost(name, ws), true);
     this.log('REGISTRY_REMOVE', `workposts: ${name} (${ws || 'no zone'})`);
     this.save();
     return { removed };
@@ -486,7 +616,7 @@ class StoreManager {
   /** Usage counters for a station, used by the delete-confirmation dialogs. */
   public zoneUsage(name: string): { posts: number; emp: number; tools: number } {
     const posts = this.workposts.filter(p => p.ws === name).length;
-    const emp = this.personnel.filter(e => e.ws === name).length;
+    const emp = this.activePersonnel().filter(e => e.ws === name).length;
     let tools = 0;
     this.tools.forEach(t => {
       const L = this.parseLocParts(t.location || '');
@@ -537,6 +667,7 @@ class StoreManager {
         workposts: this.workposts,
         programs: this.programs,
         wsProgram: this.wsProgram,
+        registryEvents: this.registryEvents,
         personnel: this.personnel,
         tools: this.tools,
         audits5s: this.audits5s,
@@ -574,6 +705,7 @@ class StoreManager {
     this.workposts = Array.isArray(s.workposts) ? JSON.parse(JSON.stringify(s.workposts)) : this.workposts;
     this.programs = s.programs ? JSON.parse(JSON.stringify(s.programs)) : [];
     this.wsProgram = s.wsProgram ? JSON.parse(JSON.stringify(s.wsProgram)) : {};
+    this.registryEvents = s.registryEvents ? JSON.parse(JSON.stringify(s.registryEvents)) : {};
     this.personnel = JSON.parse(JSON.stringify(s.personnel));
     this.tools = JSON.parse(JSON.stringify(s.tools));
     this.audits5s = s.audits5s ? JSON.parse(JSON.stringify(s.audits5s)) : (this.audits5s || []);

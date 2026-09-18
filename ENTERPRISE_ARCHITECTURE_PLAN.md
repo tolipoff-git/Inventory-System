@@ -49,10 +49,19 @@ much less desirable in others* than the old document implied.
 
 **The one genuine architectural gap** worth naming:
 
-> **Deletes are not tombstoned.** Removal is expressed as *absence*. A peer that
-> still holds an older copy will re-introduce the record on the next merge.
-> Append-only data (history, audits) is safe; hard deletes (tool, employee,
-> user, registry entry) are not. See §5 Phase A.
+> **Deletes were not tombstoned.** Removal was expressed as *absence*. A peer that
+> still held an older copy would re-introduce the record on the next merge.
+> Append-only data (history, audits) was safe; hard deletes (employee, registry
+> entry) were not. **Closed in v112** — see §5 Phase A.
+
+**Two deliberate non-changes** (recorded so they are not "fixed" later):
+
+- **Tools** are already soft-deleted by `status: 'Decommissioned'` and are never
+  spliced out of the array, so a separate `deletedAt` would be a second, redundant
+  mechanism. Every status transition stamps `updatedAt`, so LWW already protects
+  them.
+- **Users** are *not* part of `SyncPayload` at all (credentials stay device-local),
+  so tombstoning them would have no sync effect. They remain hard-deleted.
 
 ---
 
@@ -144,12 +153,20 @@ unopened because nobody knows who requested them.
   pull on hint, on local change, on interval, and manually. Failures degrade to
   polling — sync never blocks local work.
 - **Merge (`conflictResolver.ts`):**
-  - per-entity winner = higher `updatedAt` (remote wins ties);
+  - per-entity winner = higher `updatedAt` (remote wins ties); for personnel the
+    revision time is `max(updatedAt, deletedAt)`, so a tombstone counts as an edit;
   - `history` / `audit_history` = set union (no duplicate loss);
   - `auditLog` = union, newest first, capped at `AUDIT_LOG_LIMIT`;
   - `settings` = union of workstations / programs / workposts; `wsProgram` merge;
-    `audits5s` union by id (append-only).
-- **Known gap:** hard deletes are not tombstoned (see §0 and §5 Phase A).
+    `audits5s` union by id (append-only);
+  - `registryEvents` = newest event per key (ties → remote) — the tombstone map
+    that keeps a removal from being resurrected by the union above.
+- **Deletes:** personnel carry `deletedAt`; registry entries carry a
+  `{t, del}` event in `settings.registryEvents`. `Store.applyLoadedData()` is the
+  single funnel that applies tombstones after every load *and* every merge.
+- **`updatedAt` coverage:** `Store.save()` re-stamps any tool/employee whose JSON
+  changed since the last write, so a mutation path that forgot `touch()` cannot
+  silently lose the edit on merge.
 
 ### 2.3 Security (actual)
 
@@ -166,7 +183,8 @@ unopened because nobody knows who requested them.
 
 - Vite 6 + TS 5.6; `npm run build` → `dist/`; `bash build.sh` refreshes the SW
   cache stamp from `package.json` + git short hash.
-- Quality gates: `tsc --noEmit`, ESLint, Vitest (48 tests), EN/RU key parity.
+- Quality gates: `tsc --noEmit`, ESLint, Vitest (61 tests), `npm run check:i18n`
+  (EN/RU key + placeholder parity).
 - Cloudflare Pages auto-deploys on push to `main`.
 
 ---
@@ -182,7 +200,7 @@ Legend: ✅ done · 🟡 partial · ⛔ deliberately not doing (§4) · 🔭 rev
 | Live cross-device push | ✅ | ntfy SSE relay (best-effort) |
 | Cross-tab consistency | ✅ | `BroadcastChannel` |
 | Field/entity-level merge | ✅ | LWW per entity + append-only union |
-| Tombstoned deletes | 🔭 | **Real gap** — Phase A |
+| Tombstoned deletes | ✅ | `deletedAt` (personnel) + `registryEvents` (registries), v112 |
 | RBAC + hashed credentials | ✅ | PBKDF2, 3 roles |
 | Audit trail + export integrity | ✅ | SHA-256 stamp, sheet lock |
 | Partial receiving / rejections | ✅ | Per line item |
@@ -279,16 +297,20 @@ is adequate and degrades gracefully.
 Small, high-value increments that respect the as-built design. Each item must be
 independently shippable and must not add a new runtime dependency.
 
-### Phase A — Correctness of the sync layer *(do first)*
+### Phase A — Correctness of the sync layer ✅ *(shipped in v112)*
 
-1. **Tombstone soft-deletes.** Add `deletedAt` to tools/personnel/users/registry
-   entries instead of removing them; filter them out of all views; merge keeps the
-   newest tombstone. Prevents "resurrected" records. *(The one real gap.)*
-2. **Audit `updatedAt` coverage.** Verify every mutation path stamps
-   `updatedAt` (via `Store.touch()`); a missing stamp silently corrupts conflict
-   resolution. Add a test that asserts it for the main operations.
-3. **`/api/health`** on the Worker — version, KV reachability, timestamp. Cheap
-   and makes sync problems diagnosable without guesswork.
+1. **Tombstone soft-deletes.** ✅ Personnel carry `deletedAt` (filtered out of every
+   list/picker/counter via `Store.activePersonnel()`, still resolvable so tool history
+   keeps real names). Registry entries — programs, stations, posts and station→program
+   links — carry a `{t, del}` event in `settings.registryEvents`, merged newest-wins and
+   applied in `Store.applyLoadedData()`. Tools and users were deliberately left alone
+   (see §0).
+2. **Audit `updatedAt` coverage.** ✅ Rather than auditing call sites by hand,
+   `Store.save()` now re-stamps every tool/employee whose content changed since the
+   last write (`stampDirtyRecords()`), which makes the invariant true by construction.
+   `tests/registrySync.test.ts` asserts it for in-place edits, no-op saves and the
+   personnel form.
+3. **`/api/health`** ✅ (already present since v97) — service, timestamp, KV presence.
 
 ### Phase B — Operability
 

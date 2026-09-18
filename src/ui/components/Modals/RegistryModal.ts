@@ -253,7 +253,7 @@ export class RegistryModal {
         this.populateEmpWsSelect('', '');
 
         if (!tbody) return;
-        tbody.innerHTML = Store.personnel.map(emp => {
+        tbody.innerHTML = Store.activePersonnel().map(emp => {
             const careScore = emp.careScore ?? 100;
             const careColor = careScore >= 80 ? 'var(--success)' : careScore >= 60 ? 'var(--warning)' : 'var(--danger)';
             const prog = emp.ws ? (Store.programOf(emp.ws) || '—') : '—';
@@ -285,11 +285,22 @@ export class RegistryModal {
         tbody.querySelectorAll('[data-reg-action="del-emp"]').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const id = (e.currentTarget as HTMLElement).dataset.id!;
-                if (windowConfirm(`Remove employee ${id}?`)) {
-                    Store.personnel = Store.personnel.filter(p => p.id !== id);
-                    await Store.save();
-                    this.renderPersonnel();
+                const emp = Store.getEmp(id);
+                if (!emp) return;
+
+                // Parity with the legacy monolith: a holder must return their tools first.
+                const holding = Store.tools.filter(t => t.assigneeId === emp.id);
+                if (holding.length) {
+                    toast(T('EMP_REMOVE_BLOCKED')
+                        .replace('{name}', emp.name)
+                        .replace('{n}', String(holding.length))
+                        .replace('{ids}', holding.map(t => t.id).join(', ')), 'warning');
+                    return;
                 }
+
+                if (!windowConfirm(T('EMP_REMOVE_CONFIRM').replace('{name}', emp.name))) return;
+                Store.removePersonnel(id);
+                this.renderPersonnel();
             });
         });
     }
@@ -598,7 +609,7 @@ export class RegistryModal {
         tbody.querySelectorAll('[data-reg-user-del]').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const user = (e.currentTarget as HTMLElement).dataset.regUserDel!;
-                if (windowConfirm(`Remove user ${user}?`)) {
+                if (windowConfirm(T('USER_REMOVE_CONFIRM').replace('{name}', user))) {
                     Store.users = Store.users.filter(u => u.username !== user);
                     await Store.save();
                     this.renderRbac();

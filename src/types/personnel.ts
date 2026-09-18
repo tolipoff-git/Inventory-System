@@ -15,6 +15,13 @@ export interface Employee {
   active?: boolean;
   history?: string[];
   updatedAt?: string;
+  /**
+   * Soft-delete tombstone (ISO). Removal is expressed as a field rather than by
+   * dropping the record, so a peer holding an older copy can no longer resurrect
+   * it on the next merge; views filter tombstoned rows out via
+   * `Store.activePersonnel()`.
+   */
+  deletedAt?: string;
 }
 
 export interface SystemUser {

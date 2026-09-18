@@ -50,7 +50,7 @@ export function generateReq003Workbook(
 
   // Requestor: resolve initials to the employee's full name when known.
   const initials = (meta.initials || '').trim();
-  const emp = Store.personnel.find(p => p.initials &&
+  const emp = Store.activePersonnel().find(p => p.initials &&
     initials && p.initials.toLowerCase() === initials.toLowerCase());
   const requestor = emp ? emp.name : (initials || 'N/A');
 

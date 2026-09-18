@@ -1,7 +1,7 @@
 {
   "name": "inventory-system",
   "private": true,
-  "version": "111.0.0",
+  "version": "112.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "eslint src vite.config.ts tests",
+    "check:i18n": "node scripts/check-i18n-parity.mjs",
     "deploy": "npm run build && npx wrangler deploy",
     "deploy:prod": "npm run build && npx wrangler deploy --env production"
   },
