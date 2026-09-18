@@ -266,8 +266,26 @@ export function printLabelViaIframe(container: HTMLElement, stockKey: string = '
       ${styles}
       <style>
         ${pageCss}
-        body { margin: 0; padding: 0; background: white; color: black !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .sheet-mode, .sheet-mode * { color: black !important; }
+        /* Neutralise the app shell so the printed label is on plain white: the
+           tron theme paints a fixed SVG line grid on body::before and a radial
+           gradient on body, which otherwise bled onto the label. */
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          display: block !important;
+          min-height: auto !important;
+          overflow: visible !important;
+          background: #ffffff !important;
+          color: #000000 !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        html::before, html::after, body::before, body::after {
+          content: none !important;
+          display: none !important;
+          background: none !important;
+        }
+        .sheet-mode, .sheet-mode * { color: #000000 !important; }
       </style>
     </head>
     <body>

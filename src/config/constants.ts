@@ -70,6 +70,17 @@ export const QR_BASE_URL = 'https://inventory-system.tolipoff.workers.dev';
 export const PERMANENT_PREFIXES = TOOL_CLASSES.filter(c => c.group !== 'CONS').map(c => c.p);
 export const CONSUMABLE_PREFIXES = TOOL_CLASSES.filter(c => c.group === 'CONS').map(c => c.p);
 
+/**
+ * Tool classes that require periodic verification / calibration. Drives whether the
+ * "Record Calibration" action is offered on a tool card — a socket head, a hammer or
+ * a wrench set does not need a calibration tag.
+ *
+ * TW  Torque Wrench · CT Crimping Tool · DC Meter & Diagnostics (multimeter) ·
+ * CA  Caliper / Micrometer · GA Gauge / Template.
+ * Add a prefix here to enable verification for another class (e.g. `TM` tape measures).
+ */
+export const CALIBRATION_PREFIXES = ['TW', 'CT', 'DC', 'CA', 'GA'];
+
 export interface RubricDefinition {
   id: string;
   key: string;
@@ -186,6 +197,7 @@ export const CONFIG = {
   STATUS_COLORS,
   TOOL_CLASSES,
   TOOL_CLASS_GROUPS,
+  CALIBRATION_PREFIXES,
   SHAREPOINT_EXPENSE_URL,
   QR_BASE_URL,
   PERMANENT_PREFIXES,

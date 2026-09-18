@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v119)
+# 5S Tool Command Center — v3 (v120)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -101,10 +101,19 @@ grouped by the role that can act on it**.
   Calibration Tag) with a start-cell offset for part-used sheets.
 - **Calibration / verification tag** (`calTag`, 70×50 mm) — prints the verification
   block (who verified · date · valid until · certificate #) next to the QR, so a
-  scanned tag opens the full tool card.
+  scanned tag opens the full tool card. The tag prints on a **clean white page** — the
+  print iframe neutralises the app shell, so no theme background or grid lines bleed
+  onto the label.
 - **REQ003** expense template (xlsx), full **XLSX dump** (Active/Archive/Audit/Personnel).
 
 ### 4a. Calibration & verification
+- **Verification classes only** — the *Record Calibration* action is offered only for
+  classes that need it: **Torque Wrench (TW)**, **Crimping Tool (CT)**, **Meter &
+  Diagnostics (DC)**, **Caliper / Micrometer (CA)**, **Gauge / Template (GA)**. Add a prefix
+  to `CONFIG.CALIBRATION_PREFIXES` to extend. A socket head or a hammer has no such button.
+- **Who verified = a person, not a login** — *Verified by* is a picker over the personnel
+  registry (so the tag reads “Igor Tolipov”, not “admin”); the logged-in user is preselected
+  only if they exist in personnel. Required before saving.
 - **Structured verification record** per tool — `calVerifiedAt`, `calVerifiedBy`,
   `calIntervalDays`, `calCertNo` and a `calHistory[]` log (not just a free-text
   history line). The next due date is computed from `date + interval`.

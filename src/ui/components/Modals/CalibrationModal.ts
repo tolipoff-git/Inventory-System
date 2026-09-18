@@ -5,9 +5,9 @@
 
 import { T } from '../../../i18n';
 import { Store } from '../../../storage/store';
-import { Auth } from '../../../auth/authManager';
 import { esc, fmtDate, nowISO } from '../../../utils/formatters';
 import { toast } from '../../../utils/dom';
+import { verifierOptionsHtml, defaultVerifier } from '../../../utils/personnelPicker';
 import {
     recordCalibration,
     recordCalibrationBatch,
@@ -75,8 +75,6 @@ export class CalibrationModal {
             if (e.target === overlay) this.close();
         });
 
-        const user = Auth.getCurrentUser();
-        const defaultBy = user && user !== 'operator' ? user : '';
         const today = nowISO().split('T')[0];
 
         const sessionBody = this.mode === 'session' ? `
@@ -115,7 +113,7 @@ export class CalibrationModal {
                     <div class="form-row">
                         <div class="form-group" style="text-align:left;">
                             <label>${T('Verified by')}:</label>
-                            <input type="text" id="calBy" class="form-control" value="${esc(defaultBy)}">
+                            <select id="calBy" class="form-control">${verifierOptionsHtml(defaultVerifier())}</select>
                         </div>
                         <div class="form-group" style="text-align:left;">
                             <label>${T('Verification Date')}:</label>
@@ -176,8 +174,14 @@ export class CalibrationModal {
         }
         const interval = document.getElementById('calInterval') as HTMLInputElement | null;
         if (interval) interval.value = String(tool.calIntervalDays || 180);
-        const by = document.getElementById('calBy') as HTMLInputElement | null;
-        if (by && !by.value && tool.calVerifiedBy) by.value = tool.calVerifiedBy;
+        // Prefer the verifier already recorded on the tool; otherwise leave the picker
+        // at its default (the logged-in user, if they are in the personnel registry).
+        const by = document.getElementById('calBy') as HTMLSelectElement | null;
+        if (by) {
+            const want = defaultVerifier(tool.calVerifiedBy);
+            by.innerHTML = verifierOptionsHtml(want);
+            by.value = want;
+        }
     }
 
     private static renderSessionList(): void {
@@ -251,7 +255,7 @@ export class CalibrationModal {
     }
 
     private static readInput(): CalibrationInput {
-        const by = (document.getElementById('calBy') as HTMLInputElement | null)?.value.trim() || '';
+        const by = (document.getElementById('calBy') as HTMLSelectElement | null)?.value.trim() || '';
         const date = (document.getElementById('calDate') as HTMLInputElement | null)?.value || nowISO().split('T')[0];
         const intervalRaw = parseInt((document.getElementById('calInterval') as HTMLInputElement | null)?.value || '', 10);
         const intervalDays = Number.isFinite(intervalRaw) && intervalRaw > 0 ? intervalRaw : undefined;
@@ -263,6 +267,12 @@ export class CalibrationModal {
 
     private static async submit(print: boolean): Promise<void> {
         const input = this.readInput();
+
+        // The tag must name who performed the verification — pick a person.
+        if (!input.by) {
+            toast(T('VERIFIER_REQUIRED'), 'warning');
+            return;
+        }
 
         try {
             if (this.mode === 'single') {

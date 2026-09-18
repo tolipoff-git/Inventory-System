@@ -696,5 +696,7 @@ export const en: Record<string, string> = {
   "CALIBRATION_NO_SELECTION": "Select at least one tool.",
   "CALIBRATION_FAILED": "Calibration failed",
   "LABEL_QUEUE_CLEARED": "Label queue cleared.",
-  "Found:": "Found:"
+  "Found:": "Found:",
+  "VERIFIER_SELECT": "— Select person —",
+  "VERIFIER_REQUIRED": "Select who performed the verification."
 };

@@ -21,6 +21,14 @@ export const isPermanentTool = (t: Tool): boolean =>
 export const isConsumableTool = (t: Tool): boolean =>
   CONFIG.CONSUMABLE_PREFIXES.some(p => t.id.startsWith(p)) || t.type === 'Consumable';
 
+/**
+ * Whether this tool's class requires periodic verification / calibration. Used to
+ * show the "Record Calibration" action only where it makes sense (torque wrenches,
+ * crimpers, meters, calipers, gauges — not socket heads or hammers).
+ */
+export const requiresCalibration = (t: Tool): boolean =>
+  CONFIG.CALIBRATION_PREFIXES.some(p => (t.id || '').startsWith(p));
+
 /** Canonical statuses shown on the dashboard donut; everything else maps to `Backup`. */
 export const STATUS_BUCKETS = ['Active', 'Issued', 'Backup', 'Maintenance', 'Overdue'];
 

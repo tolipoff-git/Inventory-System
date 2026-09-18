@@ -13,6 +13,7 @@ import { LabelModal } from './LabelModal';
 import { ToolModal } from './ToolModal';
 import { CalibrationModal } from './CalibrationModal';
 import { generateQrDataUrl, toolDeeplink } from '../../../labels/qrGenerator';
+import { requiresCalibration } from '../../../operations/toolOps';
 import { printHtml, toast } from '../../../utils/dom';
 import { windowConfirm } from '../../../utils/dialogCompat';
 
@@ -230,6 +231,11 @@ export class DetailModal {
             editBtn.removeAttribute('data-id');
             editBtn.style.display = Auth.has('Administrator') ? 'inline-block' : 'none';
         }
+
+        // Calibration is only meaningful for classes that require verification
+        // (torque wrenches, crimpers, meters, calipers, gauges).
+        const calBtn = document.getElementById('detCalibrateBtn');
+        if (calBtn) calBtn.style.display = requiresCalibration(tool) ? 'inline-block' : 'none';
 
         // History & Photos
         const historyEl = document.getElementById('detHistory');
