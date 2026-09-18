@@ -2,20 +2,24 @@
 // 5S Tool Command Center — RegistryModal Component (System Registries & RBAC)
 // ============================================================================
 
-import { T } from '../../../i18n';
+import { T, getLanguage } from '../../../i18n';
 import { Store } from '../../../storage/store';
-import { esc } from '../../../utils/formatters';
+import { esc, fmtDate } from '../../../utils/formatters';
 import { hashSecret } from '../../../utils/crypto';
 import { toast } from '../../../utils/dom';
 import { windowConfirm } from '../../../utils/dialogCompat';
 import { UserRole } from '../../../types/personnel';
+import { SopDocument, SOP_STATUSES, appliesToLabel } from '../../../types/sop';
 
 export class RegistryModal {
     private static modalId = 'registryModal';
     private static regEditModalId = 'regEditModal';
+    private static sopEditModalId = 'sopEditModal';
     private static currentTab = 'personnelTab';
     private static editingEmpId: string | null = null;
     private static regEditAction: { mode: string; type: string; id: string; ws?: string } | null = null;
+    /** `null` while creating a new standard, otherwise the code being edited. */
+    private static editingSopId: string | null = null;
 
     public static open(tab?: string): void {
         let modal = document.getElementById(this.modalId);
@@ -52,6 +56,7 @@ export class RegistryModal {
                         <button class="btn" id="regTabBtn_ws">${T('Programs & Stations')}</button>
                         <button class="btn" id="regTabBtn_wp">${T('Workposts')}</button>
                         <button class="btn" id="regTabBtn_rbac">${T('Users & RBAC')}</button>
+                        <button class="btn" id="regTabBtn_sop">${T('SOP & Standards')}</button>
                     </div>
 
                     <!-- Personnel Tab -->
@@ -128,6 +133,33 @@ export class RegistryModal {
                             </table>
                         </div>
                     </div>
+
+                    <!-- SOP & Standards Tab -->
+                    <div id="regTabContent_sop" class="reg-tab" style="display:none;">
+                        <div style="color:var(--text-muted); font-size:0.85rem; margin-bottom:10px;">
+                            ${T('SOP_HINT')}
+                        </div>
+                        <div class="form-row" style="margin-bottom:12px;">
+                            <button class="btn btn-success" id="regSopAddBtn">+ ${T('New SOP')}</button>
+                        </div>
+                        <div class="table-scroll">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>${T('SOP Code')}</th>
+                                        <th>${T('Name')}</th>
+                                        <th>${T('Revision')}</th>
+                                        <th>${T('Effective Date')}</th>
+                                        <th>${T('Approved By')}</th>
+                                        <th>${T('Status')}</th>
+                                        <th>${T('Applies To')}</th>
+                                        <th>${T('Actions')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="regSopList"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-muted" id="regFooterCloseBtn">${T('Close')}</button>
@@ -144,11 +176,13 @@ export class RegistryModal {
         overlay.querySelector('#regTabBtn_ws')?.addEventListener('click', () => this.switchTab('wsTab'));
         overlay.querySelector('#regTabBtn_wp')?.addEventListener('click', () => this.switchTab('wpTab'));
         overlay.querySelector('#regTabBtn_rbac')?.addEventListener('click', () => this.switchTab('rbacTab'));
+        overlay.querySelector('#regTabBtn_sop')?.addEventListener('click', () => this.switchTab('sopTab'));
 
         overlay.querySelector('#regEmpSaveBtn')?.addEventListener('click', () => this.saveEmp());
         overlay.querySelector('#regEmpCancelBtn')?.addEventListener('click', () => this.cancelEditEmp());
         overlay.querySelector('#regProgAddBtn')?.addEventListener('click', () => this.addProgram());
         overlay.querySelector('#regRbacAddBtn')?.addEventListener('click', () => this.addRbacUser());
+        overlay.querySelector('#regSopAddBtn')?.addEventListener('click', () => this.openSopEdit(null));
 
         const wsSelect = overlay.querySelector<HTMLSelectElement>('#regEmpWs');
         if (wsSelect) {
@@ -165,6 +199,7 @@ export class RegistryModal {
         }
 
         this.createRegEditModalDOM();
+        this.createSopEditModalDOM();
     }
 
     private static createRegEditModalDOM(): void {
@@ -204,7 +239,7 @@ export class RegistryModal {
 
     public static switchTab(tab: string): void {
         this.currentTab = tab;
-        const tabs = ['personnel', 'ws', 'wp', 'rbac'];
+        const tabs = ['personnel', 'ws', 'wp', 'rbac', 'sop'];
         tabs.forEach(t => {
             const content = document.getElementById(`regTabContent_${t}`);
             const btn = document.getElementById(`regTabBtn_${t}`);
@@ -217,6 +252,7 @@ export class RegistryModal {
         if (tab.includes('ws')) this.renderWs();
         if (tab.includes('wp')) this.renderWp();
         if (tab.includes('rbac')) this.renderRbac();
+        if (tab.includes('sop')) this.renderSop();
     }
 
     private static updatePostSelect(ws: string): void {
@@ -640,6 +676,206 @@ export class RegistryModal {
         (document.getElementById('regRbacUser') as HTMLInputElement).value = '';
         (document.getElementById('regRbacPass') as HTMLInputElement).value = '';
         this.renderRbac();
+    }
+
+    // --- SOP & Standards Tab (controlled documents) ---
+    private static renderSop(): void {
+        const tbody = document.getElementById('regSopList');
+        if (!tbody) return;
+
+        const lang = getLanguage();
+        const docs = [...Store.sops].sort((a, b) => a.id.localeCompare(b.id));
+
+        const statusColor = (s: SopDocument) =>
+            s.status === 'Approved' ? 'var(--success)' : s.status === 'Draft' ? 'var(--warning)' : 'var(--text-muted)';
+
+        tbody.innerHTML = docs.map(s => `
+            <tr>
+                <td><strong>${esc(s.id)}</strong></td>
+                <td>${esc(lang === 'RU' ? s.titleRu : s.titleEn)}</td>
+                <td>${esc(s.revision)}</td>
+                <td>${esc(s.effectiveDate ? fmtDate(s.effectiveDate) : '—')}</td>
+                <td>${esc(s.approvedBy || '—')}</td>
+                <td><span style="color:${statusColor(s)}; font-weight:bold;">${esc(T(s.status))}</span></td>
+                <td>${esc(appliesToLabel(s, lang))}</td>
+                <td style="white-space:nowrap;">
+                    <button class="btn" style="padding:2px 6px; font-size:0.75rem;" data-sop-action="edit" data-id="${esc(s.id)}" title="${T('Edit')}">✏️</button>
+                    <button class="btn" style="padding:2px 6px; font-size:0.75rem;" data-sop-action="revise" data-id="${esc(s.id)}" title="${T('New Revision')}">＋</button>
+                    <button class="btn btn-danger" style="padding:2px 6px; font-size:0.75rem;" data-sop-action="obsolete" data-id="${esc(s.id)}" title="${T('Obsolete')}">⛔</button>
+                </td>
+            </tr>
+        `).join('') || `<tr><td colspan="8" style="color:var(--text-muted); padding:10px;">${T('SOP_NO_DOCS')}</td></tr>`;
+
+        tbody.querySelectorAll('[data-sop-action]').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const el = e.currentTarget as HTMLElement;
+                const id = el.dataset.id!;
+                const action = el.dataset.sopAction;
+
+                if (action === 'edit') {
+                    this.openSopEdit(id);
+                    return;
+                }
+
+                if (action === 'revise') {
+                    if (!windowConfirm(T('SOP_REVISION_CONFIRM').replace('{id}', id))) return;
+                    const updated = await Store.newSopRevision(id);
+                    if (updated) {
+                        toast(T('SOP_REVISION_STARTED').replace('{id}', id).replace('{rev}', updated.revision), 'success');
+                    }
+                    this.renderSop();
+                    return;
+                }
+
+                if (!windowConfirm(T('SOP_OBSOLETE_CONFIRM').replace('{id}', id))) return;
+                if (await Store.setSopStatus(id, 'Obsolete')) {
+                    toast(T('SOP_STATUS_CHANGED').replace('{id}', id).replace('{status}', T('Obsolete')), 'warning');
+                }
+                this.renderSop();
+            });
+        });
+    }
+
+    private static createSopEditModalDOM(): void {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.id = this.sopEditModalId;
+
+        const roleOptions = (['Administrator', 'Tool Crib Manager', 'Operator'] as UserRole[])
+            .map(r => `<option value="${r}">${r}</option>`).join('');
+        const statusOptions = SOP_STATUSES
+            .map(s => `<option value="${s}">${T(s)}</option>`).join('');
+
+        overlay.innerHTML = `
+            <div class="modal wide" style="max-width:780px;">
+                <div class="modal-header">
+                    <h3 class="modal-title" id="sopEditTitle">${T('New SOP')}</h3>
+                    <button class="close-btn" id="sopEditCloseBtn">&times;</button>
+                </div>
+                <div class="modal-body" style="max-height:70vh; overflow-y:auto;">
+                    <div class="form-row">
+                        <div class="form-group"><label>${T('SOP Code')}:</label><input type="text" id="sopEditCode" class="form-control" placeholder="SOP-TW-01"></div>
+                        <div class="form-group"><label>${T('Revision')}:</label><input type="text" id="sopEditRev" class="form-control" style="max-width:100px;"></div>
+                        <div class="form-group"><label>${T('Effective Date')}:</label><input type="date" id="sopEditDate" class="form-control"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>${T('Approved By')}:</label><input type="text" id="sopEditApprovedBy" class="form-control"></div>
+                        <div class="form-group"><label>${T('Owner Role')}:</label><select id="sopEditOwner" class="form-control">${roleOptions}</select></div>
+                        <div class="form-group"><label>${T('Status')}:</label><select id="sopEditStatus" class="form-control">${statusOptions}</select></div>
+                    </div>
+                    <div class="form-group"><label>${T('Title (EN)')}:</label><input type="text" id="sopEditTitleEn" class="form-control"></div>
+                    <div class="form-group"><label>${T('Title (RU)')}:</label><input type="text" id="sopEditTitleRu" class="form-control"></div>
+                    <div class="form-group"><label>${T('Body (EN)')}:</label><textarea id="sopEditBodyEn" class="form-control" rows="6"></textarea></div>
+                    <div class="form-group"><label>${T('Body (RU)')}:</label><textarea id="sopEditBodyRu" class="form-control" rows="6"></textarea></div>
+                    <div style="color:var(--text-muted); font-size:0.8rem; margin:10px 0 4px;">${T('Applies To')} — ${T('SOP_CSV_HINT')}</div>
+                    <div class="form-row">
+                        <div class="form-group"><label>${T('Tool Classes')}:</label><input type="text" id="sopEditClasses" class="form-control" placeholder="TW, PB"></div>
+                        <div class="form-group"><label>${T('Programs')}:</label><input type="text" id="sopEditPrograms" class="form-control"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>${T('Stations')}:</label><input type="text" id="sopEditStations" class="form-control"></div>
+                        <div class="form-group"><label>${T('Posts')}:</label><input type="text" id="sopEditPosts" class="form-control"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-muted" id="sopEditCancelBtn">${T('Cancel')}</button>
+                    <button class="btn btn-success" id="sopEditSaveBtn">${T('Save')}</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        overlay.querySelector('#sopEditCloseBtn')?.addEventListener('click', () => this.closeSopEdit());
+        overlay.querySelector('#sopEditCancelBtn')?.addEventListener('click', () => this.closeSopEdit());
+        overlay.querySelector('#sopEditSaveBtn')?.addEventListener('click', () => this.applySopEdit());
+    }
+
+    /** Split a comma-separated applicability field into a clean list. */
+    private static csv(value: string): string[] {
+        return value.split(',').map(s => s.trim()).filter(Boolean);
+    }
+
+    private static openSopEdit(id: string | null): void {
+        const modal = document.getElementById(this.sopEditModalId);
+        if (!modal) return;
+
+        const sop = id ? Store.getSop(id) : undefined;
+        if (id && !sop) return;
+        this.editingSopId = id;
+
+        const val = (elId: string, value: string) => {
+            const el = document.getElementById(elId) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+            if (el) el.value = value;
+        };
+
+        const title = document.getElementById('sopEditTitle');
+        if (title) title.textContent = sop ? `${T('Edit')}: ${sop.id}` : T('New SOP');
+
+        const codeInput = document.getElementById('sopEditCode') as HTMLInputElement | null;
+        if (codeInput) codeInput.disabled = Boolean(sop);
+
+        val('sopEditCode', sop?.id || '');
+        val('sopEditRev', sop?.revision || '1');
+        val('sopEditDate', sop?.effectiveDate || new Date().toISOString().split('T')[0]);
+        val('sopEditApprovedBy', sop?.approvedBy || '');
+        val('sopEditOwner', sop?.ownerRole || 'Administrator');
+        val('sopEditStatus', sop?.status || 'Draft');
+        val('sopEditTitleEn', sop?.titleEn || '');
+        val('sopEditTitleRu', sop?.titleRu || '');
+        val('sopEditBodyEn', sop?.bodyEn || '');
+        val('sopEditBodyRu', sop?.bodyRu || '');
+        val('sopEditClasses', (sop?.appliesTo?.toolClasses || []).join(', '));
+        val('sopEditPrograms', (sop?.appliesTo?.programs || []).join(', '));
+        val('sopEditStations', (sop?.appliesTo?.stations || []).join(', '));
+        val('sopEditPosts', (sop?.appliesTo?.posts || []).join(', '));
+
+        modal.classList.add('active');
+    }
+
+    private static closeSopEdit(): void {
+        const modal = document.getElementById(this.sopEditModalId);
+        if (modal) modal.classList.remove('active');
+        this.editingSopId = null;
+    }
+
+    private static async applySopEdit(): Promise<void> {
+        const read = (elId: string) =>
+            (document.getElementById(elId) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null)?.value.trim() ?? '';
+
+        const code = read('sopEditCode');
+        const titleEn = read('sopEditTitleEn');
+        const titleRu = read('sopEditTitleRu');
+
+        if (!code) { toast(T('SOP_CODE_REQUIRED'), 'warning'); return; }
+        if (!titleEn || !titleRu) { toast(T('SOP_TITLE_REQUIRED'), 'warning'); return; }
+        if (!this.editingSopId && Store.getSop(code)) { toast(T('SOP_CODE_EXISTS'), 'warning'); return; }
+
+        const appliesTo = {
+            toolClasses: this.csv(read('sopEditClasses')),
+            programs: this.csv(read('sopEditPrograms')),
+            stations: this.csv(read('sopEditStations')),
+            posts: this.csv(read('sopEditPosts')),
+        };
+
+        const doc: SopDocument = {
+            id: code,
+            titleEn,
+            titleRu,
+            bodyEn: read('sopEditBodyEn'),
+            bodyRu: read('sopEditBodyRu'),
+            revision: read('sopEditRev') || '1',
+            effectiveDate: read('sopEditDate'),
+            approvedBy: read('sopEditApprovedBy'),
+            ownerRole: read('sopEditOwner') as UserRole,
+            status: read('sopEditStatus') as SopDocument['status'],
+            appliesTo,
+        };
+
+        await Store.saveSop(doc);
+        toast(T('SOP_SAVE_OK').replace('{id}', doc.id).replace('{rev}', doc.revision), 'success');
+        this.closeSopEdit();
+        this.renderSop();
     }
 
     // --- RegEdit Modal (rename / move station / move post) ---

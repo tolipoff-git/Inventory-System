@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v112)
+# 5S Tool Command Center — v3 (v113)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -81,7 +81,22 @@ grouped by the role that can act on it**.
 ### 4. Labels & exports
 - Label formats **A/B/C** (Code39 + QR), batch printing queue.
 - **REQ003** expense template (xlsx), full **XLSX dump** (Active/Archive/Audit/Personnel).
-- SOP manuals (Torque/Battery/5S) printable forms.
+
+### 4b. SOP & Standards hub
+- Standards are **data, not code** (`settings.sops`): the shop edits them in
+  *System Registries* → **SOP & Standards** — no release needed.
+- Each document is **bilingual** (EN/RU bodies), carries control metadata
+  (code · revision · effective date · approved by · owner role · status) and an
+  applicability scope (tool classes / programs / stations / posts).
+- Lifecycle **Draft → Approved → Obsolete**; *New Revision* bumps the label,
+  re-dates the document and returns it to Draft. Documents are never deleted —
+  retiring one means marking it Obsolete, which is what "controlled document"
+  means. Every change is written to the audit trail (`SOP_SAVE`, `SOP_STATUS`,
+  `SOP_REVISION`).
+- The Category Hub SOP card and the SOP modal both render **from the registry**,
+  in the active language, with a local EN/RU toggle inside the modal and a
+  "controlled document — printed copies are uncontrolled" footer on screen and
+  in print.
 
 ### 5. Security (hardened)
 - **PBKDF2-HMAC-SHA256** (210k iters, salted) for PINs — constant-time verify,
@@ -104,7 +119,7 @@ npm ci                    # install
 npm run dev               # vite dev server (localhost:3000/3001/5173)
 npm run typecheck         # tsc --noEmit
 npm run build             # production build (dist/)
-npm test                  # vitest 61 tests (crypto, store, conflict, tombstones, worker, migration)
+npm test                  # vitest 73 tests (crypto, store, conflict, tombstones, SOP, worker, migration)
 npm run lint              # eslint (strict; legacy no-explicit-any excluded)
 npm run check:i18n        # EN/RU key + placeholder parity gate (must stay 1:1)
 ```
@@ -125,10 +140,13 @@ Secrets required: `SYNC_SECRET`, `INVENTORY_KV_BINDING` (KV id) — set via
 - `tests/` — Vitest: crypto (hash/verify/timing), inventory (real Store+fake-indexeddb:
   seed, saveTool, qty split, over-issue, consumable clamp), conflict-resolver
   (later-wins, tie→remote, history union), **registry/personnel tombstones + `updatedAt`
-  coverage** (`registrySync.test.ts`), worker auth, legacy migration.
+  coverage** (`registrySync.test.ts`), **SOP seeding, lifecycle and merge** (`sop.test.ts`),
+  worker auth, legacy migration.
 - `npm run check:i18n` — mechanical EN/RU parity gate: equal key sets, identical
   `{placeholder}` sets per key, no Cyrillic left in the English dictionary.
 - Lint: ESLint flat config (typescript-eslint recommended + no-empty).
+- `tsconfig.json` includes `tests`, so `npm run typecheck` and `npm run build` typecheck
+  the suite as well.
 - Playwright smoke: button matrix + report flows (text assertions; see
   `tests/`).
 

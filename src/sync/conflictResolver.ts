@@ -4,6 +4,7 @@ import { Employee } from '../types/personnel';
 import { AuditLogEntry } from '../types/audit';
 import { SyncPayload } from '../types/sync';
 import { RegistryEvents, mergeRegistryEvents } from '../types/registry';
+import { SopDocument } from '../types/sop';
 import { AUDIT_LOG_LIMIT } from '../config/constants';
 
 export function mergeTools(localTools: Tool[], remoteTools: Tool[]): Tool[] {
@@ -106,6 +107,33 @@ function revisionTime(e: Employee): number {
   );
 }
 
+/**
+ * Controlled documents are unioned by id with the newest revision winning.
+ * They are never deleted (retiring one means `status: 'Obsolete'`), so no
+ * tombstone is needed here.
+ */
+export function mergeSops(localSops: SopDocument[] = [], remoteSops: SopDocument[] = []): SopDocument[] {
+  const map = new Map<string, SopDocument>();
+
+  localSops.forEach(s => {
+    if (s && s.id) map.set(s.id, { ...s });
+  });
+
+  remoteSops.forEach(rs => {
+    if (!rs || !rs.id) return;
+    const ls = map.get(rs.id);
+    if (!ls) {
+      map.set(rs.id, { ...rs });
+      return;
+    }
+    const localTime = new Date(ls.updatedAt || 0).getTime() || 0;
+    const remoteTime = new Date(rs.updatedAt || 0).getTime() || 0;
+    map.set(rs.id, remoteTime >= localTime ? { ...rs } : { ...ls });
+  });
+
+  return Array.from(map.values());
+}
+
 export function mergeAuditLogs(localLogs: AuditLogEntry[], remoteLogs: AuditLogEntry[]): AuditLogEntry[] {
   const map = new Map<string, AuditLogEntry>();
 
@@ -164,6 +192,8 @@ export function mergeSettings(localSettings: Record<string, any>, remoteSettings
     remoteSettings.registryEvents || {}
   );
 
+  const sops = mergeSops(localSettings.sops, remoteSettings.sops);
+
   return {
     ...localSettings,
     ...remoteSettings,
@@ -173,6 +203,7 @@ export function mergeSettings(localSettings: Record<string, any>, remoteSettings
     workposts,
     audits5s,
     registryEvents,
+    sops,
   };
 }
 

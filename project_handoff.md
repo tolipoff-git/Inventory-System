@@ -7,17 +7,17 @@
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Session Continuity — Resume Point (2026-09-18, v112)
+## Session Continuity — Resume Point (2026-09-18, v113)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v112` (`package.json` = 112.0.0). `sw.js` `CACHE_VERSION` = `v112-<hash>`.
+- **Version:** `v113` (`package.json` = 113.0.0). `sw.js` `CACHE_VERSION` = `v113-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
-- **Gates (all green at v112):** `npm run typecheck` · `npm run lint` · `npm test` (61/61) ·
-  `npm run build` · `npm run check:i18n` (622/622). `tsconfig.json` now includes `tests`,
-  so `typecheck` covers the test suite too — keep it that way.
+- **Gates (all green at v113):** `npm run typecheck` · `npm run lint` · `npm test` (73/73) ·
+  `npm run build` · `npm run check:i18n` (658/658). `tsconfig.json` includes `tests`,
+  so `typecheck` and `build` cover the test suite too — keep it that way.
 - **Deploy:** push to `main` → Cloudflare Pages auto-deploy. Release workflow is defined in
   `AGENTS.md` (bump version → README + handoff → `bash build.sh` → feature commit →
   `chore(pwa): refresh sw.js …` commit → push) — **run it without asking**.
@@ -36,14 +36,16 @@ working session; the per-release history below is the long-term record.
 - `src/types/registry.ts` → `REGISTRY_KEYS`, `mergeRegistryEvents()`, `isTombstoned()` — the
   registry tombstone model (v112). `Store.applyRegistryTombstones()` is the only place they
   are applied; `Store.activePersonnel()` is the only way to read live personnel.
+- `src/types/sop.ts` + `src/storage/sopSeed.ts` → the controlled-document model and the four
+  seeded standards (v113). `Store.sops` / `Store.approvedSops()` / `Store.getSop()` are the
+  only ways to read them; `SopModal` and the Category Hub SOP card both render from data.
 - `scripts/check-i18n-parity.mjs` → `npm run check:i18n` — the EN/RU parity gate.
 
 ### Next actions (agreed direction, not yet started)
-1. **SOP & Standards hub — Phase A** (plan §6): move the four hardcoded SOPs out of
-   `SopModal.renderSopContent()` into `settings.sops: SopDocument[]` (bilingual EN/RU,
-   `revision`, `effectiveDate`, `approvedBy`, `status`, `appliesTo`), render from data, and add
-   an "SOP & Standards" tab to `RegistryModal`. Phase B: contextual entry point
-   (`Read SOP & Maintenance Manual` on the tool card), hub index + search, print metadata.
+1. **SOP hub — Phase B** (plan §6): contextual entry point on the tool card (the
+   `Read SOP & Maintenance Manual` key already exists), a hub index + search, and
+   `SOP_VIEW` / `SOP_PRINT` acknowledgement logging for training evidence. Phase A shipped
+   in v113.
 2. **Sync Phase B** (plan §5) — sync status panel (last push/pull, room, peer count, pending
    changes, conflicts that lost a record), photos → R2 when volume grows, room switcher UI.
    Phase A (tombstones, `updatedAt` coverage, `/api/health`) shipped in v112.
@@ -63,6 +65,10 @@ working session; the per-release history below is the long-term record.
   personnel use `deletedAt`; registries use `settings.registryEvents`. Never `splice()` a
   synced record out of its array — and never read `Store.personnel` directly in a view, use
   `Store.activePersonnel()`.
+- **Controlled documents are never deleted** (v113). Retiring a standard means
+  `status: 'Obsolete'`; that is why `mergeSops()` needs no tombstone. Standards live in
+  `settings.sops` and are seeded only while the stored list is empty, so an edited document
+  is never overwritten by `SEED_SOPS`.
 - `Store.save()` is the sync clock: it stamps `updatedAt` on anything that changed. Do not
   bypass it with a direct `AppDB.saveAll()`.
 
@@ -79,8 +85,18 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
 - Standing instruction: perform the full release flow (bump → docs → `build.sh` → commits → push)
   automatically, without asking.
 
-## Recent Accomplishments (v49 – v112)
+## Recent Accomplishments (v49 – v113)
 The application has undergone massive functional and architectural expansion. The current agent should be aware of the following new subsystems and fixes:
+
+### 0. SOP & Standards Hub — Data-Driven Controlled Documents (v113 Release)
+- **Symptom:** the four standards (`SOP-GEN-00`, `SOP-TW-01`, `SOP-BT-02`, `SOP-PB-03`) were hardcoded **English HTML strings** inside `SopModal.renderSopContent()`. The shop could not edit them, every wording change needed a release, and the RU-first audience got English documents.
+- **Model** — new `src/types/sop.ts`: `SopDocument { id, titleEn/Ru, bodyEn/Ru, revision, effectiveDate, approvedBy, ownerRole, status, appliesTo{toolClasses,programs,stations,posts}, updatedAt }`, `SopStatus = Draft | Approved | Obsolete`, plus `appliesEverywhere()` / `appliesToLabel()`.
+- **Storage** — `settings.sops` (no new object store: `settings` already syncs and merges). `src/storage/sopSeed.ts` holds the four legacy documents, now **bilingual** with real control metadata. Seeding happens only while the stored list is empty, so an edited or obsoleted document is never overwritten by the seed.
+- **Lifecycle** — `Store.saveSop()` (upsert + `SOP_SAVE`), `Store.setSopStatus()` (`SOP_STATUS`), `Store.newSopRevision()` (bumps the label, re-dates to today, returns to Draft, `SOP_REVISION`), `Store.approvedSops()`, `Store.getSop()`. **Controlled documents are never deleted** — retiring one means `status: 'Obsolete'`. That is the correct document-control semantics *and* it keeps the merge simple: `mergeSops()` is a plain union by id with the newest `updatedAt` winning, so no tombstone is needed (contrast with v112).
+- **Rendering** — `SopModal` now renders the stored document in the active language with a control header (code · revision · effective date · approved by · status · applies-to), a **local EN/RU toggle** in the footer (reads the other language without switching the whole UI) and a "controlled document — printed copies are uncontrolled" footer that also appears in print. The Category Hub SOP card is rendered from `Store.approvedSops()` instead of four hardcoded buttons, so a new standard appears there automatically.
+- **Registry tab** — new **SOP & Standards** tab in `RegistryModal` (Administrator, like the rest of the modal): table of documents with status colouring, plus an edit modal for code / revision / date / approver / owner role / status / both titles / both bodies / applicability (comma-separated scopes). Actions: edit, new revision, mark obsolete.
+- **i18n:** 36 new keys in both dictionaries (658/658). The parity gate immediately caught one real slip — `SOP_SHOW_RU` had been given a Russian value in the *English* dictionary; the toggle now reads "Show in Russian" / "Показать по-английски" depending on the current view language.
+- **Tests:** `tests/sop.test.ts` (12 cases) — seeding, bilingual/control-metadata invariants, seed-not-overwriting-an-edit, upsert + `updatedAt`, revision bump, obsolete lifecycle, audit logging, merge rules (union, newest wins, ties → remote, stale peer cannot roll a revision back) and applicability labels. Suite: 61 → 73.
 
 ### 0. Tombstoned Deletes & Guaranteed `updatedAt` (v112 Release)
 - **Symptom:** a record deleted on one device came back after the next sync — the merge expressed removal as *absence*, so any peer still holding the old copy re-introduced it. This was the one genuine architectural gap named in `ENTERPRISE_ARCHITECTURE_PLAN.md` §0.

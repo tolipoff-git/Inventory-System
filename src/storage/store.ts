@@ -3,8 +3,10 @@ import { PurchaseOrder } from '../types/procurement';
 import { Employee, SystemUser } from '../types/personnel';
 import { AuditLogEntry, Audit5S } from '../types/audit';
 import { RegistryEvents, REGISTRY_KEYS, isTombstoned } from '../types/registry';
+import { SopDocument, SopStatus } from '../types/sop';
 import { AppDB, DBState } from './indexedDb';
 import { SEED_USERS, SEED_WORKSTATIONS, SEED_TOOLS } from './seedData';
+import { SEED_SOPS } from './sopSeed';
 import { CONFIG } from '../config/constants';
 import { nowISO, d } from '../utils/formatters';
 
@@ -39,6 +41,7 @@ class StoreManager {
   public programs: string[] = [];
   public wsProgram: Record<string, string> = {};
   public registryEvents: RegistryEvents = {};
+  public sops: SopDocument[] = [];
   public auditLog: AuditLogEntry[] = [];
   public procurementLog: PurchaseOrder[] = [];
   public audits5s: Audit5S[] = [];
@@ -86,6 +89,7 @@ class StoreManager {
       programs: this.programs,
       wsProgram: this.wsProgram,
       registryEvents: this.registryEvents,
+      sops: this.sops,
       audits5s: this.audits5s,
       meta: this.meta,
       labelQueue: this.labelQueue,
@@ -130,6 +134,9 @@ class StoreManager {
     this.programs = Array.isArray(data.programs) ? data.programs : [];
     this.wsProgram = data.wsProgram && typeof data.wsProgram === 'object' ? data.wsProgram : {};
     this.registryEvents = data.registryEvents && typeof data.registryEvents === 'object' ? data.registryEvents : {};
+    // Standards are seeded only while nothing is stored: an edited, obsoleted or
+    // added document must never be overwritten by the seed.
+    this.sops = Array.isArray(data.sops) && data.sops.length ? data.sops : [...SEED_SOPS];
     this.audits5s = Array.isArray(data.audits5s) ? data.audits5s : [];
     this.meta = data.meta && typeof data.meta === 'object' ? data.meta : { schemaVersion: CONFIG.SCHEMA_VERSION };
     this.labelQueue = Array.isArray(data.labelQueue) ? data.labelQueue : [];
@@ -163,6 +170,7 @@ class StoreManager {
       programs: this.programs,
       wsProgram: this.wsProgram,
       registryEvents: this.registryEvents,
+      sops: this.sops,
       audits5s: this.audits5s,
       meta: this.meta,
       labelQueue: this.labelQueue,
@@ -286,6 +294,55 @@ class StoreManager {
     this.log('EMP_REMOVE', `${emp.id} ${emp.name}`);
     this.save();
     return true;
+  }
+
+  // --- SOP & Standards (controlled documents) ---
+
+  public getSop(id: string): SopDocument | undefined {
+    return this.sops.find(s => s.id === id);
+  }
+
+  /** Documents currently in force. Obsolete ones stay stored for the record. */
+  public approvedSops(): SopDocument[] {
+    return this.sops.filter(s => s.status === 'Approved');
+  }
+
+  /**
+   * Insert or update a controlled document. Controlled documents are never
+   * deleted — retiring one means setting `status: 'Obsolete'` — so there is no
+   * tombstone to carry and the sync merge can stay a plain union by id.
+   */
+  public async saveSop(doc: SopDocument): Promise<void> {
+    const next: SopDocument = { ...doc, updatedAt: nowISO() };
+    const idx = this.sops.findIndex(s => s.id === doc.id);
+    if (idx >= 0) this.sops[idx] = next;
+    else this.sops.push(next);
+    this.log('SOP_SAVE', `${doc.id} rev ${doc.revision} (${doc.status})`);
+    await this.save();
+  }
+
+  public async setSopStatus(id: string, status: SopStatus): Promise<boolean> {
+    const sop = this.getSop(id);
+    if (!sop) return false;
+    sop.status = status;
+    sop.updatedAt = nowISO();
+    this.log('SOP_STATUS', `${id} → ${status}`);
+    await this.save();
+    return true;
+  }
+
+  /** Start a new revision: bump the label, re-date it and drop back to Draft. */
+  public async newSopRevision(id: string): Promise<SopDocument | null> {
+    const sop = this.getSop(id);
+    if (!sop) return null;
+    const n = Number.parseFloat(sop.revision);
+    sop.revision = Number.isFinite(n) ? String(n + 1) : `${sop.revision}.1`;
+    sop.effectiveDate = nowISO().split('T')[0];
+    sop.status = 'Draft';
+    sop.updatedAt = nowISO();
+    this.log('SOP_REVISION', `${id} → rev ${sop.revision} (Draft)`);
+    await this.save();
+    return sop;
   }
 
   public empName(id: string | null | undefined): string {
@@ -668,6 +725,7 @@ class StoreManager {
         programs: this.programs,
         wsProgram: this.wsProgram,
         registryEvents: this.registryEvents,
+        sops: this.sops,
         personnel: this.personnel,
         tools: this.tools,
         audits5s: this.audits5s,
@@ -706,6 +764,7 @@ class StoreManager {
     this.programs = s.programs ? JSON.parse(JSON.stringify(s.programs)) : [];
     this.wsProgram = s.wsProgram ? JSON.parse(JSON.stringify(s.wsProgram)) : {};
     this.registryEvents = s.registryEvents ? JSON.parse(JSON.stringify(s.registryEvents)) : {};
+    this.sops = s.sops ? JSON.parse(JSON.stringify(s.sops)) : (this.sops || []);
     this.personnel = JSON.parse(JSON.stringify(s.personnel));
     this.tools = JSON.parse(JSON.stringify(s.tools));
     this.audits5s = s.audits5s ? JSON.parse(JSON.stringify(s.audits5s)) : (this.audits5s || []);
