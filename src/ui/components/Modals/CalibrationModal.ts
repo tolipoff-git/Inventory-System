@@ -12,6 +12,7 @@ import {
     recordCalibration,
     recordCalibrationBatch,
     workstationAndPostOf,
+    toolMatchesQuery,
     CalibrationInput,
 } from '../../../operations/toolOps';
 import { printLabelsHtml } from '../../../labels/labelPrint';
@@ -31,6 +32,8 @@ export class CalibrationModal {
     private static modalId = 'calibrationModal';
     private static mode: 'single' | 'session' = 'single';
     private static currentToolId: string | null = null;
+    /** Ids ticked in the session list — kept across search/station re-renders. */
+    private static sessionSelected = new Set<string>();
 
     public static open(toolId: string): void {
         const tool = Store.getTool(toolId);
@@ -45,6 +48,7 @@ export class CalibrationModal {
     public static openSession(): void {
         this.mode = 'session';
         this.currentToolId = null;
+        this.sessionSelected.clear();
         this.mount();
         this.renderSessionList();
         this.show();
@@ -86,7 +90,7 @@ export class CalibrationModal {
                 </div>
                 <div class="form-group" style="text-align:left;">
                     <label>${T('Search')}:</label>
-                    <input type="text" id="calSessionSearch" class="form-control" placeholder="${T('Search tools…')}">
+                    <input type="search" id="calSessionSearch" class="form-control" autocomplete="off" placeholder="${T('SEARCH_PH')}">
                 </div>
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin:6px 0;">
@@ -181,16 +185,14 @@ export class CalibrationModal {
         if (!list) return;
 
         const station = (document.getElementById('calSessionStation') as HTMLSelectElement | null)?.value || '';
-        const q = ((document.getElementById('calSessionSearch') as HTMLInputElement | null)?.value || '').trim().toLowerCase();
+        const q = ((document.getElementById('calSessionSearch') as HTMLInputElement | null)?.value || '').trim();
 
         const tools = Store.activeTools()
             .filter(t => {
                 if (station && workstationAndPostOf(t).ws !== station) return false;
-                if (q) {
-                    const hay = `${t.id} ${t.name} ${t.location || ''}`.toLowerCase();
-                    if (!hay.includes(q)) return false;
-                }
-                return true;
+                // Searches the class label (EN/RU), category, spec, program, SN,
+                // article, station/post and holder — not just id/name/location.
+                return toolMatchesQuery(t, q);
             })
             .sort((a, b) => a.id.localeCompare(b.id));
 
@@ -200,32 +202,51 @@ export class CalibrationModal {
             return;
         }
 
-        list.innerHTML = tools.map(t => `
+        list.innerHTML = tools.map(t => {
+            const cls = t.category || '';
+            const wsp = workstationAndPostOf(t);
+            const place = [wsp.ws, wsp.post].filter(Boolean).join(' / ');
+            return `
             <label style="display:flex; align-items:center; gap:8px; padding:7px 10px; border-bottom:1px solid var(--border); cursor:pointer; font-size:0.85rem;">
-                <input type="checkbox" class="cal-session-cb" value="${esc(t.id)}">
+                <input type="checkbox" class="cal-session-cb" value="${esc(t.id)}"${this.sessionSelected.has(t.id) ? ' checked' : ''}>
                 <span style="font-family:monospace; font-weight:700;">${esc(t.id)}</span>
-                <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(t.name)}</span>
-                <span style="color:var(--text-muted); font-size:0.78rem;">${esc(t.calDue ? fmtDate(t.calDue) : '—')}</span>
-            </label>
-        `).join('');
+                <span style="flex:1; overflow:hidden;">
+                    <span style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(t.name)}</span>
+                    <span style="display:block; color:var(--text-muted); font-size:0.74rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc([cls, place].filter(Boolean).join(' · '))}</span>
+                </span>
+                <span style="color:var(--text-muted); font-size:0.78rem; white-space:nowrap;">${esc(t.calDue ? fmtDate(t.calDue) : '—')}</span>
+            </label>`;
+        }).join('');
 
         list.querySelectorAll<HTMLInputElement>('.cal-session-cb').forEach(cb => {
-            cb.addEventListener('change', () => this.updateSessionCount());
+            cb.addEventListener('change', () => {
+                if (cb.checked) this.sessionSelected.add(cb.value);
+                else this.sessionSelected.delete(cb.value);
+                this.updateSessionCount();
+            });
         });
-        this.updateSessionCount();
+        this.updateSessionCount(tools.length);
     }
 
+    /** All ticked ids — including rows currently hidden by the search/station filter. */
     private static selectedIds(): string[] {
-        return Array.from(document.querySelectorAll<HTMLInputElement>('.cal-session-cb:checked')).map(cb => cb.value);
+        return Array.from(this.sessionSelected);
     }
 
-    private static updateSessionCount(): void {
+    private static updateSessionCount(found?: number): void {
         const el = document.getElementById('calSessionCount');
-        if (el) el.textContent = `${T('Selected:')} ${this.selectedIds().length}`;
+        if (el) {
+            const foundStr = found === undefined ? '' : `${T('Found:')} ${found} · `;
+            el.textContent = `${foundStr}${T('Selected:')} ${this.sessionSelected.size}`;
+        }
     }
 
     private static toggleAll(on: boolean): void {
-        document.querySelectorAll<HTMLInputElement>('.cal-session-cb').forEach(cb => { cb.checked = on; });
+        document.querySelectorAll<HTMLInputElement>('.cal-session-cb').forEach(cb => {
+            cb.checked = on;
+            if (on) this.sessionSelected.add(cb.value);
+            else this.sessionSelected.delete(cb.value);
+        });
         this.updateSessionCount();
     }
 

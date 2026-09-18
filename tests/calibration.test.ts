@@ -4,7 +4,7 @@ import { Store } from '../src/storage/store';
 import { AppDB } from '../src/storage/indexedDb';
 import { Tool } from '../src/types/inventory';
 import { parseScanPayload } from '../src/utils/scanPayload';
-import { calDueFrom, recordCalibration, recordCalibrationBatch, completeMaintenance } from '../src/operations/toolOps';
+import { calDueFrom, recordCalibration, recordCalibrationBatch, completeMaintenance, toolMatchesQuery } from '../src/operations/toolOps';
 
 globalThis.indexedDB = new IDBFactory();
 AppDB._db = null;
@@ -151,6 +151,48 @@ describe('recordCalibrationBatch', () => {
     expect(Store.getTool('CRIMP-2')!.calVerifiedBy).toBe('Ivanov');
     expect(Store.getTool('CRIMP-3')!.calVerifiedAt).toBeUndefined();
     expect(Store.auditLog.find(l => l.action === 'TOOL_CALIBRATION_BATCH')).toBeTruthy();
+  });
+});
+
+describe('toolMatchesQuery (cross-register search)', () => {
+  it('finds a wrench by its class name, which only lives in the id prefix', () => {
+    const t = tool({ id: 'TW-001', name: '1/2 in Wrench', category: 'Hand Tools' });
+    // "Torque Wrench" is the TW class label — not stored in name/category.
+    expect(toolMatchesQuery(t, 'Torq')).toBe(true);
+    expect(toolMatchesQuery(t, 'torque')).toBe(true);
+    expect(toolMatchesQuery(t, 'TORQUE WRENCH')).toBe(true);
+  });
+
+  it('is multi-token and order-independent', () => {
+    const t = tool({ id: 'TW-002', name: '1/2 in Torque Wrench' });
+    expect(toolMatchesQuery(t, 'torq 1/2')).toBe(true);
+    expect(toolMatchesQuery(t, '1/2 torq')).toBe(true);
+    expect(toolMatchesQuery(t, 'torq 3/4')).toBe(false);
+  });
+
+  it('searches category, spec, program, SN, article, station and holder', () => {
+    Store.tools = [tool({
+      id: 'CT-100',
+      name: 'Crimper',
+      category: 'Electrical',
+      spec: '0.5-6 mm²',
+      program: 'ITPS',
+      sn: 'SN-ABC123',
+      article: 'PART-9000',
+      location: 'ITPS / VRC',
+      assigneeId: 'EMP-1',
+    })];
+    Store.personnel = [{ id: 'EMP-1', name: 'Ivanov Ivan', role: 'Operator' }];
+
+    for (const q of ['electrical', '0.5-6', 'itps', 'abc123', 'part-9000', 'vrc', 'ivanov']) {
+      expect(toolMatchesQuery(Store.tools[0], q), `query: ${q}`).toBe(true);
+    }
+    expect(toolMatchesQuery(Store.tools[0], 'nonexistent')).toBe(false);
+  });
+
+  it('matches everything on an empty query', () => {
+    expect(toolMatchesQuery(tool({ id: 'TW-003' }), '')).toBe(true);
+    expect(toolMatchesQuery(tool({ id: 'TW-003' }), '   ')).toBe(true);
   });
 });
 

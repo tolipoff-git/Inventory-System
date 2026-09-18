@@ -31,7 +31,7 @@ import { OpsMenuModal } from './components/Modals/OpsMenuModal';
 import { EmployeeProfileModal } from './components/Modals/EmployeeProfileModal';
 import { RiskModal } from './components/Modals/RiskModal';
 import { CalibrationModal } from './components/Modals/CalibrationModal';
-import { isPermanentTool, isConsumableTool, workstationAndPostOf, statusBucket } from '../operations/toolOps';
+import { isPermanentTool, isConsumableTool, workstationAndPostOf, statusBucket, toolMatchesQuery } from '../operations/toolOps';
 import { receiveFullOrder, cancelOrder } from '../operations/orderOps';
 import { daysUntil } from '../utils/formatters';
 import { parseScanPayload } from '../utils/scanPayload';
@@ -319,17 +319,10 @@ export class AppUI {
             });
         }
 
-        // Search query
+        // Search query — shared haystack (class label EN/RU, category, spec, program,
+        // SN, article, station/post, holder), multi-token, case-insensitive.
         if (query) {
-            tools = tools.filter(t =>
-                (t.id || '').toLowerCase().includes(query) ||
-                (t.name || '').toLowerCase().includes(query) ||
-                (t.category || '').toLowerCase().includes(query) ||
-                (t.location || '').toLowerCase().includes(query) ||
-                (t.sn || '').toLowerCase().includes(query) ||
-                (t.article || '').toLowerCase().includes(query) ||
-                Store.empName(t.assigneeId).toLowerCase().includes(query)
-            );
+            tools = tools.filter(t => toolMatchesQuery(t, query));
         }
 
         this.toolGrid.renderTools(tools, currentFilter.type, currentFilter.value);

@@ -62,6 +62,52 @@ export function workstationAndPostOf(tool: Tool): { ws: string; post: string } {
   return { ws: tool.location || 'Unassigned', post: '' };
 }
 
+/**
+ * Build a lower-cased, searchable haystack for a tool.
+ *
+ * The inventory number only carries the class *prefix* (`TW-006`), so a search for
+ * the class name (“Torque Wrench”) would otherwise miss every wrench. This resolves
+ * the class label (EN + RU), the station/post, the holder's name and the remaining
+ * free-text fields into one string. Single source of truth for tool search.
+ */
+export function toolSearchHaystack(tool: Tool): string {
+  const cls = CONFIG.TOOL_CLASSES.find(c => c.p === (tool.id || '').split('-')[0]);
+  const wsp = workstationAndPostOf(tool);
+  const emp = tool.assigneeId ? Store.getEmp(tool.assigneeId) : null;
+  return [
+    tool.id,
+    tool.name,
+    tool.category,
+    tool.spec,
+    tool.program,
+    tool.sn,
+    tool.serialNumber,
+    tool.article,
+    tool.location,
+    wsp.ws,
+    wsp.post,
+    cls ? cls.en : '',
+    cls ? cls.ru : '',
+    emp ? emp.name : '',
+    emp ? emp.id : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+}
+
+/**
+ * True when every whitespace-separated token of `query` appears somewhere in the
+ * tool's haystack — case-insensitive and order-independent (`torq 1/2` matches
+ * “1/2 Torque Wrench”). An empty query matches everything.
+ */
+export function toolMatchesQuery(tool: Tool, query: string): boolean {
+  const tokens = String(query || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!tokens.length) return true;
+  const hay = toolSearchHaystack(tool);
+  return tokens.every(tok => hay.includes(tok));
+}
+
 export function careOf(emp: Employee) {
   const hist = (emp as any).history || [];
   const cnt = (re: RegExp) => hist.filter((h: string) => re.test(h)).length;

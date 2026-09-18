@@ -695,5 +695,6 @@ export const ru: Record<string, string> = {
   "CALIBRATION_SAVED": "Поверка записана:",
   "CALIBRATION_NO_SELECTION": "Выберите хотя бы один инструмент.",
   "CALIBRATION_FAILED": "Не удалось записать поверку",
-  "LABEL_QUEUE_CLEARED": "Очередь этикеток очищена."
+  "LABEL_QUEUE_CLEARED": "Очередь этикеток очищена.",
+  "Found:": "Найдено:"
 };

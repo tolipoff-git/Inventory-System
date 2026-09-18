@@ -695,5 +695,6 @@ export const en: Record<string, string> = {
   "CALIBRATION_SAVED": "Calibration recorded:",
   "CALIBRATION_NO_SELECTION": "Select at least one tool.",
   "CALIBRATION_FAILED": "Calibration failed",
-  "LABEL_QUEUE_CLEARED": "Label queue cleared."
+  "LABEL_QUEUE_CLEARED": "Label queue cleared.",
+  "Found:": "Found:"
 };
