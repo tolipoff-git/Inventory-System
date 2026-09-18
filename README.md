@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v117)
+# 5S Tool Command Center — v3 (v118)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -34,6 +34,11 @@ src/
 ### 1. Inventory lifecycle
 - **Serialized & bulk tracking** — expensive assets with auto class prefixes
   (`DW-DRILL-001`), consumable bins with min-stock alerts.
+- **Add-tool form** — pick **Type** (Permanent / Consumable) and **Tool Class**; the
+  inventory number is auto-filled with the next free `CLASS-NNN` (still editable) and the
+  category defaults from the class. A blank Serial Number is auto-generated as
+  `CLASS-XXXXXXXX` (recognised as auto everywhere). Calibration **interval (days)** sets the
+  next-due date.
 - **Immutable audit trails** — Tool ID as primary key; System Audit Log tracks
   issuance, return, edit, retirement.
 - **Address storage** — `Zone | Rack | Shelf-Bin` coordinates on create/transfer.
@@ -86,6 +91,9 @@ grouped by the role that can act on it**.
 
 ### 4. Labels & exports
 - Label formats **A/B/C** (Code39 + QR), batch printing queue.
+- **Print Queue** (header 🏷 or *Operations & Reports*) — collect labels first, then generate
+  the whole sheet on any wired stock (**Avery 5161** / 5163 / 5366, Brady roll, Generic A/B/C,
+  Calibration Tag) with a start-cell offset for part-used sheets.
 - **Calibration / verification tag** (`calTag`, 70×50 mm) — prints the verification
   block (who verified · date · valid until · certificate #) next to the QR, so a
   scanned tag opens the full tool card.

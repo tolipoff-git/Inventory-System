@@ -6,6 +6,13 @@ export async function renderQrToCanvas(
   text: string,
   size: number = 100
 ): Promise<void> {
+  // The `qrcode` renderer sets `canvas.style.width/height` in PIXELS (e.g. 300px),
+  // which destroys the mm-based sizing the label layouts rely on: a 19mm QR
+  // ballooned to ~79mm and was clipped by the label cell. The monolith used
+  // QRious, which only sets the canvas attributes. Capture the intended inline
+  // style and restore it after render so the pixel buffer is high-res while the
+  // displayed size stays whatever the layout (inline mm / CSS) dictates.
+  const prevStyle = canvas.getAttribute('style');
   try {
     await QRCode.toCanvas(canvas, text, {
       width: size,
@@ -29,6 +36,9 @@ export async function renderQrToCanvas(
       ctx.font = '10px monospace';
       ctx.fillText('QR ERROR', 10, size / 2);
     }
+  } finally {
+    if (prevStyle === null) canvas.removeAttribute('style');
+    else canvas.setAttribute('style', prevStyle);
   }
 }
 

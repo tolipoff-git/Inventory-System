@@ -2,21 +2,21 @@
 
 ## Overview
 - **Repository:** `/home/admin/git/Inventory-System`
-- **Current Version:** `v117` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
+- **Current Version:** `v118` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
 - **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith is preserved as `index.monolith.v97.html` for reference only and is **not** the active app.
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Session Continuity — Resume Point (2026-09-18, v117)
+## Session Continuity — Resume Point (2026-09-18, v118)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v117` (`package.json` = 117.0.0). `sw.js` `CACHE_VERSION` = `v117-<hash>`.
+- **Version:** `v118` (`package.json` = 118.0.0). `sw.js` `CACHE_VERSION` = `v118-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
-- **Gates (all green at v117):** `npm run typecheck` · `npm run lint` · `npm test` (99/99) ·
-  `npm run build` · `npm run check:i18n` (693/693). `tsconfig.json` includes `tests`,
+- **Gates (all green at v118):** `npm run typecheck` · `npm run lint` · `npm test` (101/101) ·
+  `npm run build` · `npm run check:i18n` (694/694). `tsconfig.json` includes `tests`,
   so `typecheck` and `build` cover the test suite too — keep it that way.
 - **Deploy:** push to `main` → Cloudflare Pages auto-deploy. Release workflow is defined in
   `AGENTS.md` (bump version → README + handoff → `bash build.sh` → feature commit →
@@ -125,7 +125,24 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
 - Standing instruction: perform the full release flow (bump → docs → `build.sh` → commits → push)
   automatically, without asking.
 
-## Recent Accomplishments (v49 – v117)
+## Recent Accomplishments (v49 – v118)
+
+### 0. Label Print Fix (QR sizing) + Add-Tool Form Restored (v118 Release)
+- **Root cause of "the tag prints as a fragment":** the `qrcode` renderer sets
+  `canvas.style.width/height` in **pixels** (`renderer/canvas.js`), clobbering the mm-based
+  sizing the label layouts rely on — a 19mm QR became ~79mm and was clipped by the cell.
+  The monolith used QRious, which does not touch the style. Fix: `renderQrToCanvas()` now
+  captures the element's inline style and restores it after render (the pixel buffer stays
+  high-res at 300px; display size stays whatever the layout dictates). Applies to every
+  label format. Also: no `page-break-after` on the **last** single/roll label (was a
+  trailing blank page in the PDF).
+- **Add-tool form restored to monolith parity:** **Type** (Permanent/Consumable) + **Tool
+  Class** pickers; the class auto-fills the inventory number (`suggestToolId`) and the
+  default category; a blank Serial Number is auto-generated as `CLASS-XXXXXXXX` (which
+  `isAutoSn()` recognises); **Calibration Interval (days)** added to add + edit and rolls
+  `calDue` forward. Labels: the header 🏷 now opens **Print Queue**, which lets you choose the
+  stock (Avery 5161/5163/5366, Brady, Generic A/B/C, Calibration Tag) and start cell.
+- `tests/labels.test.ts` +3 tests (calTag block, no trailing page-break, single-stock layout).
 
 ### 0. FAQ: Calibration & Verification Section (v117 Release)
 - Added a dedicated FAQ section **“Calibration & verification”** (EN/RU) covering the

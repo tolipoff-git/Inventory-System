@@ -2,11 +2,12 @@
 // 5S Tool Command Center — ToolModal Component (Add & Edit Tools)
 // ============================================================================
 
-import { T } from '../../../i18n';
+import { T, getLanguage } from '../../../i18n';
 import { Store } from '../../../storage/store';
 import { CONFIG } from '../../../config/constants';
 import { esc, nowISO } from '../../../utils/formatters';
 import { Tool } from '../../../types/inventory';
+import { suggestToolId, calDueFrom } from '../../../operations/toolOps';
 import { toast } from '../../../utils/dom';
 
 export class ToolModal {
@@ -63,8 +64,23 @@ export class ToolModal {
                 <div class="modal-body" style="max-height:75vh; overflow-y:auto;">
                     <div class="form-row">
                         <div class="form-group">
-                            <label>${T('Tool ID')}: *</label>
-                            <input type="text" id="addToolId" class="form-control" placeholder="e.g. TW-01">
+                            <label>${T('Type')}:</label>
+                            <select id="addToolType" class="form-control">
+                                <option value="Permanent">${T('Permanent')}</option>
+                                <option value="Consumable">${T('Consumables')}</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>${T('Tool Class')}:</label>
+                            <select id="addToolClass" class="form-control"></select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>${T('Inventory Number (ID)')}: *</label>
+                            <input type="text" id="addToolId" class="form-control" placeholder="e.g. TW-006" style="font-family:monospace; letter-spacing:1px; font-weight:bold;">
+                            <small style="color:var(--text-muted); font-size:0.75rem;">${T('ID_HINT')}</small>
                         </div>
                         <div class="form-group">
                             <label>${T('Tool Name')}: *</label>
@@ -133,6 +149,10 @@ export class ToolModal {
 
                     <div class="form-row">
                         <div class="form-group">
+                            <label>${T('Calibration Interval (Days)')}:</label>
+                            <input type="number" id="addToolInterval" class="form-control" min="0" value="0">
+                        </div>
+                        <div class="form-group">
                             <label>${T('Calibration Due Date')}:</label>
                             <input type="date" id="addToolCalDue" class="form-control">
                         </div>
@@ -161,6 +181,15 @@ export class ToolModal {
                 this.updatePostSelect(wsSelect.value, 'addToolPost');
             });
         }
+
+        // Type drives which classes are offered; the class drives the auto ID and
+        // the default category (monolith parity: `Ops.onToolClassChange`).
+        const typeSelect = overlay.querySelector<HTMLSelectElement>('#addToolType');
+        typeSelect?.addEventListener('change', () => {
+            this.populateClassSelect(typeSelect.value as 'Permanent' | 'Consumable');
+            this.applyClassDefaults();
+        });
+        overlay.querySelector('#addToolClass')?.addEventListener('change', () => this.applyClassDefaults());
     }
 
     private static createEditModalDOM(): void {
@@ -245,6 +274,10 @@ export class ToolModal {
                     </fieldset>
 
                     <div class="form-row">
+                        <div class="form-group">
+                            <label>${T('Calibration Interval (Days)')}:</label>
+                            <input type="number" id="editToolInterval" class="form-control" min="0">
+                        </div>
                         <div class="form-group">
                             <label>${T('Calibration Due Date')}:</label>
                             <input type="date" id="editToolCalDue" class="form-control">
@@ -335,15 +368,49 @@ export class ToolModal {
         postSelect.innerHTML = posts.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
     }
 
+    /**
+     * Fill the Tool Class select for the chosen type (Permanent → non-CONS classes,
+     * Consumable → CONS classes), localised. Restores the monolith's class picker.
+     */
+    private static populateClassSelect(type: 'Permanent' | 'Consumable' = 'Permanent'): void {
+        const sel = document.getElementById('addToolClass') as HTMLSelectElement | null;
+        if (!sel) return;
+        const wantCons = type === 'Consumable';
+        const lang = getLanguage();
+        const classes = CONFIG.TOOL_CLASSES.filter(c => (c.group === 'CONS') === wantCons);
+        sel.innerHTML = classes
+            .map(c => `<option value="${esc(c.p)}">${esc(c.p)} — ${esc(lang === 'RU' ? c.ru : c.en)}</option>`)
+            .join('');
+    }
+
+    /**
+     * Auto-fill the inventory number (next free `CLASS-NNN`) and the default
+     * category from the selected class — the monolith's `Ops.onToolClassChange()`.
+     */
+    private static applyClassDefaults(): void {
+        const sel = document.getElementById('addToolClass') as HTMLSelectElement | null;
+        if (!sel) return;
+        const cls = CONFIG.TOOL_CLASSES.find(c => c.p === sel.value);
+        if (!cls) return;
+        const idEl = document.getElementById('addToolId') as HTMLInputElement | null;
+        if (idEl) idEl.value = suggestToolId(cls.p);
+        const catEl = document.getElementById('addToolCategory') as HTMLInputElement | null;
+        if (catEl) catEl.value = cls.cat;
+    }
+
     private static resetAddForm(): void {
         this.populateDropdowns('addTool');
-        (document.getElementById('addToolId') as HTMLInputElement).value = '';
+        const typeSel = document.getElementById('addToolType') as HTMLSelectElement | null;
+        if (typeSel) typeSel.value = 'Permanent';
+        // Class → auto ID + default category (sets addToolId / addToolCategory).
+        this.populateClassSelect('Permanent');
+        this.applyClassDefaults();
         (document.getElementById('addToolName') as HTMLInputElement).value = '';
-        (document.getElementById('addToolCategory') as HTMLInputElement).value = '';
         (document.getElementById('addToolSpec') as HTMLInputElement).value = '';
         (document.getElementById('addToolSn') as HTMLInputElement).value = '';
         (document.getElementById('addToolArticle') as HTMLInputElement).value = '';
         (document.getElementById('addToolQty') as HTMLInputElement).value = '1';
+        (document.getElementById('addToolInterval') as HTMLInputElement).value = '0';
         (document.getElementById('addToolCalDue') as HTMLInputElement).value = '';
         (document.getElementById('addToolMinQty') as HTMLInputElement).value = '0';
     }
@@ -359,6 +426,7 @@ export class ToolModal {
         (document.getElementById('editToolArticle') as HTMLInputElement).value = tool.article || '';
         (document.getElementById('editToolQty') as HTMLInputElement).value = String(tool.qty || 1);
         (document.getElementById('editToolCalDue') as HTMLInputElement).value = tool.calDue || '';
+        (document.getElementById('editToolInterval') as HTMLInputElement).value = tool.calIntervalDays ? String(tool.calIntervalDays) : '0';
         (document.getElementById('editToolMinQty') as HTMLInputElement).value = String(tool.minQty || 0);
 
         const wsSelect = document.getElementById('editToolWs') as HTMLSelectElement;
@@ -388,7 +456,8 @@ export class ToolModal {
         const sn = (document.getElementById('addToolSn') as HTMLInputElement).value.trim();
         const article = (document.getElementById('addToolArticle') as HTMLInputElement).value.trim();
         const qty = parseInt((document.getElementById('addToolQty') as HTMLInputElement).value) || 1;
-        const calDue = (document.getElementById('addToolCalDue') as HTMLInputElement).value;
+        const calDueManual = (document.getElementById('addToolCalDue') as HTMLInputElement).value;
+        const intervalDays = parseInt((document.getElementById('addToolInterval') as HTMLInputElement).value) || 0;
         const minQty = parseInt((document.getElementById('addToolMinQty') as HTMLInputElement).value) || 0;
 
         const ws = (document.getElementById('addToolWs') as HTMLSelectElement).value;
@@ -413,14 +482,24 @@ export class ToolModal {
             return;
         }
 
-        const isConsumable = CONFIG.CONSUMABLE_PREFIXES.some(p => id.startsWith(p));
+        // Type comes from the explicit select (monolith parity); fall back to the
+        // ID prefix only if the select is somehow absent.
+        const typeVal = (document.getElementById('addToolType') as HTMLSelectElement | null)?.value;
+        const type: 'Permanent' | 'Consumable' = typeVal
+            ? (typeVal === 'Consumable' ? 'Consumable' : 'Permanent')
+            : (CONFIG.CONSUMABLE_PREFIXES.some(p => id.startsWith(p)) ? 'Consumable' : 'Permanent');
+
+        // Next due = explicit date, else today + interval.
+        const calDue = calDueManual || (intervalDays > 0 ? calDueFrom(nowISO().split('T')[0], intervalDays) : '');
+
         const newTool: Tool = {
             id,
             name,
             category,
             spec,
             program: program || undefined,
-            sn: sn || `SN-${id}-${Date.now().toString(36).toUpperCase()}`,
+            // Monolith parity: `CLASS-XXXXXXXX`, which `isAutoSn()` recognises as auto.
+            sn: sn || `${(id.includes('-') ? id.split('-')[0] : 'SN')}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
             article,
             qty,
             status: 'Active',
@@ -431,8 +510,9 @@ export class ToolModal {
                 shelf,
                 bin
             },
-            type: isConsumable ? 'Consumable' : 'Permanent',
+            type,
             calDue: calDue || undefined,
+            calIntervalDays: intervalDays > 0 ? intervalDays : undefined,
             minQty: minQty || undefined,
             commissioned_date: nowISO().split('T')[0],
             history: [`${nowISO().split('T')[0]} | Commissioned into service at ${ws}`]
@@ -456,6 +536,7 @@ export class ToolModal {
         const article = (document.getElementById('editToolArticle') as HTMLInputElement).value.trim();
         const qty = parseInt((document.getElementById('editToolQty') as HTMLInputElement).value) || 1;
         const calDue = (document.getElementById('editToolCalDue') as HTMLInputElement).value;
+        const intervalDays = parseInt((document.getElementById('editToolInterval') as HTMLInputElement).value) || 0;
         const minQty = parseInt((document.getElementById('editToolMinQty') as HTMLInputElement).value) || 0;
 
         const ws = (document.getElementById('editToolWs') as HTMLSelectElement).value;
@@ -477,6 +558,7 @@ export class ToolModal {
         tool.article = article;
         tool.qty = qty;
         tool.calDue = calDue || undefined;
+        tool.calIntervalDays = intervalDays > 0 ? intervalDays : undefined;
         tool.minQty = minQty || undefined;
         tool.location = post ? `${ws} / ${post}` : ws;
         tool.address = {
