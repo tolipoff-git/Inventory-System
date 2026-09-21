@@ -1,5 +1,6 @@
 import { SyncManagerInstance } from '../../../sync/syncManager';
 import { getActiveSyncRoom, getSyncToken, setSyncToken } from '../../../sync/syncApi';
+import { Store } from '../../../storage/store';
 import { renderQrToCanvas } from '../../../labels/qrGenerator';
 import { copyText, toast } from '../../../utils/dom';
 import { esc } from '../../../utils/formatters';
@@ -55,6 +56,24 @@ export function renderSyncModalHtml(): string {
                 ⬆ ${isRu ? 'Отправить (Push)' : 'Force Push'}
               </button>
             </div>
+          </div>
+
+          <!-- Sync Diagnostics -->
+          <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-size: 0.8rem;">
+            <div style="font-weight:bold; color: var(--primary-hover); margin-bottom:8px;">
+              🔎 ${isRu ? 'Диагностика — сравните значения с телефоном' : 'Diagnostics — compare these values with the phone'}
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 6px 16px;">
+              <div>${isRu ? 'Хост синхронизации' : 'Sync host'}: <code id="syncDiagHost" style="color:var(--primary);">—</code></div>
+              <div>${isRu ? 'Комната' : 'Room'}: <code id="syncDiagRoom" style="color:var(--primary);">—</code></div>
+              <div>${isRu ? 'Токен' : 'Token'}: <span id="syncDiagToken">—</span></div>
+              <div>${isRu ? 'Инструментов локально' : 'Tools locally'}: <b id="syncDiagLocal">—</b></div>
+              <div>${isRu ? 'Инструментов в облаке' : 'Tools in cloud'}: <b id="syncDiagRemote">—</b></div>
+              <div>${isRu ? 'Ревизия в облаке' : 'Cloud revision'}: <span id="syncDiagRevision">—</span></div>
+              <div>${isRu ? 'HTTP отправки' : 'Push HTTP'}: <span id="syncDiagPush">—</span></div>
+              <div>${isRu ? 'Ошибка' : 'Error'}: <span id="syncDiagError">—</span></div>
+            </div>
+            <div id="syncDiagWarning" style="display:none; margin-top:8px; color: var(--warning); line-height:1.4;"></div>
           </div>
 
           <!-- Pairing & QR Code Section -->
@@ -120,6 +139,25 @@ export function renderSyncModalHtml(): string {
 }
 
 export function initSyncModalLogic(): void {
+  const isRu = () => getLanguage() === 'RU';
+
+  /** Human-readable reason for the last real sync failure. */
+  const syncErrorText = (): string => {
+    const err = SyncManagerInstance.lastSyncError;
+    if (!err) return '';
+    if (err === 'unauthorized') {
+      return isRu()
+        ? '401 — неверный токен синхронизации (Bearer). На обоих устройствах он должен совпадать.'
+        : '401 — invalid sync Bearer token. It must match on both devices.';
+    }
+    if (err === 'unconfigured') {
+      return isRu()
+        ? '503 — на Cloudflare Worker не задан SYNC_SECRET. Синхронизация отключена на сервере.'
+        : '503 — SYNC_SECRET is not configured on the Cloudflare Worker.';
+    }
+    return err;
+  };
+
   const updateModalContent = () => {
     const room = SyncManagerInstance.room;
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -140,17 +178,64 @@ export function initSyncModalLogic(): void {
         : '—';
     }
 
+    // --- Diagnostics -------------------------------------------------------
+    const host = SyncManagerInstance.getSyncHost();
+    const token = getSyncToken();
+    const localTools = Store.tools.length;
+    const remoteTools = SyncManagerInstance.lastRemoteToolCount;
+
+    const setText = (id: string, value: string) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    };
+    setText('syncDiagHost', host || 'n/a');
+    setText('syncDiagRoom', room);
+    setText('syncDiagToken', token ? `••••${token.slice(-4)}` : (isRu() ? 'не задан' : 'not set'));
+    setText('syncDiagLocal', String(localTools));
+    setText('syncDiagRemote', remoteTools === null ? '—' : String(remoteTools));
+    setText(
+      'syncDiagRevision',
+      SyncManagerInstance.lastRemoteUpdatedAt
+        ? new Date(SyncManagerInstance.lastRemoteUpdatedAt).toLocaleTimeString('en-US')
+        : '—'
+    );
+    setText('syncDiagPush', SyncManagerInstance.lastPushStatus === null ? '—' : String(SyncManagerInstance.lastPushStatus));
+    setText('syncDiagError', syncErrorText() || '—');
+
+    const warnEl = document.getElementById('syncDiagWarning');
+    if (warnEl) {
+      const warnings: string[] = [];
+      if (!SyncManagerInstance.isPublicOrigin()) {
+        warnings.push(
+          isRu()
+            ? '⚠️ Приложение открыто по локальному адресу. Телефон не сможет попасть в это же хранилище — откройте на ОБОИХ устройствах публичный адрес (https://inventory-system.tolipoff.workers.dev/?room=' + encodeURIComponent(room) + ').'
+            : '⚠️ The app is served from a local address. The phone cannot reach the same backend — open the public URL on BOTH devices (https://inventory-system.tolipoff.workers.dev/?room=' + encodeURIComponent(room) + ').'
+        );
+      }
+      if (remoteTools === 0 && localTools > 0) {
+        warnings.push(
+          isRu()
+            ? '⚠️ В облаке 0 инструментов: это устройство ещё не отправляло (нажмите «Отправить») либо второе устройство в другой комнате/на другом хосте.'
+            : '⚠️ The cloud holds 0 tools: this device has not pushed yet (press Push) or the other device is in a different room / on a different host.'
+        );
+      }
+      warnEl.style.display = warnings.length ? 'block' : 'none';
+      warnEl.innerHTML = warnings.map(esc).join('<br>');
+    }
+
     const statusEl = document.getElementById('syncModalStatusText');
     if (statusEl) {
-      const isRu = getLanguage() === 'RU';
+      const russian = isRu();
       if (!navigator.onLine) {
-        statusEl.innerHTML = `🔴 <span>${isRu ? 'Офлайн (Локальное хранилище)' : 'Offline (Local Storage)'}</span>`;
+        statusEl.innerHTML = `🔴 <span>${russian ? 'Офлайн (Локальное хранилище)' : 'Offline (Local Storage)'}</span>`;
       } else if (SyncManagerInstance.status === 'syncing') {
-        statusEl.innerHTML = `🟡 <span>${isRu ? 'Синхронизация с облаком...' : 'Syncing with cloud...'}</span>`;
+        statusEl.innerHTML = `🟡 <span>${russian ? 'Синхронизация с облаком...' : 'Syncing with cloud...'}</span>`;
       } else if (SyncManagerInstance.status === 'pending') {
-        statusEl.innerHTML = `🔵 <span>${isRu ? 'Есть локальные изменения' : 'Local changes pending'}</span>`;
+        statusEl.innerHTML = `🔵 <span>${russian ? 'Есть локальные изменения' : 'Local changes pending'}</span>`;
+      } else if (SyncManagerInstance.status === 'error') {
+        statusEl.innerHTML = `🔴 <span>${russian ? 'Ошибка синхронизации — данные НЕ обменяны' : 'Sync error — data NOT exchanged'}</span>`;
       } else {
-        statusEl.innerHTML = `🟢 <span>${isRu ? 'Синхронизировано с облаком' : 'Fully Synced with Cloud'}</span>`;
+        statusEl.innerHTML = `🟢 <span>${russian ? 'Синхронизировано с облаком' : 'Fully Synced with Cloud'}</span>`;
       }
     }
   };
@@ -160,10 +245,14 @@ export function initSyncModalLogic(): void {
   if (pullBtn) {
     pullBtn.onclick = async () => {
       pullBtn.setAttribute('disabled', 'true');
-      await SyncManagerInstance.triggerPull();
+      const ok = await SyncManagerInstance.triggerPull();
       pullBtn.removeAttribute('disabled');
       updateModalContent();
-      toast('✅ ' + T('Synced with cloud'));
+      if (ok) {
+        toast('✅ ' + T('Synced with cloud'), 'success');
+      } else {
+        toast('⚠️ ' + (syncErrorText() || T('Sync failed')), 'danger');
+      }
     };
   }
 
@@ -171,10 +260,15 @@ export function initSyncModalLogic(): void {
   if (pushBtn) {
     pushBtn.onclick = async () => {
       pushBtn.setAttribute('disabled', 'true');
-      await SyncManagerInstance.triggerPush();
+      const ok = await SyncManagerInstance.triggerPush();
       pushBtn.removeAttribute('disabled');
       updateModalContent();
-      toast('✅ ' + T('Pushed to cloud'));
+      if (ok) {
+        toast('✅ ' + T('Pushed to cloud'), 'success');
+      } else {
+        const status = SyncManagerInstance.lastPushStatus;
+        toast('⚠️ ' + (status ? `HTTP ${status}` : (syncErrorText() || T('Sync failed'))), 'danger');
+      }
     };
   }
 

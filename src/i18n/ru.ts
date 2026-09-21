@@ -655,6 +655,7 @@ export const ru: Record<string, string> = {
   "Status:": "Статус:",
   "Storage Address": "Адрес хранения",
   "Synced with cloud": "Синхронизировано с облаком",
+  "Sync failed": "Синхронизация не удалась — данные не обменяны.",
   "Target Zone / Workstation": "Целевая зона / рабочая станция",
   "Tool ID": "ID инструмента",
   "Tool Passport": "Паспорт инструмента",

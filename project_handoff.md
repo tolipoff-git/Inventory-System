@@ -7,16 +7,16 @@
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Session Continuity — Resume Point (2026-09-18, v124)
+## Session Continuity — Resume Point (2026-09-18, v125)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v124` (`package.json` = 124.0.0). `sw.js` `CACHE_VERSION` = `v124-<hash>`.
+- **Version:** `v125` (`package.json` = 125.0.0). `sw.js` `CACHE_VERSION` = `v125-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
-- **Gates (all green at v124):** `npm run typecheck` · `npm run lint` · `npm test` (122/122) ·
-  `npm run build` · `npm run check:i18n` (699/699). `tsconfig.json` includes `tests`,
+- **Gates (all green at v125):** `npm run typecheck` · `npm run lint` · `npm test` (131/131) ·
+  `npm run build` · `npm run check:i18n` (700/700). `tsconfig.json` includes `tests`,
   so `typecheck` and `build` cover the test suite too — keep it that way.
 - **Deploy:** push to `main` → Cloudflare Pages auto-deploy. Release workflow is defined in
   `AGENTS.md` (bump version → README + handoff → `bash build.sh` → feature commit →
@@ -141,7 +141,26 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
 - Standing instruction: perform the full release flow (bump → docs → `build.sh` → commits → push)
   automatically, without asking.
 
-## Recent Accomplishments (v49 – v124)
+## Recent Accomplishments (v49 – v125)
+
+### 0. Sync is Diagnosable — No More Silent “Synced” (v125 Release)
+- **Root cause found:** `pullSyncPayload()` returned `null` for *every* failure, and
+  `triggerPull()` treated `null` as “room empty” → **status “synced”** even on a 401 (wrong
+  Bearer token) or 503 (Worker without `SYNC_SECRET`). The Pull/Push buttons also toasted
+  “✅ Synced” unconditionally. Two devices could therefore look synced while exchanging nothing.
+- **Fixed:** `pullSyncPayload()` now returns a discriminated `PullOutcome`
+  (`ok | empty | unauthorized | unconfigured | error`); `pushSyncPayload()` returns
+  `{ ok, status }`. `triggerPull()` maps each failure to the `error` status and stores the
+  reason in `lastSyncError`; the buttons toast the real outcome.
+- **Diagnostics block in the Sync modal:** sync **host**, room, token tail, **local vs. cloud
+  tool counts**, cloud revision time, last push HTTP status, error reason. Plus two warnings:
+  non-public origin (localhost/LAN — the phone cannot reach that backend) and “cloud holds 0
+  tools” (this device never pushed, or the peer is in another room/host).
+  ⚠️ The sync API is **relative** (`/api/sync/…`), so it is served by *whatever origin the app
+  was loaded from* — `workers.dev` vs `pages.dev` vs a preview URL are **separate KV stores**.
+  This is the first thing to compare between two devices.
+- **Tests:** +9 (`tests/syncPull.test.ts`) pinning the outcome classification, the malformed-body
+  and network-error paths, the room-key/token headers, and the push status.
 
 ### 0. Calibration Tag Sheet = Avery 5161 (20/page) (v124 Release)
 - `calTagSheet` moved from Avery 5163 (10/page) to **Avery 5161 (2×10 = 20 tags/page)**, and

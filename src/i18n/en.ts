@@ -655,6 +655,7 @@ export const en: Record<string, string> = {
   "Status:": "Status:",
   "Storage Address": "Storage Address",
   "Synced with cloud": "Synced with cloud",
+  "Sync failed": "Sync failed — data was not exchanged.",
   "Target Zone / Workstation": "Target Zone / Workstation",
   "Tool ID": "Tool ID",
   "Tool Passport": "Tool Passport",
