@@ -7,15 +7,15 @@
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Session Continuity — Resume Point (2026-09-18, v125)
+## Session Continuity — Resume Point (2026-09-18, v126)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v125` (`package.json` = 125.0.0). `sw.js` `CACHE_VERSION` = `v125-<hash>`.
+- **Version:** `v126` (`package.json` = 126.0.0). `sw.js` `CACHE_VERSION` = `v126-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
-- **Gates (all green at v125):** `npm run typecheck` · `npm run lint` · `npm test` (131/131) ·
+- **Gates (all green at v126):** `npm run typecheck` · `npm run lint` · `npm test` (132/132) ·
   `npm run build` · `npm run check:i18n` (700/700). `tsconfig.json` includes `tests`,
   so `typecheck` and `build` cover the test suite too — keep it that way.
 - **Deploy:** push to `main` → Cloudflare Pages auto-deploy. Release workflow is defined in
@@ -141,7 +141,33 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
 - Standing instruction: perform the full release flow (bump → docs → `build.sh` → commits → push)
   automatically, without asking.
 
-## Recent Accomplishments (v49 – v125)
+## Recent Accomplishments (v49 – v126)
+
+### 0. Sync Actually Works — Open API, Like Daily-Walkthrough (v126 Release)
+- **Root cause (verified against the deployed Worker):**
+  `curl https://inventory-system.tolipoff.workers.dev/api/sync/inv_room_INV-MAIN` → **401
+  `{"error":"Unauthorized: missing or invalid Bearer token"}`**. The Worker **required**
+  `env.SYNC_SECRET` (fail-closed 503 without it, 401 on mismatch), while the app's
+  `DEFAULT_SYNC_SECRET` is `''` — so every pull/push was rejected and **nothing ever synced**.
+  The reference app (`daily-walkthrough-pwa`) has **no auth** on `/api/sync/`, which is why it
+  works with zero setup.
+- **Rewritten to that model.** The sync API is now **open**: the room key namespaces the data
+  and is the access control. The `SYNC_SECRET` gate, the 503, the `isAuthorized()` helper, the
+  `renderUnauthorizedHtml()` 401 page and the now-unused `constantTimeEq()` were removed;
+  `wrangler.jsonc` no longer declares `SYNC_SECRET` as required. Photo routes are open too
+  (browsers cannot send an Authorization header on `<img>`/navigation anyway).
+- **Client:** `syncHeaders()` only attaches `Authorization` when a token actually exists —
+  sending `Bearer ` (empty) was what tripped the gate. Push now also treats a 200 with
+  `success:false` as a **retryable failure** (the Worker returns 503 + `retryable:true` when the
+  authoritative KV write fails, instead of silently claiming success). Concurrent pushes are
+  coalesced into one in-flight promise, and a pull is triggered on tab focus / visibility
+  change (phones suspend timers while backgrounded).
+- **Tests:** `tests/worker.test.ts` re-pinned to the open model (no token → 200 + `success:true`;
+  no `SYNC_SECRET` → 200; failed KV write → 503 + `retryable`; photo route without token → 404);
+  `tests/syncPull.test.ts` asserts the Authorization header is **absent** when no token is set.
+- ⚠️ **Deliberate trade-off, recorded:** the sync API is unauthenticated. Anyone who knows a room
+  key can read/write that room's data. A real per-room lock (per-room tokens, or a signed room
+  URL) would have to be added on purpose — do not re-introduce the global `SYNC_SECRET` gate.
 
 ### 0. Sync is Diagnosable — No More Silent “Synced” (v125 Release)
 - **Root cause found:** `pullSyncPayload()` returned `null` for *every* failure, and

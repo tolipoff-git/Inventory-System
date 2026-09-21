@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v125)
+# 5S Tool Command Center — v3 (v126)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -89,13 +89,17 @@ grouped by the role that can act on it**.
 ### 3. Live multi-device sync
 - **Diagnosable, not silently “synced”** — the Sync dialog shows the **sync host**, room, token
   tail, local vs. cloud tool counts, cloud revision time and the last push HTTP status. A pull
-  that returns 401 (wrong Bearer token) or 503 (Worker without `SYNC_SECRET`) now reports an
-  **error** instead of pretending the room was empty, and the Pull/Push buttons toast the real
-  outcome. It also warns when the app is served from a `localhost`/LAN address, because the
-  sync API is whatever origin the app was loaded from — two devices on different hosts never
-  exchange data.
-- **Cloudflare Worker** (`/api/sync/:roomKey`) — room-authed (Bearer),
-  first-write-wins **room token** (X-Sync-Token), constant-time compare.
+  that fails (auth, 5xx, network) reports an **error** instead of pretending the room was empty,
+  and the Pull/Push buttons toast the real outcome. It also warns when the app is served from a
+  `localhost`/LAN address, because the sync API is whatever origin the app was loaded from —
+  two devices on different hosts never exchange data. Sync also re-pulls on tab
+  focus/visibility change, since phones suspend timers while backgrounded.
+- **Cloudflare Worker** (`/api/sync/:roomKey`) — **open by design**: the room key
+  namespaces the data and is the access control, so sync works out of the box with zero setup
+  (same model as the *Daily Walkthrough* PWA). A `SYNC_SECRET`, if configured, is optional; the
+  optional token field in the Sync dialog exists for deployments that want to add one later.
+  A failed KV write is reported as a **retryable** failure — the Worker never claims success
+  for data it did not store.
 - **ntfy.sh SSE** — live push; **conflict resolver** = field-level
   later-wins-per-timestamp merge, history union.
 - **Tombstoned deletes** — removals travel as data (a `deletedAt` field or a registry

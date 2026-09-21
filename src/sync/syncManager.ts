@@ -33,6 +33,8 @@ class SyncManager {
   private _lastPushedTimestamp: string = '';
   private _lastReceivedTimestamp: string = '';
   private _version: number = 1;
+  /** In-flight push, so a debounce timer and a manual click cannot race. */
+  private _pushPromise: Promise<boolean> | null = null;
 
   /**
    * Diagnostics surfaced in the Sync modal. `lastSyncError` is set whenever a
@@ -59,6 +61,18 @@ class SyncManager {
       if (!navigator.onLine) {
         this.setStatus('offline');
       }
+
+      // Phones suspend timers and the SSE stream while backgrounded, so a pull on
+      // every return-to-foreground keeps the two devices converged without
+      // waiting for the 15s poll.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && navigator.onLine) {
+          this.triggerPull().catch(() => {});
+        }
+      });
+      window.addEventListener('focus', () => {
+        if (navigator.onLine) this.triggerPull().catch(() => {});
+      });
     }
 
     // Subscribe to SSE stream for live updates
@@ -267,6 +281,17 @@ class SyncManager {
   }
 
   public async triggerPush(): Promise<boolean> {
+    // Coalesce concurrent pushes (debounce timer + manual button).
+    if (this._pushPromise) return this._pushPromise;
+    this._pushPromise = this._doPush();
+    try {
+      return await this._pushPromise;
+    } finally {
+      this._pushPromise = null;
+    }
+  }
+
+  private async _doPush(): Promise<boolean> {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       this.setStatus('offline');
       return false;

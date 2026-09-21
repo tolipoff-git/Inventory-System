@@ -68,18 +68,20 @@ describe('pullSyncPayload — failures are classified, not swallowed', () => {
     expect(net).toEqual({ kind: 'error', message: 'offline' });
   });
 
-  it('sends the room key and the Bearer token', async () => {
+  it('sends the room key, and omits Authorization when no token is configured', async () => {
     let seenUrl = '';
-    let seenAuth = '';
+    let seenAuth: string | undefined = 'unset';
     mockFetch(async (url, init) => {
       seenUrl = url;
-      seenAuth = String((init?.headers as Record<string, string>)?.Authorization || '');
+      seenAuth = (init?.headers as Record<string, string>)?.Authorization;
       return jsonResponse(validPayload, 200);
     });
     await pullSyncPayload('plant a');
     // Room is upper-cased and namespaced so both devices hit the same KV key.
     expect(seenUrl).toContain('/api/sync/inv_room_PLANT%20A');
-    expect(seenAuth.startsWith('Bearer ')).toBe(true);
+    // Sending `Bearer ` (empty) made the Worker reject every request, which is
+    // why sync never worked out of the box — the header must be absent instead.
+    expect(seenAuth).toBeUndefined();
   });
 });
 

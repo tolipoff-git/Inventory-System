@@ -30,11 +30,11 @@
     // CORS allowlist for the PWA origin(s), e.g. "https://inventory.pages.dev"
     "ALLOWED_ORIGIN": "https://inventory-system.tolipoff.workers.dev"
   },
-  // SYNC_SECRET and ALLOWED_ORIGIN are set at deploy time:
+  // SYNC_SECRET is OPTIONAL. The sync API is open by default (the room key
+  // namespaces the data — same model as the daily-walkthrough PWA, so sync works
+  // with zero setup). If SYNC_SECRET is set here, every device must supply the
+  // same Bearer token in the app's Sync dialog.
   //   wrangler secret put SYNC_SECRET
-  "secrets": {
-    "required": ["SYNC_SECRET"]
-  },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS"
