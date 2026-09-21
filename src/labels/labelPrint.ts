@@ -63,9 +63,9 @@ export const STOCKS: Record<string, StockDefinition> = {
     info: 'Verification tag — who, when, next due + QR',
   },
   calTagSheet: {
-    brand: 'Generic', pn: 'Calibration Tag Sheet (Avery 5163)', kind: 'sheet',
-    w: 101.6, h: 50.8, cols: 2, rows: 5, top: 12.7, left: 4.8, pitchX: 106.4, pitchY: 50.8,
-    info: '10 verification tags per sheet — calibration sessions',
+    brand: 'Generic', pn: 'Calibration Tag Sheet (Avery 5161)', kind: 'sheet',
+    w: 101.6, h: 25.4, cols: 2, rows: 10, top: 12.7, left: 4.8, pitchX: 106.4, pitchY: 25.4,
+    info: '20 verification tags per sheet — calibration sessions',
   },
   brady: {
     brand: 'Brady', pn: 'THT-119-427-2.5', kind: 'roll', w: 38.1, h: 12.7,
@@ -184,6 +184,29 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
         const verifiedAt = verifiedAtRaw ? fmtDate(verifiedAtRaw) : '—';
         const nextDue = tool.calDue ? fmtDate(tool.calDue) : '—';
         const overdue = Boolean(tool.calDue && tool.calDue < nowISO().split('T')[0]);
+
+        // A die-cut sheet cell is only 25.4 mm tall (Avery 5161, 20/sheet), so the
+        // comfortable stacked block does not fit there — switch to a one-line
+        // compact tag sized to the cell instead of overflowing it.
+        const compact = (STOCKS[stockKey]?.h ?? 50) < 40;
+        if (compact) {
+          return `
+          <div style="display:flex; width:100%; height:100%; align-items:center; gap:2.5mm; padding:1.5mm 3mm; box-sizing:border-box; font-family:sans-serif; color:#000;">
+            <div style="flex:1; overflow:hidden; line-height:1.3;">
+              <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom:1px solid #000; padding-bottom:0.5mm;">
+                <strong style="font-size:8px; letter-spacing:0.3px;">${T('CALIBRATION / VERIFICATION')}</strong>
+                <span style="font-size:8px; font-family:monospace; font-weight:900;">${esc(tool.id)}</span>
+              </div>
+              <div style="font-size:9px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:0.6mm;">${esc(tool.name)}</div>
+              <div style="font-size:8px;">${T('Verified by')}: <strong>${esc(verifiedBy)}</strong> · <strong>${esc(verifiedAt)}</strong></div>
+              <div style="font-size:8px; color:${overdue ? '#b00020' : '#000'};">${T('Next due')}: <strong>${esc(nextDue)}</strong>${tool.calCertNo ? ` · ${T('Certificate')}: <strong>${esc(tool.calCertNo)}</strong>` : ''}</div>
+            </div>
+            <div style="width:16mm; height:16mm; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+              <canvas class="lbl-qr" data-qr-text="${esc(qrUrl)}" style="width:15mm; height:15mm;"></canvas>
+            </div>
+          </div>`;
+        }
+
         return `
           <div style="display:flex; flex-direction:column; width:100%; height:100%; padding:3mm; box-sizing:border-box; font-family:sans-serif; color:#000;">
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #000; padding-bottom:1mm;">
