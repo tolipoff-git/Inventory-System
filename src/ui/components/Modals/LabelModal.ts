@@ -7,7 +7,7 @@ import { Store } from '../../../storage/store';
 import { esc } from '../../../utils/formatters';
 import { generateQrDataUrl } from '../../../labels/qrGenerator';
 import { requiresCalibration } from '../../../operations/toolOps';
-import { printLabelsHtml, printQueueLabels, buildLabelSheetHtml, drawAllQrsInContainer, STOCKS, LabelFormat } from '../../../labels/labelPrint';
+import { printLabelsHtml, printQueueLabels, buildLabelSheetHtml, drawAllQrsInContainer, queueLabelEntities, STOCKS, LabelFormat, LabelEntity } from '../../../labels/labelPrint';
 import { toast, printHtml } from '../../../utils/dom';
 
 export class LabelModal {
@@ -35,15 +35,15 @@ export class LabelModal {
         // verification — hide it for a socket head / hammer and fall back to a
         // plain tool label if it was the last-used format.
         const needsCal = requiresCalibration(tool);
-        const calOpt = modal?.querySelector<HTMLOptionElement>('#labelFormatSelect option[value="calTag"]');
-        if (calOpt) {
-            calOpt.disabled = !needsCal;
-            calOpt.hidden = !needsCal;
-            if (!needsCal && this.selectedFormat === 'calTag') {
-                this.selectedFormat = 'avery5161';
-                const sel = modal?.querySelector<HTMLSelectElement>('#labelFormatSelect');
-                if (sel) sel.value = 'avery5161';
-            }
+        const calOpts = modal?.querySelectorAll<HTMLOptionElement>('#labelFormatSelect option[value="calTag"], #labelFormatSelect option[value="calTagSheet"]');
+        calOpts?.forEach(opt => {
+            opt.disabled = !needsCal;
+            opt.hidden = !needsCal;
+        });
+        if (!needsCal && (this.selectedFormat === 'calTag' || this.selectedFormat === 'calTagSheet')) {
+            this.selectedFormat = 'avery5161';
+            const sel = modal?.querySelector<HTMLSelectElement>('#labelFormatSelect');
+            if (sel) sel.value = 'avery5161';
         }
 
         if (modal) modal.classList.add('active');
@@ -101,7 +101,7 @@ export class LabelModal {
         const q = Store.labelQueue || [];
         // Curated list: the canonical stocks, without the legacy aliases (brady/
         // brady119, genA/genericA) that would otherwise appear twice.
-        const formats: LabelFormat[] = ['avery5161', 'avery5163', 'avery5366', 'brady', 'genericA', 'genericB', 'genericC', 'calTag'];
+        const formats: LabelFormat[] = ['avery5161', 'avery5163', 'avery5366', 'calTagSheet', 'calTag', 'brady', 'genericA', 'genericB', 'genericC'];
         const options = formats
             .map(k => {
                 const s = STOCKS[k];
@@ -124,13 +124,17 @@ export class LabelModal {
                         <label>${T('Start position')}:</label>
                         <input type="number" id="queueStartInput" class="form-control" value="1" min="1">
                     </div>
+                    <div class="form-group" style="text-align:left;">
+                        <label>${T('Print Label Preview')}:</label>
+                        <div id="queuePreview" style="background:#e2e8f0; padding:10px; border-radius:8px; min-height:120px; max-height:340px; overflow:auto; display:flex; justify-content:center;"></div>
+                    </div>
                     <div style="text-align:left; font-size:0.85rem; color:var(--text-muted); max-height:150px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; padding:8px;">
                         ${q.map(id => `<div style="font-family:monospace;">• ${esc(id)}</div>`).join('')}
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-muted" id="queueCancelBtn">${T('Close')}</button>
-                    <button class="btn btn-danger" id="queueClearBtn">${T('Clear')}</button>
+                    <button class="btn btn-danger" id="queueClearBtn">🗑 ${T('Clear Queue')}</button>
                     <button class="btn btn-success" id="queuePrintBtn">🖨 ${T('Print Now')}</button>
                 </div>
             </div>
@@ -139,12 +143,21 @@ export class LabelModal {
 
         const fmtSel = overlay.querySelector<HTMLSelectElement>('#queueFormatSelect');
         const startGroup = overlay.querySelector<HTMLElement>('#queueStartGroup');
-        const syncStart = () => {
-            const stock = STOCKS[(fmtSel?.value || 'avery5161') as LabelFormat];
-            if (startGroup) startGroup.style.display = stock && stock.kind === 'sheet' ? '' : 'none';
+        const startInput = overlay.querySelector<HTMLInputElement>('#queueStartInput');
+        const previewHost = overlay.querySelector<HTMLElement>('#queuePreview');
+        const readStart = () => {
+            const n = parseInt(startInput?.value || '1', 10);
+            return Number.isFinite(n) && n > 0 ? n : 1;
         };
-        fmtSel?.addEventListener('change', syncStart);
-        syncStart();
+        const refresh = async () => {
+            const format = (fmtSel?.value || 'avery5161') as LabelFormat;
+            const stock = STOCKS[format];
+            if (startGroup) startGroup.style.display = stock && stock.kind === 'sheet' ? '' : 'none';
+            if (previewHost) await this.renderQueuePreview(previewHost, format, readStart());
+        };
+        fmtSel?.addEventListener('change', () => { void refresh(); });
+        startInput?.addEventListener('input', () => { void refresh(); });
+        void refresh();
 
         overlay.querySelector('#queueCloseBtn')?.addEventListener('click', () => this.closeQueue());
         overlay.querySelector('#queueCancelBtn')?.addEventListener('click', () => this.closeQueue());
@@ -161,6 +174,25 @@ export class LabelModal {
             this.closeQueue();
             await printQueueLabels(format, { start });
         });
+    }
+
+    /**
+     * Live preview of the whole queued run, laid out in queue order on the chosen
+     * stock — the same `buildLabelSheetHtml()` output the printer receives, so the
+     * operator can see every label and its cell before printing.
+     */
+    private static async renderQueuePreview(host: HTMLElement, format: LabelFormat, start: number): Promise<void> {
+        const entities: LabelEntity[] = queueLabelEntities();
+        if (!entities.length) {
+            host.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem;">${T('LABEL_QUEUE_NO_MATCH')}</div>`;
+            return;
+        }
+        const stock = STOCKS[format] || STOCKS.avery5161;
+        const html = buildLabelSheetHtml(entities, format, { start });
+        const zoom = stock.kind === 'sheet' ? 0.3 : stock.w < 40 ? 2.2 : 1;
+        host.innerHTML = `<div class="sheet-mode" style="zoom:${zoom}; flex:0 0 auto;">${html}</div>`;
+        const inner = host.querySelector<HTMLElement>('.sheet-mode');
+        if (inner) await drawAllQrsInContainer(inner);
     }
 
     private static createPrintModalDOM(): void {
@@ -186,6 +218,7 @@ export class LabelModal {
                             <option value="genericB">Generic B (Standard 50×25mm)</option>
                             <option value="genericC">Generic C (Large 70×36mm)</option>
                             <option value="calTag">Calibration Tag (70×50mm)</option>
+                            <option value="calTagSheet">Calibration Tag Sheet (Avery 5163, 10/sheet)</option>
                         </select>
                     </div>
 

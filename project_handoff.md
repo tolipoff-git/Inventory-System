@@ -7,16 +7,16 @@
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Session Continuity — Resume Point (2026-09-18, v122)
+## Session Continuity — Resume Point (2026-09-18, v123)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v122` (`package.json` = 122.0.0). `sw.js` `CACHE_VERSION` = `v122-<hash>`.
+- **Version:** `v123` (`package.json` = 123.0.0). `sw.js` `CACHE_VERSION` = `v123-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
-- **Gates (all green at v122):** `npm run typecheck` · `npm run lint` · `npm test` (120/120) ·
-  `npm run build` · `npm run check:i18n` (698/698). `tsconfig.json` includes `tests`,
+- **Gates (all green at v123):** `npm run typecheck` · `npm run lint` · `npm test` (121/121) ·
+  `npm run build` · `npm run check:i18n` (699/699). `tsconfig.json` includes `tests`,
   so `typecheck` and `build` cover the test suite too — keep it that way.
 - **Deploy:** push to `main` → Cloudflare Pages auto-deploy. Release workflow is defined in
   `AGENTS.md` (bump version → README + handoff → `bash build.sh` → feature commit →
@@ -62,6 +62,10 @@ working session; the per-release history below is the long-term record.
 - `src/labels/labelPrint.ts` → `addrLine()` (v121) spells storage coordinates out in full
   (`Rack A | Shelf 2 | Bin 3`) even for legacy bare `A`/`2`/`3` values; reuse it for any new
   address rendering instead of joining `address.*` by hand.
+- `src/labels/labelPrint.ts` → `queueLabelEntities()` (v123) — the one place the label queue is
+  resolved to printable targets; used by both the queue **preview** and `printQueueLabels()` so
+  they can never disagree. `STOCKS.calTagSheet` is the Avery 5163 sheet variant of the
+  verification tag (renders the same calibration content as `calTag`).
 
 ### Next actions (agreed direction, not yet started)
 1. **SOP hub — Phase B** (plan §6). **Deferred by the user on 2026-09-18 — no need right now.**
@@ -136,7 +140,18 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
 - Standing instruction: perform the full release flow (bump → docs → `build.sh` → commits → push)
   automatically, without asking.
 
-## Recent Accomplishments (v49 – v122)
+## Recent Accomplishments (v49 – v123)
+
+### 0. Queue Preview, Session Tag Sheets (v123 Release)
+- **The print-queue dialog previews the whole run.** It now renders `buildLabelSheetHtml()` for
+  *all* queued targets (via `queueLabelEntities()`) on the chosen stock and refreshes on format /
+  start-cell change, instead of showing a single label whose cell moved with the start number.
+- **🗑 Clear Queue** button (explicit label) alongside Close / Print Now.
+- **Calibration sessions print as a sheet, in order.** New `calTagSheet` stock (Avery 5163
+  geometry, 2×5 = 10 tags/page, same verification content as `calTag`), and the
+  `CalibrationModal` gained a **label-stock picker** — sessions default to the sheet, single
+  verifications to the 70×50 tag. Previously a session printed one tag per page.
+- **Tests:** +1 pinning the 12-tag session → two sheets (10 + 2) in order.
 
 ### 0. Anchored Labels, Verification Gating (v122 Release)
 - **Roll/single labels are anchored, never centred.** `buildLabelSheetHtml()` no longer emits

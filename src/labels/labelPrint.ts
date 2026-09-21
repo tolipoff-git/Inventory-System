@@ -62,6 +62,11 @@ export const STOCKS: Record<string, StockDefinition> = {
     brand: 'Generic', pn: 'Calibration Tag (70×50mm)', kind: 'single', w: 70, h: 50,
     info: 'Verification tag — who, when, next due + QR',
   },
+  calTagSheet: {
+    brand: 'Generic', pn: 'Calibration Tag Sheet (Avery 5163)', kind: 'sheet',
+    w: 101.6, h: 50.8, cols: 2, rows: 5, top: 12.7, left: 4.8, pitchX: 106.4, pitchY: 50.8,
+    info: '10 verification tags per sheet — calibration sessions',
+  },
   brady: {
     brand: 'Brady', pn: 'THT-119-427-2.5', kind: 'roll', w: 38.1, h: 12.7,
     info: 'Printable 38.1×12.7mm — tools: Code 39 + ID',
@@ -167,7 +172,8 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
               <canvas class="lbl-qr" data-qr-text="${esc(qrUrl)}" style="width:10mm; height:10mm;"></canvas>
             </div>
           </div>`;
-      case 'calTag': {
+      case 'calTag':
+      case 'calTagSheet': {
         // Flat fields first; fall back to the newest structured record so a tag
         // never prints an empty "who verified" line.
         const latest = Array.isArray(tool.calHistory) && tool.calHistory.length
@@ -351,7 +357,7 @@ export function printLabelViaIframe(container: HTMLElement, stockKey: string = '
   }, 400);
 }
 
-export type LabelFormat = 'avery5161' | 'avery5163' | 'avery5366' | 'brady' | 'genericA' | 'genericB' | 'genericC' | 'calTag';
+export type LabelFormat = 'avery5161' | 'avery5163' | 'avery5366' | 'brady' | 'genericA' | 'genericB' | 'genericC' | 'calTag' | 'calTagSheet';
 
 /** A queued label target: either a tool id or a `LOC:` storage-location id. */
 export interface LabelEntity {
@@ -368,16 +374,7 @@ export async function printQueueLabels(format?: LabelFormat, opts: LabelLayoutOp
     return;
   }
 
-  // Location labels are queued as `LOC:...` ids and have no Tool record, so they
-  // must not be resolved through Store.getTool (which silently dropped them).
-  const entities: LabelEntity[] = [];
-  for (const id of queueIds) {
-    if (id.startsWith('LOC:')) {
-      entities.push({ id, type: 'location' });
-    } else if (Store.getTool(id)) {
-      entities.push({ id, type: 'tool' });
-    }
-  }
+  const entities = queueLabelEntities();
 
   if (entities.length === 0) {
     toast(T('LABEL_QUEUE_NO_MATCH'), 'warning');
@@ -386,6 +383,24 @@ export async function printQueueLabels(format?: LabelFormat, opts: LabelLayoutOp
 
   await printLabelsHtml(entities, format || 'avery5161', opts);
   toast(`${T('LABELS_PRINTED')} ${entities.length}`, 'success');
+}
+
+/**
+ * Resolve the label queue to printable targets. Location labels are queued as
+ * `LOC:…` ids and have no Tool record, so they must not be resolved through
+ * `Store.getTool` (which silently dropped them). Shared by the queue preview and
+ * the queue print so both always show exactly the same run.
+ */
+export function queueLabelEntities(): LabelEntity[] {
+  const entities: LabelEntity[] = [];
+  for (const id of Store.labelQueue || []) {
+    if (id.startsWith('LOC:')) {
+      entities.push({ id, type: 'location' });
+    } else if (Store.getTool(id)) {
+      entities.push({ id, type: 'tool' });
+    }
+  }
+  return entities;
 }
 
 export interface LabelLayoutOptions {
