@@ -72,23 +72,10 @@ export default {
     // Cloudflare Worker Photo Viewing Endpoint: /photo/:room/:photoId and /api/photo/:room/:photoId
     const photoMatch = url.pathname.match(/^\/(?:api\/)?photo\/([^/]+)\/([^/]+)\/?$/);
     if (photoMatch) {
-      // Photo endpoints require the same Bearer auth as sync. Browsers cannot
-      // set the Authorization header on navigation or <img> requests, so the
-      // token is also accepted as a ?token= query param (used by the PWA and
-      // the standalone HTML photo viewer).
-      const acceptsHtmlRequest = (request.headers.get('Accept') || '').includes('text/html');
-      if (!isAuthorized(request, env.SYNC_SECRET, url)) {
-        const body = acceptsHtmlRequest
-          ? renderUnauthorizedHtml()
-          : JSON.stringify({ error: 'Unauthorized: missing or invalid token' });
-        return new Response(body, {
-          status: 401,
-          headers: {
-            ...securityHeaders,
-            'Content-Type': acceptsHtmlRequest ? 'text/html; charset=utf-8' : 'application/json',
-          },
-        });
-      }
+      // Photos follow the same access model as sync: open, keyed by the room id
+      // that is part of the photo key. Browsers cannot set the Authorization
+      // header on navigation or <img> requests, so a token could not be required
+      // anyway.
 
       const rawRoom = photoMatch[1];
       const rawPhotoId = photoMatch[2];
@@ -256,27 +243,15 @@ export default {
         });
       }
 
-      // Fail-closed auth: sync endpoints require env.SYNC_SECRET to be set. If
-      // the secret is missing the endpoints return 503 and never pass through.
-      if (!env.SYNC_SECRET) {
-        return new Response(
-          JSON.stringify({ error: 'SYNC_SECRET not configured' }),
-          {
-            status: 503,
-            headers: { ...securityHeaders, 'Content-Type': 'application/json' },
-          }
-        );
-      }
-
-      if (!constantTimeEq(request.headers.get('Authorization') || '', `Bearer ${env.SYNC_SECRET}`)) {
-        return new Response(
-          JSON.stringify({ error: 'Unauthorized: missing or invalid Bearer token' }),
-          {
-            status: 401,
-            headers: { ...securityHeaders, 'Content-Type': 'application/json' },
-          }
-        );
-      }
+      // Access model (mirrors the daily-walkthrough PWA): the **room key**
+      // namespaces the data and is the access control — the endpoint is open, so
+      // sync works out of the box with zero setup.
+      //
+      // The previous fail-closed Bearer gate demanded a `SYNC_SECRET` that the
+      // client never had (its default token is empty), so every request returned
+      // 401 and nothing ever synced. A `SYNC_SECRET`, if still configured, is no
+      // longer consulted here; a real per-room lock would have to be added
+      // deliberately (see project_handoff.md).
 
       const rawKey = url.pathname.replace('/api/sync/', '');
       const key = safeDecodeURIComponent(rawKey);
@@ -344,6 +319,24 @@ export default {
               await kv.put(cleanKey, bodyText, { expirationTtl: 604800 });
             } catch (e) {
               console.error('KV write error:', e);
+              // The authoritative store rejected the write (size limit, throttle).
+              // Do NOT claim success: keep the bytes in the in-memory fallback so
+              // this isolate can still serve reads, but report a retryable failure
+              // so the client keeps the payload pending instead of marking it synced.
+              memoryStore.set(cleanKey, bodyText);
+              return new Response(
+                JSON.stringify({
+                  success: false,
+                  error: 'storage_unavailable',
+                  retryable: true,
+                  key: cleanKey,
+                  timestamp: new Date().toISOString(),
+                }),
+                {
+                  status: 503,
+                  headers: { ...securityHeaders, 'Content-Type': 'application/json' },
+                }
+              );
             }
           }
 
@@ -363,7 +356,7 @@ export default {
           );
         } catch (err: any) {
           return new Response(
-            JSON.stringify({ error: 'Invalid JSON body', details: err?.message }),
+            JSON.stringify({ success: false, error: 'Invalid JSON body', details: err?.message }),
             {
               status: 400,
               headers: { ...securityHeaders, 'Content-Type': 'application/json' },
@@ -394,31 +387,6 @@ export default {
 
 /** Max base64 chars for a 5 MiB photo: 5 * 1024 * 1024 bytes * 4/3 + slack. */
 const MAX_PHOTO_BASE64_CHARS = 5 * 1024 * 1024 * 4 / 3 + 4096;
-
-/**
- * Timing-safe string comparison (fixed-length XOR scan). Length leaks, contents don't.
- */
-function constantTimeEq(a: string, b: string): boolean {
-  if (typeof a !== 'string' || typeof b !== 'string') return false;
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return diff === 0;
-}
-
-/**
- * Photo endpoints are guarded with the same secret as sync. Browsers cannot set
- * the Authorization header on navigation or <img> requests, so the token is also
- * accepted as a ?token= query parameter (used by the PWA and standalone viewer).
- */
-function isAuthorized(request: Request, syncSecret: string | undefined, url: URL): boolean {
-  if (!syncSecret) return false;
-  const headerToken = request.headers.get('Authorization') || '';
-  const queryToken = url.searchParams.get('token') || '';
-  return constantTimeEq(headerToken, `Bearer ${syncSecret}`) || constantTimeEq(queryToken, syncSecret);
-}
 
 /**
  * Validates that a stored photoUrl is safe to serve (XSS + SSRF guard):
@@ -504,76 +472,6 @@ function isPrivateIpv4(ip: string): boolean {
     || (a === 127)
     || (a === 0)
     || (a === 100 && b >= 64 && b <= 127);
-}
-
-/** Minimal dark-mode 401 page for browser navigation to a protected photo. */
-function renderUnauthorizedHtml(): string {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Unauthorized | 5S Tool Command Center</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: #05080e;
-      color: #f8fafc;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-    .card {
-      background: #0d1527;
-      border: 1px solid #1e293b;
-      border-radius: 16px;
-      padding: 36px 28px;
-      max-width: 480px;
-      width: 100%;
-      text-align: center;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-    }
-    .icon { font-size: 48px; margin-bottom: 16px; }
-    h1 { font-size: 20px; font-weight: 700; color: #f1f5f9; margin-bottom: 12px; }
-    p { font-size: 14px; color: #94a3b8; line-height: 1.6; margin-bottom: 16px; }
-    .badge {
-      display: inline-block;
-      padding: 4px 12px;
-      background: rgba(239, 68, 68, 0.15);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #f87171;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 10px 18px;
-      border-radius: 10px;
-      font-size: 13px;
-      font-weight: 600;
-      text-decoration: none;
-      border: 1px solid transparent;
-      margin-top: 20px;
-    }
-    .btn-primary { background: #00d2ff; color: #05080e; font-weight: 700; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="icon">🔒</div>
-    <h1>Unauthorized</h1>
-    <p>Access to this photo requires a valid access token.</p>
-    <div class="badge">Authentication Required</div>
-    <div><a href="/" class="btn btn-primary">Return to System</a></div>
-  </div>
-</body>
-</html>`;
 }
 
 /**

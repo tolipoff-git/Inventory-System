@@ -7,6 +7,19 @@ export function getSyncToken(): string {
   return localStorage.getItem('inv_sync_token') || DEFAULT_SYNC_SECRET;
 }
 
+/**
+ * Headers for a sync call. The `Authorization` header is only attached when a
+ * token actually exists — sending `Bearer ` (empty) made every request fail the
+ * Worker's comparison, which is why sync never worked out of the box.
+ */
+function syncHeaders(deviceId?: string): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (deviceId) headers['X-Device-ID'] = deviceId;
+  const token = getSyncToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
+}
+
 export function setSyncToken(token: string): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem('inv_sync_token', token.trim());
@@ -102,8 +115,7 @@ export async function pushSyncPayload(room: string, payload: SyncPayload): Promi
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Device-ID': payload.deviceId,
-        'Authorization': `Bearer ${getSyncToken()}`,
+        ...syncHeaders(payload.deviceId),
       },
       body: payloadString,
       signal: controller.signal,
@@ -111,6 +123,18 @@ export async function pushSyncPayload(room: string, payload: SyncPayload): Promi
     clearTimeout(timeoutId);
     timeoutId = undefined;
     status = res.status;
+
+    if (res.ok) {
+      // Trust the Worker's explicit success flag over the bare 2xx status: a 200
+      // with `success:false` (retryable storage error) must NOT be treated as
+      // synced — the payload stays pending and is retried.
+      try {
+        const body = await res.json();
+        if (body && body.success === false) status = 503;
+      } catch {
+        // Non-JSON success body — keep the HTTP status
+      }
+    }
   } catch (err) {
     console.error('Sync push to Worker API failed:', err);
   } finally {
@@ -162,7 +186,7 @@ export async function pullSyncPayload(room: string): Promise<PullOutcome> {
       method: 'GET',
       headers: {
         'Cache-Control': 'no-cache',
-        'Authorization': `Bearer ${getSyncToken()}`,
+        ...syncHeaders(),
       },
       signal: controller.signal,
     });
@@ -201,7 +225,7 @@ export async function pushPhotoToCloud(room: string, photo: SyncPhoto): Promise<
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getSyncToken()}`,
+          ...syncHeaders(),
         },
         body: JSON.stringify(photo),
         signal: controller.signal,
@@ -229,7 +253,7 @@ export async function pullPhotoFromCloud(room: string, photoId: string): Promise
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache',
-          'Authorization': `Bearer ${getSyncToken()}`,
+          ...syncHeaders(),
         },
         signal: controller.signal,
       }

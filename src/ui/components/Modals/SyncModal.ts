@@ -105,13 +105,20 @@ export function renderSyncModalHtml(): string {
                 </div>
               </form>
 
-              <!-- Cloud Sync Bearer Token Form -->
+              <!-- Cloud Sync Bearer Token Form (optional lock) -->
               <form id="syncTokenChangeForm" onsubmit="event.preventDefault(); window.handleSyncTokenChange();" style="margin-top: 4px;">
-                <label style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted);">${isRu ? 'Секретный токен синхронизации (Bearer Token):' : 'Cloud Sync Secret (Bearer Token):'}</label>
+                <label style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted);">
+                  ${isRu ? 'Секретный токен (необязательно):' : 'Cloud Sync Secret (optional):'}
+                </label>
                 <div style="display:flex; gap:6px; margin-top:4px;">
-                  <input id="syncTokenInput" type="password" value="${esc(syncToken)}" style="flex:1; font-size:0.8rem; font-family:monospace; background:rgba(0,0,0,0.4); padding:6px 10px;" placeholder="Bearer Token" required />
+                  <input id="syncTokenInput" type="password" value="${esc(syncToken)}" style="flex:1; font-size:0.8rem; font-family:monospace; background:rgba(0,0,0,0.4); padding:6px 10px;" placeholder="Bearer Token">
                   <button type="button" id="syncTokenToggleVisBtn" class="btn btn-secondary" style="padding: 6px 10px; font-size:0.8rem;" title="${isRu ? 'Показать / скрыть' : 'Toggle visibility'}">👁</button>
                   <button type="submit" class="btn" style="padding: 6px 14px; font-size:0.8rem;">${isRu ? 'Сохранить' : 'Save'}</button>
+                </div>
+                <div style="font-size:0.72rem; color:var(--text-muted); margin-top:4px;">
+                  ${isRu
+                    ? 'Синхронизация работает без токена. Заполнять нужно только если на Cloudflare Worker задан SYNC_SECRET — тогда одинаковый токен на всех устройствах.'
+                    : 'Sync works without a token. Fill this in only if SYNC_SECRET is set on the Cloudflare Worker — then the same token is required on every device.'}
                 </div>
               </form>
 
@@ -152,8 +159,8 @@ export function initSyncModalLogic(): void {
     }
     if (err === 'unconfigured') {
       return isRu()
-        ? '503 — на Cloudflare Worker не задан SYNC_SECRET. Синхронизация отключена на сервере.'
-        : '503 — SYNC_SECRET is not configured on the Cloudflare Worker.';
+        ? '503 — сервер синхронизации недоступен (KV отклонил запись). Попробуйте ещё раз.'
+        : '503 — the sync backend rejected the write (KV). Retry.';
     }
     return err;
   };
