@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v123)
+# 5S Tool Command Center — v3 (v125)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -87,6 +87,13 @@ grouped by the role that can act on it**.
   with shelves. Available in the *Programs & Stations* tab and in the Integrity Check.
 
 ### 3. Live multi-device sync
+- **Diagnosable, not silently “synced”** — the Sync dialog shows the **sync host**, room, token
+  tail, local vs. cloud tool counts, cloud revision time and the last push HTTP status. A pull
+  that returns 401 (wrong Bearer token) or 503 (Worker without `SYNC_SECRET`) now reports an
+  **error** instead of pretending the room was empty, and the Pull/Push buttons toast the real
+  outcome. It also warns when the app is served from a `localhost`/LAN address, because the
+  sync API is whatever origin the app was loaded from — two devices on different hosts never
+  exchange data.
 - **Cloudflare Worker** (`/api/sync/:roomKey`) — room-authed (Bearer),
   first-write-wins **room token** (X-Sync-Token), constant-time compare.
 - **ntfy.sh SSE** — live push; **conflict resolver** = field-level

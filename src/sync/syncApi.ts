@@ -66,17 +66,37 @@ export function isValidPayload(payload: any): payload is SyncPayload {
 }
 
 /**
+ * Outcome of a pull. The old API returned `null` for *every* failure, so a 401
+ * (wrong Bearer token) or a 503 (Worker without `SYNC_SECRET`) was
+ * indistinguishable from an empty room — and the UI reported “synced” while
+ * nothing was ever exchanged.
+ */
+export type PullOutcome =
+  | { kind: 'ok'; payload: SyncPayload }
+  | { kind: 'empty' }
+  | { kind: 'unauthorized' }
+  | { kind: 'unconfigured' }
+  | { kind: 'error'; message: string };
+
+/** Outcome of a push, including the HTTP status for diagnostics. */
+export interface PushOutcome {
+  ok: boolean;
+  status: number;
+}
+
+/**
  * Pushes inventory state to Cloudflare Worker API (authoritative KV store),
  * then triggers a lightweight ping broadcast over ntfy.sh relay.
  */
-export async function pushSyncPayload(room: string, payload: SyncPayload): Promise<boolean> {
+export async function pushSyncPayload(room: string, payload: SyncPayload): Promise<PushOutcome> {
   const cleanRoom = (room || DEFAULT_SYNC_ROOM).trim().toUpperCase();
   const payloadString = JSON.stringify(payload);
 
-  let workerOk = false;
+  let status = 0;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    timeoutId = setTimeout(() => controller.abort(), 15000);
 
     const res = await fetch(getWorkerSyncUrl(cleanRoom), {
       method: 'POST',
@@ -89,9 +109,12 @@ export async function pushSyncPayload(room: string, payload: SyncPayload): Promi
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
-    workerOk = res.ok;
+    timeoutId = undefined;
+    status = res.status;
   } catch (err) {
     console.error('Sync push to Worker API failed:', err);
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
   }
 
   // Broadcast a data-free ping to notify peers to pull
@@ -121,18 +144,19 @@ export async function pushSyncPayload(room: string, payload: SyncPayload): Promi
     // Relay broadcast failed, covered by polling fallback
   }
 
-  return workerOk;
+  return { ok: status >= 200 && status < 300, status };
 }
 
 /**
  * Pulls latest room state from the Cloudflare Worker API.
  */
-export async function pullSyncPayload(room: string): Promise<SyncPayload | null> {
+export async function pullSyncPayload(room: string): Promise<PullOutcome> {
   const cleanRoom = (room || DEFAULT_SYNC_ROOM).trim().toUpperCase();
 
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    timeoutId = setTimeout(() => controller.abort(), 8000);
 
     const response = await fetch(`${getWorkerSyncUrl(cleanRoom)}?t=${Date.now()}`, {
       method: 'GET',
@@ -144,18 +168,22 @@ export async function pullSyncPayload(room: string): Promise<SyncPayload | null>
     });
 
     clearTimeout(timeoutId);
+    timeoutId = undefined;
 
-    if (response.ok) {
-      const data = await response.json();
-      if (isValidPayload(data)) {
-        return data;
-      }
-    }
-  } catch (e) {
+    if (response.status === 401) return { kind: 'unauthorized' };
+    if (response.status === 503) return { kind: 'unconfigured' };
+    if (response.status === 404) return { kind: 'empty' };
+    if (!response.ok) return { kind: 'error', message: `HTTP ${response.status}` };
+
+    const data = await response.json();
+    if (!isValidPayload(data)) return { kind: 'error', message: 'invalid payload' };
+    return { kind: 'ok', payload: data };
+  } catch (e: any) {
     console.error(`[syncApi:pullSyncPayload] Pull failed for room ${cleanRoom}:`, e);
+    return { kind: 'error', message: e?.message || 'network error' };
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
   }
-
-  return null;
 }
 
 /**

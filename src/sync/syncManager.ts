@@ -34,6 +34,15 @@ class SyncManager {
   private _lastReceivedTimestamp: string = '';
   private _version: number = 1;
 
+  /**
+   * Diagnostics surfaced in the Sync modal. `lastSyncError` is set whenever a
+   * pull/push actually failed, so the UI can stop claiming “synced” on a 401.
+   */
+  public lastSyncError: string | null = null;
+  public lastRemoteToolCount: number | null = null;
+  public lastRemoteUpdatedAt: string | null = null;
+  public lastPushStatus: number | null = null;
+
   public init(): void {
     this.room = getActiveSyncRoom();
     this.deviceId = getOrCreateDeviceId();
@@ -174,14 +183,41 @@ class SyncManager {
 
     try {
       this._isSyncing = true;
-      const remote = await pullSyncPayload(this.room);
+      const outcome = await pullSyncPayload(this.room);
 
-      if (!remote) {
-        // Room empty or unreachable, local state remains authoritative
+      // Surface real failures instead of pretending the room is simply empty.
+      if (outcome.kind === 'unauthorized') {
+        this.lastSyncError = 'unauthorized';
+        this.setStatus('error');
+        this._isSyncing = false;
+        return false;
+      }
+      if (outcome.kind === 'unconfigured') {
+        this.lastSyncError = 'unconfigured';
+        this.setStatus('error');
+        this._isSyncing = false;
+        return false;
+      }
+      if (outcome.kind === 'error') {
+        this.lastSyncError = outcome.message;
+        this.setStatus('error');
+        this._isSyncing = false;
+        return false;
+      }
+      if (outcome.kind === 'empty') {
+        // Room exists but holds no revision yet — nothing to pull.
+        this.lastSyncError = null;
+        this.lastRemoteToolCount = 0;
+        this.lastRemoteUpdatedAt = null;
         this.setStatus('synced');
         this._isSyncing = false;
         return true;
       }
+
+      const remote = outcome.payload;
+      this.lastSyncError = null;
+      this.lastRemoteToolCount = Array.isArray(remote.tools) ? remote.tools.length : 0;
+      this.lastRemoteUpdatedAt = remote.updatedAt || null;
 
       // Ignore echoes if payload identical to last received
       if (remote.updatedAt === this._lastReceivedTimestamp) {
@@ -250,8 +286,11 @@ class SyncManager {
       payload.version = this._version;
       this._lastPushedTimestamp = payload.updatedAt;
 
-      const ok = await pushSyncPayload(this.room, payload);
+      const pushOutcome = await pushSyncPayload(this.room, payload);
+      this.lastPushStatus = pushOutcome.status;
+      const ok = pushOutcome.ok;
       if (ok) {
+        this.lastSyncError = null;
         this.lastSyncedAt = new Date();
         this.setStatus('synced');
         // Announce the new revision on the public relay so peers pull immediately
@@ -275,6 +314,35 @@ class SyncManager {
     const pulled = await this.triggerPull();
     const pushed = await this.triggerPush();
     return pulled && pushed;
+  }
+
+  /** Host the sync API is served from — the sync backend is whatever origin the
+   *  app was loaded from, so two devices on different hosts never exchange data. */
+  public getSyncHost(): string {
+    try {
+      return typeof window !== 'undefined' ? window.location.host : 'n/a';
+    } catch {
+      return 'n/a';
+    }
+  }
+
+  /**
+   * False when the app is served from localhost / a private LAN address. The
+   * pairing QR and room URL then point at an address a phone cannot reach, which
+   * silently produces two isolated sync backends.
+   */
+  public isPublicOrigin(): boolean {
+    try {
+      const host = window.location.hostname;
+      if (!host) return false;
+      if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') return false;
+      if (/^10\./.test(host) || /^192\.168\./.test(host)) return false;
+      if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return false;
+      if (/^169\.254\./.test(host)) return false;
+      return host.includes('.');
+    } catch {
+      return false;
+    }
   }
 
   private _buildLocalPayload(): SyncPayload {
