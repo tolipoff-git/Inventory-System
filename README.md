@@ -142,8 +142,9 @@ grouped by the role that can act on it**.
   card in the Category Hub) — pick a station, search/tick a shelf of tools (ticks survive
   filtering), stamp one date / inspector / interval / certificate, then print a run of tags.
   The run is laid out **in tick order on the chosen label stock** (default *Calibration Tag
-  Sheet*, Avery 5163, 10 tags/sheet) — not one tag per page. The queue card lists the items
-  due (≤14 days) or overdue; each row opens the tool card.
+  Sheet*, Avery 5161, **20 tags/sheet**; the tag switches to a compact one-line layout in the
+  25.4 mm cell) — not one tag per page. The queue card lists the items due (≤14 days) or
+  overdue; each row opens the tool card.
 - The tool card shows the verification block and the last five verification events;
   the tag turns red when the next-due date has passed. The block is rendered **only for
   verification classes** (TW/CT/DC/CA/GA) — a socket head or a hammer no longer carries an

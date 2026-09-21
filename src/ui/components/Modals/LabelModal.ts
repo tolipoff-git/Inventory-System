@@ -218,7 +218,7 @@ export class LabelModal {
                             <option value="genericB">Generic B (Standard 50×25mm)</option>
                             <option value="genericC">Generic C (Large 70×36mm)</option>
                             <option value="calTag">Calibration Tag (70×50mm)</option>
-                            <option value="calTagSheet">Calibration Tag Sheet (Avery 5163, 10/sheet)</option>
+                            <option value="calTagSheet">Calibration Tag Sheet (Avery 5161, 20/sheet)</option>
                         </select>
                     </div>
 

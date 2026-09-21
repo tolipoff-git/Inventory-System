@@ -109,16 +109,28 @@ describe('label sheet layout (Avery die-cut alignment)', () => {
     expect(cells[1]).not.toContain('page-break-after:always');
   });
 
-  it('lays a calibration session out on an Avery 5163 sheet, in order', () => {
+  it('lays a calibration session out on an Avery 5161 sheet (20/page), in order', () => {
     // A session used to print one tag per page (single-stock calTag); the sheet
-    // stock puts them in queue order, 10 per page.
-    const entities = Array.from({ length: 12 }, (_, i) => ({ id: `TW-${i + 1}`, type: 'tool' as const }));
+    // stock puts them in order, 20 per page.
+    const entities = Array.from({ length: 25 }, (_, i) => ({ id: `TW-${i + 1}`, type: 'tool' as const }));
     const pages = pagesOf(buildLabelSheetHtml(entities, 'calTagSheet'));
 
     expect(pages).toHaveLength(2);
-    expect(cellsOf(pages[0])).toHaveLength(10);
+    expect(cellsOf(pages[0])).toHaveLength(20);
     expect(cellsOf(pages[0]).every(c => c.includes('CALIBRATION / VERIFICATION'))).toBe(true);
-    expect(cellsOf(pages[1]).filter(c => c.includes('CALIBRATION / VERIFICATION'))).toHaveLength(2);
+    expect(cellsOf(pages[1]).filter(c => c.includes('CALIBRATION / VERIFICATION'))).toHaveLength(5);
+  });
+
+  it('uses the compact one-line tag when the sheet cell is only 25.4mm tall', () => {
+    const sheet = cellsOf(buildLabelSheetHtml([{ id: 'TW-001', type: 'tool' }], 'calTagSheet'))[0];
+    const roll = cellsOf(buildLabelSheetHtml([{ id: 'TW-001', type: 'tool' }], 'calTag'))[0];
+
+    // The compact layout keeps a single "Verified by … · date" line and a 16mm QR;
+    // the 70x50 tag keeps the stacked block with a 22mm QR.
+    expect(sheet).toContain('width:15mm; height:15mm;');
+    expect(roll).toContain('width:21mm; height:21mm;');
+    expect(sheet).toContain('CALIBRATION / VERIFICATION');
+    expect(roll).toContain('CALIBRATION / VERIFICATION');
   });
 
   it('anchors roll/single stock at the page origin — never centred on a full sheet', () => {

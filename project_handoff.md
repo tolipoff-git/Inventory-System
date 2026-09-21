@@ -7,15 +7,15 @@
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Session Continuity — Resume Point (2026-09-18, v123)
+## Session Continuity — Resume Point (2026-09-18, v124)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v123` (`package.json` = 123.0.0). `sw.js` `CACHE_VERSION` = `v123-<hash>`.
+- **Version:** `v124` (`package.json` = 124.0.0). `sw.js` `CACHE_VERSION` = `v124-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
-- **Gates (all green at v123):** `npm run typecheck` · `npm run lint` · `npm test` (121/121) ·
+- **Gates (all green at v124):** `npm run typecheck` · `npm run lint` · `npm test` (122/122) ·
   `npm run build` · `npm run check:i18n` (699/699). `tsconfig.json` includes `tests`,
   so `typecheck` and `build` cover the test suite too — keep it that way.
 - **Deploy:** push to `main` → Cloudflare Pages auto-deploy. Release workflow is defined in
@@ -64,8 +64,9 @@ working session; the per-release history below is the long-term record.
   address rendering instead of joining `address.*` by hand.
 - `src/labels/labelPrint.ts` → `queueLabelEntities()` (v123) — the one place the label queue is
   resolved to printable targets; used by both the queue **preview** and `printQueueLabels()` so
-  they can never disagree. `STOCKS.calTagSheet` is the Avery 5163 sheet variant of the
-  verification tag (renders the same calibration content as `calTag`).
+  they can never disagree. `STOCKS.calTagSheet` is the Avery 5161 sheet variant of the
+  verification tag (2×10 = **20/sheet**; `renderLabelCell` switches to a compact one-line
+  layout when the stock cell is under 40 mm tall, i.e. the 25.4 mm 5161 cell).
 
 ### Next actions (agreed direction, not yet started)
 1. **SOP hub — Phase B** (plan §6). **Deferred by the user on 2026-09-18 — no need right now.**
@@ -140,7 +141,15 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
 - Standing instruction: perform the full release flow (bump → docs → `build.sh` → commits → push)
   automatically, without asking.
 
-## Recent Accomplishments (v49 – v123)
+## Recent Accomplishments (v49 – v124)
+
+### 0. Calibration Tag Sheet = Avery 5161 (20/page) (v124 Release)
+- `calTagSheet` moved from Avery 5163 (10/page) to **Avery 5161 (2×10 = 20 tags/page)**, and
+  `renderLabelCell` now emits a **compact one-line tag** whenever the stock cell is under 40 mm
+  tall, so the verification block fits the 101.6×25.4 mm die-cut cell instead of overflowing it
+  (16 mm QR, `Verified by … · date` on one line, `Next due … · Certificate` on the next).
+- **Tests:** +1 (replacing the 5163 case) pinning 25 tags → two sheets (20 + 5) and the compact
+  vs. stacked layouts (15 mm vs. 21 mm QR).
 
 ### 0. Queue Preview, Session Tag Sheets (v123 Release)
 - **The print-queue dialog previews the whole run.** It now renders `buildLabelSheetHtml()` for
