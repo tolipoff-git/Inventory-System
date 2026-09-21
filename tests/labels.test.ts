@@ -109,6 +109,18 @@ describe('label sheet layout (Avery die-cut alignment)', () => {
     expect(cells[1]).not.toContain('page-break-after:always');
   });
 
+  it('lays a calibration session out on an Avery 5163 sheet, in order', () => {
+    // A session used to print one tag per page (single-stock calTag); the sheet
+    // stock puts them in queue order, 10 per page.
+    const entities = Array.from({ length: 12 }, (_, i) => ({ id: `TW-${i + 1}`, type: 'tool' as const }));
+    const pages = pagesOf(buildLabelSheetHtml(entities, 'calTagSheet'));
+
+    expect(pages).toHaveLength(2);
+    expect(cellsOf(pages[0])).toHaveLength(10);
+    expect(cellsOf(pages[0]).every(c => c.includes('CALIBRATION / VERIFICATION'))).toBe(true);
+    expect(cellsOf(pages[1]).filter(c => c.includes('CALIBRATION / VERIFICATION'))).toHaveLength(2);
+  });
+
   it('anchors roll/single stock at the page origin — never centred on a full sheet', () => {
     // A centred 70x50 tag printed in the middle of a Letter sheet when the printer
     // rejected the custom @page size.

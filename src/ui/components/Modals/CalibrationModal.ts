@@ -15,7 +15,7 @@ import {
     toolMatchesQuery,
     CalibrationInput,
 } from '../../../operations/toolOps';
-import { printLabelsHtml } from '../../../labels/labelPrint';
+import { printLabelsHtml, STOCKS, LabelFormat } from '../../../labels/labelPrint';
 import { Tool } from '../../../types/inventory';
 
 /**
@@ -76,6 +76,18 @@ export class CalibrationModal {
         });
 
         const today = nowISO().split('T')[0];
+
+        // Verification tags are printable as a single 70×50 tag (roll / single
+        // media) or as an Avery 5163 sheet, so a session lays its tags out in
+        // order, 10 per sheet, instead of one tag per page.
+        const calFormats: LabelFormat[] = ['calTagSheet', 'calTag', 'avery5161', 'avery5163', 'avery5366', 'genericA', 'genericB', 'genericC', 'brady'];
+        const defaultFormat: LabelFormat = this.mode === 'session' ? 'calTagSheet' : 'calTag';
+        const formatOptions = calFormats
+            .map(k => {
+                const s = STOCKS[k];
+                return `<option value="${k}"${k === defaultFormat ? ' selected' : ''}>${esc(s.brand)} ${esc(s.pn)} — ${esc(s.info)}</option>`;
+            })
+            .join('');
 
         const sessionBody = this.mode === 'session' ? `
             <div class="form-row">
@@ -141,6 +153,10 @@ export class CalibrationModal {
                     <div class="form-group" style="text-align:left;">
                         <label>${T('Notes')}:</label>
                         <input type="text" id="calNotes" class="form-control">
+                    </div>
+                    <div class="form-group" style="text-align:left;">
+                        <label>${T('Select Label Stock / Format:')}</label>
+                        <select id="calFormat" class="form-control">${formatOptions}</select>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -265,6 +281,11 @@ export class CalibrationModal {
         return { by, date, intervalDays, certNo, result, notes };
     }
 
+    private static readFormat(): LabelFormat {
+        const v = (document.getElementById('calFormat') as HTMLSelectElement | null)?.value;
+        return (v && v in STOCKS ? v : 'calTag') as LabelFormat;
+    }
+
     private static async submit(print: boolean): Promise<void> {
         const input = this.readInput();
 
@@ -280,7 +301,7 @@ export class CalibrationModal {
                 const id = this.currentToolId;
                 await recordCalibration(id, input);
                 toast(`${T('CALIBRATION_SAVED')} ${id}`, 'success');
-                if (print) await printLabelsHtml([{ id, type: 'tool' }], 'calTag');
+                if (print) await printLabelsHtml([{ id, type: 'tool' }], this.readFormat());
                 this.close();
             } else {
                 const ids = this.selectedIds();
@@ -291,7 +312,9 @@ export class CalibrationModal {
                 const updated = await recordCalibrationBatch(ids, input);
                 toast(`${T('CALIBRATION_SAVED')} ${updated.length}`, 'success');
                 if (print && updated.length) {
-                    await printLabelsHtml(updated.map(id => ({ id, type: 'tool' as const })), 'calTag');
+                    // Laid out in tick order on the chosen stock (Avery sheet by
+                    // default), exactly like the print queue.
+                    await printLabelsHtml(updated.map(id => ({ id, type: 'tool' as const })), this.readFormat());
                 }
                 this.close();
             }

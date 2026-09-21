@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v122)
+# 5S Tool Command Center — v3 (v123)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -112,9 +112,11 @@ grouped by the role that can act on it**.
   require verification.
 - **Print Queue** (header 🏷 or *Operations & Reports*) — collect labels first, then generate
   the whole sheet on any wired stock (**Avery 5161** / 5163 / 5366, Brady roll, Generic A/B/C,
-  Calibration Tag) with a start-cell offset for part-used sheets. Sheet geometry
-  (`.sheet-page` / `.sheet-cell`) is inlined into the print iframe, so die-cut alignment does
-  not depend on the external stylesheet resolving there.
+  Calibration Tag, Calibration Tag Sheet) with a start-cell offset for part-used sheets. The
+  dialog shows a **live preview of the whole run** — every queued label laid out in queue
+  order on the chosen stock, updating with the format and start cell — plus a **🗑 Clear Queue**
+  action. Sheet geometry (`.sheet-page` / `.sheet-cell`) is inlined into the print iframe, so
+  die-cut alignment does not depend on the external stylesheet resolving there.
 - **Calibration / verification tag** (`calTag`, 70×50 mm) — prints the verification
   block (who verified · date · valid until · certificate #) next to the QR, so a
   scanned tag opens the full tool card. The tag prints on a **clean white page** — the
@@ -139,7 +141,9 @@ grouped by the role that can act on it**.
 - **Calibration Session** (*Operations & Reports*, or the **Maintenance & Calibration Queue**
   card in the Category Hub) — pick a station, search/tick a shelf of tools (ticks survive
   filtering), stamp one date / inspector / interval / certificate, then print a run of tags.
-  The queue card lists the items due (≤14 days) or overdue; each row opens the tool card.
+  The run is laid out **in tick order on the chosen label stock** (default *Calibration Tag
+  Sheet*, Avery 5163, 10 tags/sheet) — not one tag per page. The queue card lists the items
+  due (≤14 days) or overdue; each row opens the tool card.
 - The tool card shows the verification block and the last five verification events;
   the tag turns red when the next-due date has passed. The block is rendered **only for
   verification classes** (TW/CT/DC/CA/GA) — a socket head or a hammer no longer carries an
