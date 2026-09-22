@@ -4,8 +4,9 @@ import { Store } from '../src/storage/store';
 import { AppDB } from '../src/storage/indexedDb';
 import { Tool } from '../src/types/inventory';
 import { fmtDate, d } from '../src/utils/formatters';
-import { addrLine } from '../src/labels/labelPrint';
+import { addrLine, buildLabelSheetHtml } from '../src/labels/labelPrint';
 import { buildBinOptions, isBinOccupied } from '../src/ui/components/binOptions';
+import { passportRecords } from '../src/operations/toolOps';
 
 globalThis.indexedDB = new IDBFactory();
 AppDB._db = null;
@@ -83,6 +84,69 @@ describe('addrLine — Rack / Shelf / Bin are always spelled out', () => {
 
     const none = tool({ id: 'TW-004', location: 'Tool Crib', address: { zone: '', rack: '', shelf: '', bin: '' } });
     expect(addrLine(none)).toBe('Tool Crib');
+  });
+});
+
+describe('passportRecords — verification is read from calHistory, not audit_history', () => {
+  it('fills who / when / result / notes from the structured verification log', () => {
+    const t = tool({
+      id: 'TW-006',
+      name: '3/8" Torque Wrench TEKTON',
+      spec: '3/8"',
+      calHistory: [
+        { date: '2026-09-18', by: 'Igor Tolipov', result: 'PASS', certNo: 'C-77', intervalDays: 180, nextDue: '2027-03-17' },
+      ],
+    });
+
+    const rows = passportRecords(t);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].inspector).toBe('Igor Tolipov');
+    expect(rows[0].date).toBe('2026-09-18');
+    expect(rows[0].result).toBe('PASS');
+    // Certificate + next-due + free notes are folded into the notes column.
+    expect(rows[0].notes).toContain('C-77');
+    expect(rows[0].notes).toContain('2027-03-17');
+  });
+
+  it('merges wear assessments and sorts newest first', () => {
+    const t = tool({
+      id: 'TW-007',
+      calHistory: [{ date: '2026-09-18', by: 'Igor Tolipov', result: 'PASS' }],
+      audit_history: [
+        { date: '2026-09-20', inspector: 'Anna', result: 'Good', wear_pct: 12, notes: 'worn grip' },
+      ] as any,
+    });
+
+    const rows = passportRecords(t);
+    expect(rows).toHaveLength(2);
+    expect(rows[0].date).toBe('2026-09-20');
+    expect(rows[0].wear).toBe('12%');
+    expect(rows[1].date).toBe('2026-09-18');
+    expect(rows[1].wear).toBe('');
+  });
+
+  it('returns nothing for a tool with no history', () => {
+    expect(passportRecords(tool({ id: 'TW-008' }))).toEqual([]);
+  });
+});
+
+describe('calibration tag — the specification identifies the tool', () => {
+  beforeEach(async () => {
+    await freshStore();
+    Store.tools = [
+      tool({ id: 'TW-006', name: '3/8" Torque Wrench TEKTON', spec: '3/8"' }),
+    ];
+  });
+
+  it('prints the spec on the 70×50 tag', () => {
+    const html = buildLabelSheetHtml([{ id: 'TW-006', type: 'tool' }], 'calTag');
+    expect(html).toContain('Spec:');
+    expect(html).toContain('3/8');
+  });
+
+  it('prints the spec on the compact sheet tag too', () => {
+    const html = buildLabelSheetHtml([{ id: 'TW-006', type: 'tool' }], 'calTagSheet');
+    expect(html).toContain('3/8');
   });
 });
 

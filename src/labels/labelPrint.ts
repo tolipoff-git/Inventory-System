@@ -184,6 +184,9 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
         const verifiedAt = verifiedAtRaw ? fmtDate(verifiedAtRaw) : '—';
         const nextDue = tool.calDue ? fmtDate(tool.calDue) : '—';
         const overdue = Boolean(tool.calDue && tool.calDue < nowISO().split('T')[0]);
+        // The specification (e.g. `3/8"`, `20-100 Nm ±4%`) is what identifies the
+        // tool on the shelf — a torque wrench tag without it is ambiguous.
+        const spec = (tool.spec || '').trim();
 
         // A die-cut sheet cell is only 25.4 mm tall (Avery 5161, 20/sheet), so the
         // comfortable stacked block does not fit there — switch to a one-line
@@ -197,7 +200,7 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
                 <strong style="font-size:8px; letter-spacing:0.3px;">${T('CALIBRATION / VERIFICATION')}</strong>
                 <span style="font-size:8px; font-family:monospace; font-weight:900;">${esc(tool.id)}</span>
               </div>
-              <div style="font-size:9px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:0.6mm;">${esc(tool.name)}</div>
+              <div style="font-size:9px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:0.6mm;">${esc(tool.name)}${spec ? ` · <span style="font-weight:600;">${esc(spec)}</span>` : ''}</div>
               <div style="font-size:8px;">${T('Verified by')}: <strong>${esc(verifiedBy)}</strong> · <strong>${esc(verifiedAt)}</strong></div>
               <div style="font-size:8px; color:${overdue ? '#b00020' : '#000'};">${T('Next due')}: <strong>${esc(nextDue)}</strong>${tool.calCertNo ? ` · ${T('Certificate')}: <strong>${esc(tool.calCertNo)}</strong>` : ''}</div>
             </div>
@@ -216,6 +219,7 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
             <div style="display:flex; gap:3mm; flex:1; padding-top:2mm;">
               <div style="flex:1; font-size:9px; line-height:1.55; overflow:hidden;">
                 <div style="font-size:10px; font-weight:700; margin-bottom:1mm; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(tool.name)}</div>
+                ${spec ? `<div>${T('Spec:')} <strong>${esc(spec)}</strong></div>` : ''}
                 <div>${T('Verified by')}: <strong>${esc(verifiedBy)}</strong></div>
                 <div>${T('Verified on')}: <strong>${esc(verifiedAt)}</strong></div>
                 <div style="color:${overdue ? '#b00020' : '#000'};">${T('Next due')}: <strong>${esc(nextDue)}</strong></div>

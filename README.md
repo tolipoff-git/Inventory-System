@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v126)
+# 5S Tool Command Center — v3 (v127)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -116,6 +116,10 @@ grouped by the role that can act on it**.
   die-cut page with the label in its correct cell instead of a lone centred sample.
 - **Addresses in full** — labels never abbreviate: storage coordinates always read
   `Rack A | Shelf 2 | Bin 3`, even for legacy rows that stored a bare `A` / `2` / `3`.
+- **Every QR carries the FSE ownership mark** — a white plate with a black square and **FSE**
+  sits in the centre of every generated code (labels, previews, tool passport, sync room). The
+  symbols are rendered at error-correction level **H** (30% recovery) so the mark stays far
+  inside the recoverable budget and scanning is unaffected.
 - **Anchored, never centred** — roll/single stock (Brady roll, Generic A/B/C, Calibration Tag)
   is printed at the **page origin**. When a printer rejects the custom `@page` size and falls
   back to Letter/A4, the label lands in the top-left label position instead of floating in the
@@ -129,8 +133,9 @@ grouped by the role that can act on it**.
   action. Sheet geometry (`.sheet-page` / `.sheet-cell`) is inlined into the print iframe, so
   die-cut alignment does not depend on the external stylesheet resolving there.
 - **Calibration / verification tag** (`calTag`, 70×50 mm) — prints the verification
-  block (who verified · date · valid until · certificate #) next to the QR, so a
-  scanned tag opens the full tool card. The tag prints on a **clean white page** — the
+  block (who verified · date · valid until · certificate #) plus the **Specification**
+  (`3/8"`, `20-100 Nm ±4%`) next to the QR, so two wrenches of the same class are not
+  ambiguous on the shelf. The tag prints on a **clean white page** — the
   print iframe neutralises the app shell, so no theme background or grid lines bleed
   onto the label.
 - **REQ003** expense template (xlsx), full **XLSX dump** (Active/Archive/Audit/Personnel).
@@ -162,6 +167,11 @@ grouped by the role that can act on it**.
   empty “Calibration / Verification” section (a tool that keeps real verification data still
   shows it). If a row carries only the structured `calHistory[]` (e.g. imported from the
   monolith), the card and tag fall back to its newest entry so “who verified” is never blank.
+- **Tool Passport (ISO 9001 PDF)** — has a *Calibration / Verification* summary (who, when,
+  next due, interval, certificate) and a *Maintenance / Calibration Record* table built from
+  **both** the structured `calHistory` and the wear `audit_history`, merged and sorted newest
+  first. Previously it read only `audit_history`, so a calibrated tool printed empty
+  who / when / result / notes rows. The Specification is listed in the technical table too.
 - **Dates are local, not UTC** — a `YYYY-MM-DD` verification date is parsed at local
   midnight, so a tag stamped on the 18th no longer prints as `9/17` in timezones behind UTC.
 
@@ -171,7 +181,8 @@ grouped by the role that can act on it**.
   instance round-trips back to that same instance rather than to production. Opening that URL
   (phone camera, shared link, installed PWA) routes straight to the tool card or the storage
   view; the in-app scanner and a wedge barcode scanner resolve the same payloads, including
-  bare ids. Parsing lives in `src/utils/scanPayload.ts`.
+  bare ids. Parsing lives in `src/utils/scanPayload.ts`. All generated codes carry the
+  centred **FSE** ownership mark (`src/labels/qrGenerator.ts`).
 
 ### 4b. SOP & Standards hub
 - Standards are **data, not code** (`settings.sops`): the shop edits them in
