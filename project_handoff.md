@@ -158,6 +158,8 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
   location previews, the tool passport and the sync-room QR — both the canvas and the data-URL
   paths (`QRCode.toDataURL` gave no chance to post-process, so the data-URL path now renders to
   an offscreen canvas first).
+  ✅ **Verified scannable in practice (2026-09-22)** — a phone camera reads the marked codes
+  fine. Do not shrink the plate or lower the EC level without a real scan test.
 - **Specification on the calibration tag.** The tag now prints `Spec:` (`3/8"`, `20-100 Nm ±4%`)
   on the 70×50 stacked layout and appends it to the name on the compact 25.4 mm sheet cell — two
   wrenches of the same class are no longer ambiguous on the shelf.
