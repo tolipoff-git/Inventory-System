@@ -3,6 +3,49 @@ import { Employee } from '../types/personnel';
 import { Store } from '../storage/store';
 import { CONFIG } from '../config/constants';
 import { nowISO } from '../utils/formatters';
+import { T } from '../i18n';
+
+/** One row of the tool passport's maintenance/calibration table. */
+export interface PassportRecord {
+  date: string;
+  inspector: string;
+  result: string;
+  wear: string;
+  notes: string;
+}
+
+/**
+ * Merge a tool's verification log (`calHistory`) with its wear assessments
+ * (`audit_history`) into one chronological list for the tool passport.
+ *
+ * Verification is recorded in the structured `calHistory` (v115); `audit_history`
+ * only holds wear assessments from returns / maintenance. Reading `audit_history`
+ * alone is why the passport printed empty who/when/result/notes rows for a tool
+ * that had been calibrated.
+ */
+export function passportRecords(tool: Tool): PassportRecord[] {
+  const calRecords: PassportRecord[] = (tool.calHistory || []).map(c => ({
+    date: c.date || '',
+    inspector: c.by || 'N/A',
+    result: c.result || 'PASS',
+    wear: '',
+    notes: [
+      c.certNo ? `${T('Certificate')} ${c.certNo}` : '',
+      c.nextDue ? `${T('Next due')} ${c.nextDue}` : '',
+      c.notes || '',
+    ].filter(Boolean).join(' · ') || '—',
+  }));
+
+  const wearRecords: PassportRecord[] = (tool.audit_history || []).map((a: any) => ({
+    date: a.date || '',
+    inspector: a.inspector || 'N/A',
+    result: a.result || 'N/A',
+    wear: (a.wear_pct === undefined || a.wear_pct === null || a.wear_pct === '') ? '' : `${a.wear_pct}%`,
+    notes: a.notes || '—',
+  }));
+
+  return [...calRecords, ...wearRecords].sort((x, y) => String(y.date).localeCompare(String(x.date)));
+}
 
 export function suggestToolId(prefix: string): string {
   let max = 0;

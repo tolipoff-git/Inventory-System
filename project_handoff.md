@@ -7,15 +7,15 @@
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Session Continuity — Resume Point (2026-09-18, v126)
+## Session Continuity — Resume Point (2026-09-18, v127)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v126` (`package.json` = 126.0.0). `sw.js` `CACHE_VERSION` = `v126-<hash>`.
+- **Version:** `v127` (`package.json` = 127.0.0). `sw.js` `CACHE_VERSION` = `v127-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
-- **Gates (all green at v126):** `npm run typecheck` · `npm run lint` · `npm test` (132/132) ·
+- **Gates (all green at v127):** `npm run typecheck` · `npm run lint` · `npm test` (137/137) ·
   `npm run build` · `npm run check:i18n` (700/700). `tsconfig.json` includes `tests`,
   so `typecheck` and `build` cover the test suite too — keep it that way.
 - **Deploy:** push to `main` → Cloudflare Pages auto-deploy. Release workflow is defined in
@@ -141,7 +141,38 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
 - Standing instruction: perform the full release flow (bump → docs → `build.sh` → commits → push)
   automatically, without asking.
 
-## Recent Accomplishments (v49 – v126)
+- `src/operations/toolOps.ts` → `passportRecords(tool)` (v127) — merges the structured
+  `calHistory` with the wear `audit_history` into the passport's record table. **Verification
+  lives in `calHistory`, not `audit_history`** — never read only the latter again.
+- `src/labels/qrGenerator.ts` → every code is drawn at error-correction level **H** and stamped
+  with the centred **FSE** ownership plate (`drawOwnershipMark`). Keep both together: dropping
+  back to level `M` would make the mark unsafe to scan.
+
+## Recent Accomplishments (v49 – v127)
+
+### 0. FSE QR Mark, Tag Specification, Passport Calibration Rows (v127 Release)
+- **FSE ownership mark in every QR.** `drawOwnershipMark()` stamps a white plate with a black
+  square and **FSE** in the centre of each code; the symbols are now rendered at
+  error-correction level **H** so the overlay stays well inside the recoverable budget (a 26%
+  box ≈ 7% of the area, never near the finder patterns). Applies to labels, label previews,
+  location previews, the tool passport and the sync-room QR — both the canvas and the data-URL
+  paths (`QRCode.toDataURL` gave no chance to post-process, so the data-URL path now renders to
+  an offscreen canvas first).
+- **Specification on the calibration tag.** The tag now prints `Spec:` (`3/8"`, `20-100 Nm ±4%`)
+  on the 70×50 stacked layout and appends it to the name on the compact 25.4 mm sheet cell — two
+  wrenches of the same class are no longer ambiguous on the shelf.
+- **Tool Passport calibration rows are filled.** The passport's *Maintenance / Calibration
+  Record* table was built **only** from `tool.audit_history`, which holds wear assessments from
+  returns/maintenance — but verification is recorded in the structured `calHistory` (v115), so a
+  calibrated tool printed rows with empty who / when / result / notes. The table is now the
+  union of both, sorted newest first (with certificate + next-due folded into the notes column),
+  and a dedicated *Calibration / Verification* summary (who, when, next due, interval,
+  certificate) was added, using the same flat-field-then-latest-history fallback as the card and
+  tag. The Specification is also listed in the technical table.
+- **Tests:** +5 (`tests/address.test.ts`) covering `passportRecords()` (calHistory rows, merged +
+  sorted, empty case) and the spec on both calibration-tag layouts.
+- **Editor noise:** `daily-walkthrough-pwa/.zed/settings.json` silences the four
+  `Unknown at rule @tailwind/@apply` CSS warnings Zed reported (they were never errors).
 
 ### 0. Sync Actually Works — Open API, Like Daily-Walkthrough (v126 Release)
 - **Root cause (verified against the deployed Worker):**

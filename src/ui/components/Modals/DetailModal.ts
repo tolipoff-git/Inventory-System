@@ -13,7 +13,7 @@ import { LabelModal } from './LabelModal';
 import { ToolModal } from './ToolModal';
 import { CalibrationModal } from './CalibrationModal';
 import { generateQrDataUrl, toolDeeplink } from '../../../labels/qrGenerator';
-import { requiresCalibration } from '../../../operations/toolOps';
+import { requiresCalibration, passportRecords } from '../../../operations/toolOps';
 import { printHtml, toast } from '../../../utils/dom';
 import { windowConfirm } from '../../../utils/dialogCompat';
 
@@ -354,9 +354,30 @@ export class DetailModal {
             return `<tr><td style="padding:6px 8px; border-bottom:1px solid #e2e8f0;"><strong>${esc(ts)}</strong></td><td style="padding:6px 8px; border-bottom:1px solid #e2e8f0;">${esc(event || h)}</td></tr>`;
         }).join('') || '<tr><td colspan="2" style="padding:8px; color:var(--text-muted);">No audit trail records.</td></tr>';
 
-        const auditEntries = (tool.audit_history || []).map((a: any) => {
-            return `<tr><td style="padding:6px 8px; border-bottom:1px solid #e2e8f0;">${esc(fmtDate(a.date || ''))}</td><td style="padding:6px 8px; border-bottom:1px solid #e2e8f0;">${esc(a.inspector || 'N/A')}</td><td style="padding:6px 8px; border-bottom:1px solid #e2e8f0;">${esc(String(a.result || 'N/A'))}</td><td style="padding:6px 8px; border-bottom:1px solid #e2e8f0;">${esc(String(a.wear_pct || ''))}%</td><td style="padding:6px 8px; border-bottom:1px solid #e2e8f0;">${esc(a.notes || '—')}</td></tr>`;
-        }).join('') || '<tr><td colspan="5" style="padding:8px; color:var(--text-muted);">No calibration / wear assessment records.</td></tr>';
+        const auditEntries = (() => {
+            const records = passportRecords(tool);
+            return records.map(r =>
+                `<tr><td style="padding:6px 8px; border-bottom:1px solid #e2e8f0;">${esc(r.date ? fmtDate(r.date) : '—')}</td><td style="padding:6px 8px; border-bottom:1px solid #e2e8f0;">${esc(r.inspector)}</td><td style="padding:6px 8px; border-bottom:1px solid #e2e8f0;">${esc(r.result)}</td><td style="padding:6px 8px; border-bottom:1px solid #e2e8f0;">${esc(r.wear || '—')}</td><td style="padding:6px 8px; border-bottom:1px solid #e2e8f0;">${esc(r.notes)}</td></tr>`
+            ).join('') || '<tr><td colspan="5" style="padding:8px; color:var(--text-muted);">No calibration / wear assessment records.</td></tr>';
+        })();
+
+        // Calibration summary — same flat-field-then-latest-history fallback the
+        // tool card and the tag use, so the passport can never show blank rows.
+        const latestCal = Array.isArray(tool.calHistory) && tool.calHistory.length
+            ? tool.calHistory[tool.calHistory.length - 1]
+            : undefined;
+        const calVerifiedBy = tool.calVerifiedBy || latestCal?.by || '';
+        const calVerifiedAt = tool.calVerifiedAt || latestCal?.date || '';
+        const calSummaryRows: [string, string][] = [
+            [T('Verified by'), calVerifiedBy || '—'],
+            [T('Verified on'), calVerifiedAt ? fmtDate(calVerifiedAt) : '—'],
+            [T('Next due'), tool.calDue ? fmtDate(tool.calDue) : '—'],
+            [T('Interval (days)'), tool.calIntervalDays ? String(tool.calIntervalDays) : '—'],
+            [T('Certificate'), tool.calCertNo || '—'],
+        ];
+        const calSummary = calSummaryRows
+            .map(([k, v]) => `<tr><td>${esc(k)}</td><td><strong>${esc(v)}</strong></td></tr>`)
+            .join('');
 
         const assignee = tool.assigneeId ? Store.getEmp(tool.assigneeId) : null;
         const assigneeName = assignee ? assignee.name : (tool.assigneeId ? 'Unknown' : 'Unassigned');
@@ -439,6 +460,7 @@ h3 { font-size: 10pt; color: #0f172a; margin: 12px 0 6px; }
   <tbody>
     <tr><td>Category</td><td>${esc(tool.category || 'N/A')}</td></tr>
     <tr><td>Type / Class</td><td>${esc(tool.type || 'N/A')}</td></tr>
+    <tr><td>Specification</td><td><strong>${esc(tool.spec || 'N/A')}</strong></td></tr>
     <tr><td>Serial Number / SN</td><td style="font-family:monospace;">${esc(tool.serialNumber || tool.sn || 'N/A')}</td></tr>
     <tr><td>Physical Location</td><td>${esc(tool.location || 'N/A')} ${esc(tool.address ? `[Zone: ${tool.address.zone || ''}, Rack: ${tool.address.rack || ''}, Shelf: ${tool.address.shelf || ''}, Bin: ${tool.address.bin || ''}]` : '')}</td></tr>
     <tr><td>Current Assignee / Custodian</td><td>${esc(assigneeName)} ${esc(tool.assigneeId ? '(Employee ID: ' + tool.assigneeId + ')' : '')}</td></tr>
@@ -458,6 +480,12 @@ h3 { font-size: 10pt; color: #0f172a; margin: 12px 0 6px; }
     <tr><td>Commissioned / Accepted</td><td>${esc(tool.commissioned_date ? fmtDate(tool.commissioned_date) : 'Not recorded')}</td><td>ISO 9001 entry-into-service record</td></tr>
     <tr><td>Quantity</td><td>${esc(String(tool.qty || 1))}</td><td>Active inventory count</td></tr>
   </tbody>
+</table>
+
+<h2>Calibration / Verification</h2>
+<table class="spec-table">
+  <thead><tr><th>Field</th><th>Value</th></tr></thead>
+  <tbody>${calSummary}</tbody>
 </table>
 
 <h2>Maintenance / Calibration Record</h2>
