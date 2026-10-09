@@ -167,7 +167,7 @@ class StoreManager {
   public async save(): Promise<void> {
     this._activeTools = null;
     if (this.auditLog.length > CONFIG.AUDIT_LOG_LIMIT) {
-      this.auditLog = this.auditLog.slice(-CONFIG.AUDIT_LOG_LIMIT);
+      this.auditLog = this.auditLog.slice(0, CONFIG.AUDIT_LOG_LIMIT);
     }
 
     // Safety net: stamp every record that changed since the last write, so a

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildLabelSheetHtml, STOCKS } from '../src/labels/labelPrint';
+import { buildLabelSheetHtml, buildLabelPrintDocument, normalizeLabelLayoutOptions, STOCKS } from '../src/labels/labelPrint';
 
 /**
  * The Avery layout is the part that silently regressed during the modular
@@ -18,6 +18,40 @@ function pagesOf(html: string): string[] {
 }
 
 describe('label sheet layout (Avery die-cut alignment)', () => {
+  it('matches the official Avery 5961 PDF independently of the stock table', () => {
+    // U-0088-01.pdf: x=12/313.55 pt, y=36+72*r, cells=288×72 pt.
+    for (const key of ['avery5161', 'calTagSheet']) {
+      const stock = STOCKS[key];
+      expect(stock.left! * 72 / 25.4).toBeCloseTo(12, 4);
+      expect((stock.left! + stock.pitchX!) * 72 / 25.4).toBeCloseTo(313.55, 4);
+      expect(stock.top! * 72 / 25.4).toBeCloseTo(36, 4);
+      expect((stock.top! + 9 * stock.pitchY!) * 72 / 25.4).toBeCloseTo(684, 4);
+      expect(stock.w * 72 / 25.4).toBeCloseTo(288, 4);
+      expect(stock.h * 72 / 25.4).toBeCloseTo(72, 4);
+    }
+  });
+
+  it('shifts each page equally without changing label size, pitch or pagination', () => {
+    const entities = Array.from({ length: 21 }, (_, i) => ({ id: `TW-${i}`, type: 'tool' as const }));
+    const pages = pagesOf(buildLabelSheetHtml(entities, 'calTagSheet', { start: 20, offsetX: 1, offsetY: -1 }));
+    expect(pages).toHaveLength(2);
+    for (const page of pages) {
+      expect(page).toContain(`left:${12 * 25.4 / 72 + 1}mm; top:11.7mm`);
+      expect(page).toContain('width:101.6mm; height:25.4mm');
+    }
+    expect(normalizeLabelLayoutOptions('calTagSheet', { start: NaN, offsetX: Infinity, offsetY: -99 })).toEqual({ start: 1, offsetX: 0, offsetY: -3 });
+    expect(normalizeLabelLayoutOptions('avery5161', { start: 19.9 })).toMatchObject({ start: 19 });
+    expect(normalizeLabelLayoutOptions('calTag', { offsetX: 2, offsetY: 2 })).toEqual({ start: 1, offsetX: 0, offsetY: 0 });
+  });
+
+  it('prints with an isolated, unscaled, margin-free Letter document', () => {
+    const doc = buildLabelPrintDocument('<div class="sheet-mode">test</div>', 'calTagSheet');
+    expect(doc).toContain('@page { size: 215.9mm 279.4mm; margin: 0; }');
+    expect(doc).toContain('zoom:1; transform:none');
+    expect(doc).not.toContain('<link');
+    expect(doc).not.toContain('margin: 0 auto');
+    expect(buildLabelPrintDocument('', 'calTag')).toContain('@page { size: 70mm 50mm; margin: 0; }');
+  });
   it('lays avery5161 out as one Letter page with 20 absolutely positioned cells', () => {
     const html = buildLabelSheetHtml([{ id: 'TW-001', type: 'tool' }], 'avery5161');
     const stock = STOCKS.avery5161;
@@ -99,6 +133,18 @@ describe('label sheet layout (Avery die-cut alignment)', () => {
     expect(html).toContain('LOCATION / STORAGE BIN');
     // The LOC prefix and the leading type token are stripped for the caption.
     expect(html).toContain('A | Rack A | Shelf 2 | Bin 3');
+    const withoutZone = buildLabelSheetHtml([{ id: 'LOC:rack::A:2:3:Ivanov', type: 'location' }], 'avery5161');
+    expect(withoutZone).toContain('Rack A | Shelf 2 | Bin 3');
+    expect(withoutZone).toContain('Ivanov');
+  });
+
+  it('preserves calibration content when the operator changes physical stock', () => {
+    const entities = [{ id: 'TW-001', type: 'tool' as const, content: 'calibration' as const }];
+    const html = buildLabelSheetHtml(entities, 'avery5163');
+    expect(html).toContain('Verified by');
+    expect(html).toContain('Next due');
+    expect(cellsOf(html)).toHaveLength(10);
+    expect(html).toContain('width:101.6mm; height:50.8mm');
   });
 
   it('does not add a page break after the last single-stock label (no trailing blank page)', () => {

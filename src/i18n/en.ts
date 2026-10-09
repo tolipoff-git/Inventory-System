@@ -1,6 +1,19 @@
 import { FAQ_BODY_EN } from './faqContent';
 
 export const en: Record<string, string> = {
+  "LABEL_OFFSET_X": "Horizontal correction (mm)",
+  "LABEL_OFFSET_Y": "Vertical correction (mm)",
+  "LABEL_ALIGNMENT_HINT": "Positive: right/down. Negative: left/up. If printing is 1 mm too low, use −1 mm vertically. Test on plain paper first.",
+  "LABEL_PRINT_SETTINGS": "Avery sheets: US Letter, portrait, Actual size / 100%, margins None, headers and footers Off. Do not use Fit to page. Roll/single media: select its exact paper size.",
+  "LABEL_PRINT_BUSY": "A print dialog is already open. Close it before starting another job.",
+  "LABEL_PRINT_FAILED": "Could not prepare labels for printing.",
+  "CALIBRATION_INVALID": "Enter a valid date, verifier and a whole positive interval (up to 36500 days).",
+  "CALIBRATION_PRINT_RETRY": "Calibration saved. Printing failed; retry printing without saving a new record.",
+  "CALIBRATION_REPRINT": "Print saved tags",
+  "CALIBRATION_NOT_PASS": "Calibration is FAIL/FLAG. Complete a passing verification before checkout.",
+  "CALIBRATION_NO_VALIDITY": "No valid calibration",
+  "CALIBRATION_MISSING_TOOL": "A selected tool no longer exists or is retired. Refresh the selection.",
+
   "FAQ_BODY": FAQ_BODY_EN,
   "ACCESS_DENIED": "Access Denied",
   "Wear:": "Wear:",
@@ -554,7 +567,7 @@ export const en: Record<string, string> = {
   "Initials:": "Initials:",
   "Invalid credentials": "Invalid credentials",
   "Kaizen & Improvement Actions:": "Kaizen & Improvement Actions:",
-  "LABELS_PRINTED": "Labels printed:",
+  "LABELS_PRINTED": "Print dialog opened:",
   "LABEL_QUEUE_EMPTY": "Label queue is empty — nothing to print.",
   "LABEL_QUEUE_NO_MATCH": "No matching tools found in label queue.",
   "Label": "Label",

@@ -5,7 +5,7 @@
 import { T } from '../../../i18n';
 import { Store } from '../../../storage/store';
 import { serviceTool, completeMaintenance } from '../../../operations/toolOps';
-import { esc, nowISO } from '../../../utils/formatters';
+import { esc, todayISO } from '../../../utils/formatters';
 import { verifierOptionsHtml, defaultVerifier } from '../../../utils/personnelPicker';
 import { toast } from '../../../utils/dom';
 
@@ -143,7 +143,7 @@ export class ServiceModal {
         byEl.value = wantBy;
 
         const dateEl = document.getElementById('serviceVerifiedAt') as HTMLInputElement;
-        dateEl.value = nowISO().split('T')[0];
+        dateEl.value = todayISO();
 
         const intervalEl = document.getElementById('serviceInterval') as HTMLInputElement;
         intervalEl.value = String(tool.calIntervalDays || 180);
@@ -169,10 +169,10 @@ export class ServiceModal {
         const notes = (document.getElementById('serviceCompleteNotes') as HTMLInputElement).value.trim();
         const by = (document.getElementById('serviceVerifiedBy') as HTMLSelectElement).value.trim();
         const date = (document.getElementById('serviceVerifiedAt') as HTMLInputElement).value;
-        const intervalRaw = parseInt((document.getElementById('serviceInterval') as HTMLInputElement).value || '', 10);
-        const intervalDays = Number.isFinite(intervalRaw) && intervalRaw > 0 ? intervalRaw : undefined;
+        const intervalDays = Number((document.getElementById('serviceInterval') as HTMLInputElement).value);
         const certNo = (document.getElementById('serviceCertNo') as HTMLInputElement).value.trim() || undefined;
 
+        if (!by) { toast(T('VERIFIER_REQUIRED'), 'warning'); return; }
         try {
             await completeMaintenance(this.currentToolId, notes || 'Tech', nextCal || undefined, {
                 by,

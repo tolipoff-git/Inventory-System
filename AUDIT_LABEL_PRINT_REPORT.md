@@ -170,3 +170,47 @@ The modular TypeScript rebuild delivers the core label-print flow (open → sele
 - `src/ui/styles/print.css`
 - `src/storage/store.ts`
 - `index.monolith.v97.html` (reference)
+
+
+---
+
+## v128 follow-up audit — 2026-10-09
+
+Baseline: `1dda552` / v127. This section supersedes the old findings above only where stated;
+it audits the active modular app, not the preserved monolith. No physical printer was available.
+
+| Finding | Evidence / consequence | Shipped correction |
+|---|---|---|
+| Single vs session stock mismatch | `CalibrationModal.mount()` defaulted single to custom 70×50 mm and session to Avery; the driver's paper fallback could center the custom job | Both default to 5961 sheets, with explicit alternatives |
+| Approximate die-cut coordinates | Old left=4.8 mm / pitchX=106.4 mm differed from official U-0088-01.pdf | Shared official x=12 / 313.55 pt; labels=288×72 pt; row y=36+72*r pt on 612×792 pt Letter |
+| Print document inherited app CSS | Every `style`/stylesheet was cloned, full page centered, QR readiness depended on a timer | Isolated fixed geometry/CSS; images/fonts awaited; frame retained through native dialog |
+| Preview disagreed with job | Tool preview ignored copies and had no start-position listener; format gating occurred after render | Shared controls, full-run live preview and synchronized selected format |
+| Choosing paper lost verification content | Selecting ordinary Avery in calibration switched to generic tool content | Calibration content independent of physical stock |
+| Feed offset could not be corrected | No common X/Y print calibration | ±3 mm local printer prefs, same options in all previews/prints; 5961 prefs shared |
+| Calibration date drift | Local midnight + day milliseconds → UTC ISO could change the calendar day across zones/DST | Strict calendar arithmetic, local form dates, invalid date/integer interval rejection |
+| Failed calibration granted validity | FAIL/FLAG rolled `calDue` forward and tag did not identify the result | Result on tag/passport; validity cleared; checkout refused until PASS |
+| Stale certificate | Empty new cert retained an old flat certificate | Current event replaces/clears certificate |
+| Duplicate/retry events | Buttons remained usable during save; print failure retried Save & Print as a new record | Busy guard, validation before changes, rollback on save error, print-only retry after save |
+| Calibration gating missed custom screwdrivers | Only broad id prefix matching; sessions included unrelated active tools | Class-prefix boundary plus explicit interval/history; eligible session filter and unique IDs |
+| Recent audit loss at 1000 entries | `log()` unshift + `save()` slice(-limit) discarded newest events | Retain the first/newest entries |
+| First-install offline startup incomplete | Worker cached HTML/icons but no generated JS/CSS graph | Build-time full precache, coherent shell fallback; static Vary: Origin fallback corrected; API/POST/foreign requests bypassed |
+| Dependency advisories | npm audit found brace-expansion, DOMPurify and uuid advisories | Compatible patches + scoped uuid 11.1.1 override; XLSX regression |
+
+Sources: [Avery 5961](https://www.avery.com/templates/5961),
+[official blank PDF](https://s3.amazonaws.com/avery.dpp.projects.s3uspdownloadables/US_en/Downloadables/pdf/U-0088-01.pdf).
+The PDF's outline x=12.0002 pt is rounded to 12 pt (difference <0.0001 mm); second x=313.55 pt.
+This is why the common 4.8 mm approximation is not retained for 5961.
+
+QA scripts reproduce single calibration, 25-tool session, partial-sheet cell 20 with two copies
+and −1 mm Y correction through the real print iframe. PDF media boxes are Letter, page counts
+1 / 2 / 2, and all QR images decode before print dispatch. Tests include Cyrillic/specification text,
+calendar boundaries, data rejection/rollback, queue/control consistency and offline startup.
+A native print dialog's scaling and the actual printer's feed tolerances require a physical test.
+Keep correction zero initially; use negative Y for a uniform downward offset. Increasing row drift
+requires checking Letter/portrait/100% scaling, rather than changing the pitch or applying a fixed offset.
+
+Deliberately unchanged: the previously documented open room-key sync model and deferred architecture
+work in `project_handoff.md`. This release does not alter the ownership mark or QR H correction level.
+
+Final gates: 157/157 tests, typecheck/lint/build green, EN/RU 712/712, npm audit 0 vulnerabilities.
+Browser/PDF and first-install offline checks passed in Chromium 153.

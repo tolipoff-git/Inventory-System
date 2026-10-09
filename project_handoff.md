@@ -2,22 +2,25 @@
 
 ## Overview
 - **Repository:** `/home/admin/git/Inventory-System`
-- **Current Version:** `v120` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
+- **Current Version:** `v128` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
 - **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith is preserved as `index.monolith.v97.html` for reference only and is **not** the active app.
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Session Continuity — Resume Point (2026-09-18, v127)
+## Session Continuity — Resume Point (2026-10-09, v128)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v127` (`package.json` = 127.0.0). `sw.js` `CACHE_VERSION` = `v127-<hash>`.
+- **Version:** `v128` (`package.json` = 128.0.0). `sw.js` `CACHE_VERSION` = `v128-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
-- **Gates (all green at v127):** `npm run typecheck` · `npm run lint` · `npm test` (137/137) ·
-  `npm run build` · `npm run check:i18n` (700/700). `tsconfig.json` includes `tests`,
-  so `typecheck` and `build` cover the test suite too — keep it that way.
+- **Gates (v128):** `npm ci` · `npm run typecheck` · `npm run lint` · `npm test` (157/157) ·
+  `bash build.sh` · `npm run check:i18n` (712/712) · `npm audit` (0 vulnerabilities).
+  Browser checks passed in Chromium 153: label iframe/PDF in RU, single / 25-tool session /
+  partial sheet with two copies and −1 mm correction; first-install offline deep-link bootstrap.
+  QA PDFs: Letter 612×792 pt, page counts 1/2/2, Cyrillic/spec text verified, visually checked.
+  `tsconfig.json` includes tests; keep it that way.
 - **Deploy:** push to `main` → Cloudflare Pages auto-deploy. Release workflow is defined in
   `AGENTS.md` (bump version → README + handoff → `bash build.sh` → feature commit →
   `chore(pwa): refresh sw.js …` commit → push) — **run it without asking**.
@@ -149,6 +152,42 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
   back to level `M` would make the mark unsafe to scan.
 
 ## Recent Accomplishments (v49 – v127)
+
+### 0. Avery 5961 Geometry, Calibration Integrity & Offline Startup (v128 Release)
+- Both calibration entry points default to `calTagSheet` (Avery 5161/5961). Paper stock and
+  calibration content are now independent through `LabelEntity.content = 'calibration'`.
+  `AVERY_5961_GEOMETRY` is shared by ordinary and calibration sheets, measured from Avery's
+  U-0088-01 PDF: 612×792 pt page, x=12 / 313.55 pt, y=36+72*r pt, labels 288×72 pt.
+- `buildLabelPrintDocument()` is the isolated print stylesheet: no application/theme/report CSS,
+  no preview zoom or centering. The iframe waits for QR images and fonts and survives until
+  `afterprint`; the former 400 ms preparation / 1 s destruction timers are gone.
+- `labelLayoutControls.ts` is the shared start-cell / printer-offset UI for tool, queue, location
+  and calibration flows. Offset prefs are local to the browser, ±3 mm, positive right/down;
+  the 5961 ordinary/calibration formats share a key. Do not change pitch to compensate for a feed offset.
+- Tool copies/start edits refresh the whole preview; calibration preview uses an unsaved Tool snapshot
+  without mutating Store. Generic stock captions come from `STOCKS`, fixing wrong advertised sizes.
+  Location printing uses the same renderer/deep link and keeps positional empty components.
+- `todayISO()` supplies local calendar defaults; `calDueFrom()` performs strict UTC calendar arithmetic
+  without local-midnight serialization or DST elapsed-time drift. Validate every batch record before mutation.
+- Explicit intervals/history make custom-numbered torque screwdrivers eligible for calibration.
+  Sessions list eligible tools; IDs are deduplicated and sorted, retired records are skipped,
+  and Deselect All clears hidden selections too.
+- FAIL/FLAG is printed and shown in the passport, clears validity and blocks checkout. The current
+  certificate is replaced/cleared on every event. Calibration save errors restore tool/audit state;
+  print errors keep a saved-ID retry mode and never append a second event.
+- Audit retention now uses the first/newest 1000 entries (`log()` prepends), rather than dropping
+  the newest entry at the cap. The build generates a full asset precache manifest; SW ignores API,
+  non-GET and foreign-origin requests and retains a coherent installed shell for offline deep links.
+  Workers wait for the prior session to finish; explicit Update PWA remains available.
+- Patched dependency advisories; scoped ExcelJS uuid 11.1.1 override verified by XLSX round-trip
+  with extended conditional formatting. No downgrade or force audit fix.
+- Regression coverage: geometry independent of stock constants, pagination/correction, UI defaults,
+  unsaved preview, print retry, invalid dates/intervals, DST/timezones, failed-save rollback, FAIL/FLAG,
+  certificate clearing, retired/deduplicated selections, newest audit retention, SW bypass/offline shell,
+  and XLSX compatibility. Static-asset fallback ignores Vary so a preloaded public asset
+  with Vary: Origin remains usable by module requests offline. Browser scripts check real iframe HTML/PDF and first-install offline startup.
+- Physical printer alignment is not remotely measurable: use Letter / 100% / no margins/headers;
+  measure a plain-paper overlay and enter the negative of any uniform feed error in mm.
 
 ### 0. FSE QR Mark, Tag Specification, Passport Calibration Rows (v127 Release)
 - **FSE ownership mark in every QR.** `drawOwnershipMark()` stamps a white plate with a black

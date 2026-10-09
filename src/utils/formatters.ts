@@ -59,6 +59,12 @@ export function fmtDateTime(v: any): string {
   return dt.toLocaleString('en-US');
 }
 
+/** Local calendar date for form defaults and date-only comparisons. */
+export function todayISO(): string {
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 /** ISO timestamp string */
 export function nowISO(): string {
   return new Date().toISOString();

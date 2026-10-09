@@ -1,4 +1,4 @@
-# 5S Tool Command Center — v3 (v127)
+# 5S Tool Command Center — v3 (v128)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
@@ -6,6 +6,31 @@ Worker sync, built as a **modular TypeScript/Vite project** (migrated away from
 the original single-file monolith).
 
 ---
+
+## v128 — Avery 5961 printing and calibration audit
+
+- Single-tool calibration and sessions default to **Avery 5161 / 5961, 20 labels per Letter sheet**.
+  Calibration content stays intact when changing paper stock. Calibrated tool labels use the same sheet renderer.
+- The 5961 coordinates match the [official Avery PDF](https://s3.amazonaws.com/avery.dpp.projects.s3uspdownloadables/US_en/Downloadables/pdf/U-0088-01.pdf).
+  Print documents use isolated CSS, zero page margins, 1:1 geometry and decoded QR images.
+- Start cell, copies and **horizontal/vertical printer correction in mm** update the actual preview.
+  The correction is saved on this browser; ordinary and calibration 5961 sheets share it.
+- Calendar arithmetic is timezone/DST-independent. FAIL/FLAG does not grant a new valid-until date
+  and prevents checkout until a passing verification. The latest certificate never inherits an old number.
+- Failed printing can be retried without adding another calibration event. Failed database saves roll back
+  the calibration run. Session selections are deduplicated; retired tools are excluded.
+- Newest audit entries survive log trimming. Built JS/CSS/chunks are precached for first-install offline startup.
+- Dependency advisories patched; ExcelJS uses compatible uuid 11.1.1 via a scoped override.
+
+**Printer setup:** US Letter, portrait, Actual size / 100%, margins None, headers/footers Off.
+Do not use Fit to page. Start with zero correction and test on plain paper over the die-cut sheet.
+If every row is 1 mm low, set vertical correction to **−1 mm**. If drift increases down the page,
+fix printer scaling/paper size first. Physical feed alignment still needs a test on the actual printer.
+
+**Validation:** `npm run typecheck`, `npm run lint`, `npm test`, `npm run check:i18n`, `bash build.sh`, `npm audit`.
+Browser checks: `npx playwright install chromium`, then `npm run test:labels-browser` and
+`npm run test:pwa-browser` (build first). `LABEL_CHROMIUM_PATH` can select an existing Chromium.
+See the appended v128 findings in [AUDIT_LABEL_PRINT_REPORT.md](AUDIT_LABEL_PRINT_REPORT.md).
 
 ## Stack & Architecture
 

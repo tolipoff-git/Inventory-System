@@ -5,10 +5,11 @@
 import { T } from '../../../i18n';
 import { Store } from '../../../storage/store';
 import { esc } from '../../../utils/formatters';
-import { generateQrDataUrl } from '../../../labels/qrGenerator';
 import { requiresCalibration } from '../../../operations/toolOps';
-import { printLabelsHtml, printQueueLabels, buildLabelSheetHtml, drawAllQrsInContainer, queueLabelEntities, STOCKS, LabelFormat, LabelEntity } from '../../../labels/labelPrint';
-import { toast, printHtml } from '../../../utils/dom';
+import { printLabelsHtml, printQueueLabels, buildLabelSheetHtml, drawAllQrsInContainer, queueLabelEntities, STOCKS, LabelFormat, LabelEntity, LabelLayoutOptions } from '../../../labels/labelPrint';
+import { toast } from '../../../utils/dom';
+
+import { labelLayoutControlsHtml, bindLabelLayoutControls, readLabelLayoutControls } from '../labelLayoutControls';
 
 export class LabelModal {
     private static printModalId = 'printLabelModal';
@@ -16,6 +17,7 @@ export class LabelModal {
     private static queueModalId = 'queueLabelModal';
     private static currentToolId: string | null = null;
     private static selectedFormat: LabelFormat = 'avery5161';
+    private static refreshToolLayout: (() => void) | null = null;
 
     public static async openToolLabel(toolId: string): Promise<void> {
         this.currentToolId = toolId;
@@ -27,9 +29,6 @@ export class LabelModal {
             this.createPrintModalDOM();
             modal = document.getElementById(this.printModalId);
         }
-
-        await this.updatePreview(tool);
-        this.updateQueueState();
 
         // The verification tag is only meaningful for classes that require
         // verification — hide it for a socket head / hammer and fall back to a
@@ -46,6 +45,12 @@ export class LabelModal {
             if (sel) sel.value = 'avery5161';
         }
 
+        if (needsCal && (tool.calVerifiedAt || tool.calHistory?.length)) this.selectedFormat = 'calTagSheet';
+        const select = modal?.querySelector<HTMLSelectElement>('#labelFormatSelect');
+        if (select) select.value = this.selectedFormat;
+        this.refreshToolLayout?.();
+        await this.updatePreview(tool);
+        this.updateQueueState();
         if (modal) modal.classList.add('active');
     }
 
@@ -120,10 +125,7 @@ export class LabelModal {
                         <label>${T('Select Label Stock / Format:')}</label>
                         <select id="queueFormatSelect" class="form-control">${options}</select>
                     </div>
-                    <div class="form-group" style="text-align:left;" id="queueStartGroup">
-                        <label>${T('Start position')}:</label>
-                        <input type="number" id="queueStartInput" class="form-control" value="1" min="1">
-                    </div>
+                    ${labelLayoutControlsHtml('queue')}
                     <div class="form-group" style="text-align:left;">
                         <label>${T('Print Label Preview')}:</label>
                         <div id="queuePreview" style="background:#e2e8f0; padding:10px; border-radius:8px; min-height:120px; max-height:340px; overflow:auto; display:flex; justify-content:center;"></div>
@@ -142,22 +144,13 @@ export class LabelModal {
         document.body.appendChild(overlay);
 
         const fmtSel = overlay.querySelector<HTMLSelectElement>('#queueFormatSelect');
-        const startGroup = overlay.querySelector<HTMLElement>('#queueStartGroup');
-        const startInput = overlay.querySelector<HTMLInputElement>('#queueStartInput');
         const previewHost = overlay.querySelector<HTMLElement>('#queuePreview');
-        const readStart = () => {
-            const n = parseInt(startInput?.value || '1', 10);
-            return Number.isFinite(n) && n > 0 ? n : 1;
+        const format = () => (fmtSel?.value || 'avery5161') as LabelFormat;
+        const refresh = () => {
+            if (previewHost) void this.renderQueuePreview(previewHost, format(), readLabelLayoutControls(overlay, 'queue', format()));
         };
-        const refresh = async () => {
-            const format = (fmtSel?.value || 'avery5161') as LabelFormat;
-            const stock = STOCKS[format];
-            if (startGroup) startGroup.style.display = stock && stock.kind === 'sheet' ? '' : 'none';
-            if (previewHost) await this.renderQueuePreview(previewHost, format, readStart());
-        };
-        fmtSel?.addEventListener('change', () => { void refresh(); });
-        startInput?.addEventListener('input', () => { void refresh(); });
-        void refresh();
+        const refreshLayout = bindLabelLayoutControls(overlay, 'queue', format, refresh);
+        fmtSel?.addEventListener('change', refreshLayout);
 
         overlay.querySelector('#queueCloseBtn')?.addEventListener('click', () => this.closeQueue());
         overlay.querySelector('#queueCancelBtn')?.addEventListener('click', () => this.closeQueue());
@@ -169,10 +162,14 @@ export class LabelModal {
         overlay.querySelector('#queuePrintBtn')?.addEventListener('click', async () => {
             const format = (fmtSel?.value || 'avery5161') as LabelFormat;
             this.selectedFormat = format;
-            const raw = parseInt((overlay.querySelector('#queueStartInput') as HTMLInputElement | null)?.value || '1', 10);
-            const start = Number.isFinite(raw) && raw > 0 ? raw : 1;
-            this.closeQueue();
-            await printQueueLabels(format, { start });
+            const button = overlay.querySelector<HTMLButtonElement>('#queuePrintBtn')!;
+            button.disabled = true;
+            try {
+                await printQueueLabels(format, readLabelLayoutControls(overlay, 'queue', format));
+                this.closeQueue();
+            } catch (error) {
+                toast(`${T('LABEL_PRINT_FAILED')} ${esc((error as Error).message)}`, 'danger');
+            } finally { button.disabled = false; }
         });
     }
 
@@ -181,14 +178,14 @@ export class LabelModal {
      * stock — the same `buildLabelSheetHtml()` output the printer receives, so the
      * operator can see every label and its cell before printing.
      */
-    private static async renderQueuePreview(host: HTMLElement, format: LabelFormat, start: number): Promise<void> {
+    private static async renderQueuePreview(host: HTMLElement, format: LabelFormat, opts: LabelLayoutOptions): Promise<void> {
         const entities: LabelEntity[] = queueLabelEntities();
         if (!entities.length) {
             host.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem;">${T('LABEL_QUEUE_NO_MATCH')}</div>`;
             return;
         }
         const stock = STOCKS[format] || STOCKS.avery5161;
-        const html = buildLabelSheetHtml(entities, format, { start });
+        const html = buildLabelSheetHtml(entities, format, opts);
         const zoom = stock.kind === 'sheet' ? 0.3 : stock.w < 40 ? 2.2 : 1;
         host.innerHTML = `<div class="sheet-mode" style="zoom:${zoom}; flex:0 0 auto;">${html}</div>`;
         const inner = host.querySelector<HTMLElement>('.sheet-mode');
@@ -210,15 +207,7 @@ export class LabelModal {
                     <div class="form-group" style="text-align:left;">
                         <label>${T('Select Label Stock / Format:')}</label>
                         <select id="labelFormatSelect" class="form-control">
-                            <option value="avery5161" selected>Avery 5161 (1" × 4", 20 per sheet)</option>
-                            <option value="avery5163">Avery 5163 (2" × 4", 10 per sheet)</option>
-                            <option value="avery5366">Avery 5366 (2/3" × 3-7/16", File Folder)</option>
-                            <option value="brady">Brady BMP Continuous Industrial Roll</option>
-                            <option value="genericA">Generic A (Compact 38×19mm)</option>
-                            <option value="genericB">Generic B (Standard 50×25mm)</option>
-                            <option value="genericC">Generic C (Large 70×36mm)</option>
-                            <option value="calTag">Calibration Tag (70×50mm)</option>
-                            <option value="calTagSheet">Calibration Tag Sheet (Avery 5161, 20/sheet)</option>
+                            ${(['avery5161', 'avery5163', 'avery5366', 'brady', 'genericA', 'genericB', 'genericC', 'calTag', 'calTagSheet'] as LabelFormat[]).map(k => `<option value="${k}">${esc(STOCKS[k].brand)} ${esc(STOCKS[k].pn)} — ${esc(STOCKS[k].info)}</option>`).join('')}
                         </select>
                     </div>
 
@@ -229,12 +218,8 @@ export class LabelModal {
                             <label>${T('Copies to Print:')}</label>
                             <input type="number" id="labelCopiesInput" class="form-control" value="1" min="1" max="100">
                         </div>
-                        <div class="form-group" style="text-align:left;" id="labelStartGroup">
-                            <label>${T('Start Position:')}</label>
-                            <input type="number" id="labelStartInput" class="form-control" value="1" min="1">
-                            <small style="color:var(--text-muted); font-size:0.75rem;">${T('START_POS_HINT')}</small>
-                        </div>
                     </div>
+                    ${labelLayoutControlsHtml('label')}
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-muted" id="printModalCancelBtn">${T('Close')}</button>
@@ -259,39 +244,26 @@ export class LabelModal {
             }
         });
 
-        overlay.querySelector('#modalPrintQueueBtn')?.addEventListener('click', async () => {
-            await printQueueLabels(this.selectedFormat, { start: this.readStartPosition() });
+        overlay.querySelector('#modalPrintQueueBtn')?.addEventListener('click', () => {
             this.closeToolLabel();
+            this.openQueue();
         });
 
         const formatSelect = overlay.querySelector<HTMLSelectElement>('#labelFormatSelect');
         if (formatSelect) {
             formatSelect.addEventListener('change', async () => {
                 this.selectedFormat = formatSelect.value as LabelFormat;
-                this.updateStartPositionVisibility();
-                if (this.currentToolId) {
-                    const tool = Store.getTool(this.currentToolId);
-                    if (tool) await this.updatePreview(tool);
-                }
+                this.refreshToolLayout?.();
             });
         }
-        this.updateStartPositionVisibility();
+        const refreshPreview = () => {
+            const tool = this.currentToolId ? Store.getTool(this.currentToolId) : null;
+            if (tool) void this.updatePreview(tool);
+        };
+        this.refreshToolLayout = bindLabelLayoutControls(overlay, 'label', () => this.selectedFormat, refreshPreview);
+        overlay.querySelector('#labelCopiesInput')?.addEventListener('input', refreshPreview);
 
         overlay.querySelector('#printModalExecuteBtn')?.addEventListener('click', () => this.executePrint());
-    }
-
-    /** The start-cell control only applies to die-cut sheet stock. */
-    private static updateStartPositionVisibility(): void {
-        const group = document.getElementById('labelStartGroup');
-        if (!group) return;
-        const stock = STOCKS[this.selectedFormat];
-        group.style.display = stock && stock.kind === 'sheet' ? '' : 'none';
-    }
-
-    private static readStartPosition(): number {
-        const el = document.getElementById('labelStartInput') as HTMLInputElement | null;
-        const n = parseInt(el?.value || '1', 10);
-        return Number.isFinite(n) && n > 0 ? n : 1;
     }
 
     private static updateQueueState(): void {
@@ -320,9 +292,9 @@ export class LabelModal {
 
         const stock = STOCKS[this.selectedFormat] || STOCKS.avery5161;
         const html = buildLabelSheetHtml(
-            [{ id: tool.id, type: 'tool' }],
+            Array.from({ length: this.readCopies() }, () => ({ id: tool.id, type: 'tool' as const })),
             this.selectedFormat,
-            { start: this.readStartPosition() }
+            readLabelLayoutControls(document, 'label', this.selectedFormat)
         );
 
         // Sheet stock is a full Letter page (~1056px tall at 96dpi) — shrink it to
@@ -333,17 +305,24 @@ export class LabelModal {
         if (inner) await drawAllQrsInContainer(inner);
     }
 
+    private static readCopies(): number {
+        const n = Number((document.getElementById('labelCopiesInput') as HTMLInputElement | null)?.value);
+        return Number.isFinite(n) ? Math.max(1, Math.min(100, Math.trunc(n))) : 1;
+    }
+
     private static async executePrint(): Promise<void> {
-        if (!this.currentToolId) return;
-        const tool = Store.getTool(this.currentToolId);
-        if (!tool) return;
-
-        const copies = parseInt((document.getElementById('labelCopiesInput') as HTMLInputElement).value) || 1;
-        const entities = Array.from({ length: copies }, () => ({ id: tool.id, type: 'tool' as const }));
-
-        await printLabelsHtml(entities, this.selectedFormat, { start: this.readStartPosition() });
-        toast(`${T('LABELS_PRINTED')} ${copies}`, 'success');
-        this.closeToolLabel();
+        if (!this.currentToolId || !Store.getTool(this.currentToolId)) return;
+        const copies = this.readCopies();
+        const entities = Array.from({ length: copies }, () => ({ id: this.currentToolId!, type: 'tool' as const }));
+        const button = document.getElementById('printModalExecuteBtn') as HTMLButtonElement;
+        button.disabled = true;
+        try {
+            await printLabelsHtml(entities, this.selectedFormat, readLabelLayoutControls(document, 'label', this.selectedFormat));
+            toast(`${T('LABELS_PRINTED')} ${copies}`, 'success');
+            this.closeToolLabel();
+        } catch (error) {
+            toast(`${T('LABEL_PRINT_FAILED')} ${esc((error as Error).message)}`, 'danger');
+        } finally { button.disabled = false; }
     }
 
     private static createLocationModalDOM(): void {
@@ -397,6 +376,9 @@ export class LabelModal {
                         <input type="text" id="locRespInput" class="form-control" placeholder="e.g. Lead Tech John D.">
                     </div>
 
+                    <div class="form-group"><label>${T('Select Label Stock / Format:')}</label>
+                      <select id="locFormatSelect" class="form-control">${(['avery5161', 'avery5163', 'avery5366'] as LabelFormat[]).map(k => `<option value="${k}">${esc(STOCKS[k].brand)} ${esc(STOCKS[k].pn)}</option>`).join('')}</select></div>
+                    ${labelLayoutControlsHtml('loc')}
                     <div id="locPreviewCard" style="background:#e2e8f0; padding:15px; border-radius:8px; margin-top:12px; display:flex; justify-content:center;"></div>
                 </div>
                 <div class="modal-footer spread">
@@ -409,6 +391,8 @@ export class LabelModal {
 
         document.body.appendChild(overlay);
 
+        const refreshLayout = bindLabelLayoutControls(overlay, 'loc', () => (overlay.querySelector('#locFormatSelect') as HTMLSelectElement).value as LabelFormat, () => { void this.updateLocationPreview(); });
+        overlay.querySelector('#locFormatSelect')?.addEventListener('change', refreshLayout);
         overlay.querySelector('#locModalCloseBtn')?.addEventListener('click', () => this.closeLocationLabels());
         overlay.querySelector('#locModalCancelBtn')?.addEventListener('click', () => this.closeLocationLabels());
         overlay.querySelector('#locModalPrintBtn')?.addEventListener('click', () => this.executeLocationPrint());
@@ -464,52 +448,25 @@ export class LabelModal {
     private static async updateLocationPreview(): Promise<void> {
         const card = document.getElementById('locPreviewCard');
         if (!card) return;
-        const type = (document.getElementById('locTypeSelect') as HTMLSelectElement)?.value || 'RACK';
-        const zone = (document.getElementById('locZoneSelect') as HTMLSelectElement)?.value || 'Line 1';
-        const rack = (document.getElementById('locRackInput') as HTMLInputElement)?.value.trim() || 'A';
-        const shelf = (document.getElementById('locShelfInput') as HTMLInputElement)?.value.trim() || '1';
-        const bin = (document.getElementById('locBinInput') as HTMLInputElement)?.value.trim() || '1';
-        const resp = (document.getElementById('locRespInput') as HTMLInputElement)?.value.trim() || 'Plant Operations';
-        const code = `LOC:${type}:${zone}:${rack}:${shelf}:${bin}`;
-        const qrUrl = await generateQrDataUrl(code);
-        card.innerHTML = `
-            <div style="background:#fff; color:#000; border:2px solid #000; border-radius:6px; padding:10px 14px; display:flex; align-items:center; gap:12px; width:340px; box-shadow:0 2px 8px rgba(0,0,0,0.1); font-family:var(--font-mono);">
-                <img src="${qrUrl}" style="width:72px; height:72px; flex-shrink:0;">
-                <div style="line-height:1.3; overflow:hidden;">
-                    <div style="font-weight:bold; font-size:1.05rem;">📍 ${esc(type)} · Rack ${esc(rack)}</div>
-                    <div style="font-size:0.85rem;">${esc(zone)} · Shelf ${esc(shelf)} · Bin ${esc(bin)}</div>
-                    <div style="font-size:0.72rem; color:#64748b; margin-top:2px;">Resp: ${esc(resp)}</div>
-                </div>
-            </div>
-        `;
+        const format = (document.getElementById('locFormatSelect') as HTMLSelectElement).value as LabelFormat;
+        card.innerHTML = `<div class="sheet-mode" style="zoom:0.3;flex:0 0 auto;">${buildLabelSheetHtml([this.locationEntity()], format, readLabelLayoutControls(document, 'loc', format))}</div>`;
+        await drawAllQrsInContainer(card);
+    }
+
+    private static locationEntity(): LabelEntity {
+        const value = (id: string, fallback: string) => (document.getElementById(id) as HTMLInputElement | null)?.value.trim() || fallback;
+        return { id: `LOC:${value('locTypeSelect', 'rack')}:${value('locZoneSelect', '')}:${value('locRackInput', 'A')}:${value('locShelfInput', '1')}:${value('locBinInput', '1')}:${value('locRespInput', 'Plant Operations')}`, type: 'location' };
     }
 
     private static async executeLocationPrint(): Promise<void> {
-        const type = (document.getElementById('locTypeSelect') as HTMLSelectElement).value;
-        const zone = (document.getElementById('locZoneSelect') as HTMLSelectElement).value;
-        const rack = (document.getElementById('locRackInput') as HTMLInputElement).value.trim() || 'A';
-        const shelf = (document.getElementById('locShelfInput') as HTMLInputElement).value.trim() || '1';
-        const bin = (document.getElementById('locBinInput') as HTMLInputElement).value.trim() || '1';
-        const resp = (document.getElementById('locRespInput') as HTMLInputElement).value.trim() || 'Plant Operations';
-
-        const code = `LOC:${type}:${zone}:${rack}:${shelf}:${bin}:${resp}`;
-        const qrUrl = await generateQrDataUrl(code);
-
-        const html = `
-            <div style="display:flex; flex-wrap:wrap; gap:15px; padding:20px; font-family:var(--font-mono); color:#000;">
-                <div style="width:320px; border:2px solid #000; border-radius:6px; padding:12px; display:flex; align-items:center; gap:12px; background:#fff;">
-                    <img src="${qrUrl}" style="width:85px; height:85px;">
-                    <div>
-                        <div style="font-weight:bold; font-size:1.15rem;">📍 ${esc(type)} · Rack ${esc(rack)}</div>
-                        <div style="font-size:0.9rem;">${esc(zone)} · Shelf ${esc(shelf)} · Bin ${esc(bin)}</div>
-                        <div style="font-size:0.75rem; color:#555; margin-top:4px;">Resp: ${esc(resp)}</div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        printHtml(html);
-        toast('Location labels sent to printer.', 'success');
-        this.closeLocationLabels();
+        const button = document.getElementById('locModalPrintBtn') as HTMLButtonElement;
+        const format = (document.getElementById('locFormatSelect') as HTMLSelectElement).value as LabelFormat;
+        button.disabled = true;
+        try {
+            await printLabelsHtml([this.locationEntity()], format, readLabelLayoutControls(document, 'loc', format));
+            this.closeLocationLabels();
+        } catch (error) {
+            toast(`${T('LABEL_PRINT_FAILED')} ${esc((error as Error).message)}`, 'danger');
+        } finally { button.disabled = false; }
     }
 }
