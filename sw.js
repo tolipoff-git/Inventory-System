@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'inv-inventory-';
-const CACHE_VERSION = 'v128-1dda552';
+const CACHE_VERSION = 'v128-1ed364e';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
 const ASSETS_TO_CACHE = [
   './', './index.html', './manifest.webmanifest', './favicon.ico',
