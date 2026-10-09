@@ -5,7 +5,7 @@
 import { T } from '../../../i18n';
 import { CONFIG } from '../../../config/constants';
 import { Store } from '../../../storage/store';
-import { esc, fmtDate, durationStr, isAutoSn, nowISO } from '../../../utils/formatters';
+import { esc, fmtDate, durationStr, isAutoSn, todayISO } from '../../../utils/formatters';
 import { Auth } from '../../../auth/authManager';
 import { Photos } from '../../../utils/photos';
 import { Tool } from '../../../types/inventory';
@@ -186,7 +186,7 @@ export class DetailModal {
         if (durEl) durEl.textContent = tool.assignedAt ? durationStr(tool.assignedAt) : '—';
 
         const due = tool.calDue ? fmtDate(tool.calDue) : 'N/A';
-        const isOverdue = tool.calDue && tool.calDue < nowISO().split('T')[0];
+        const isOverdue = tool.calDue && tool.calDue < todayISO();
         const dueEl = document.getElementById('detDue');
         if (dueEl) {
             dueEl.innerHTML = isOverdue ? `<span style="color:var(--danger); font-weight:bold;">${due} (OVERDUE)</span>` : due;
@@ -308,11 +308,12 @@ export class DetailModal {
                 const latest = hist.length ? hist[hist.length - 1] : undefined;
                 const verifiedBy = tool.calVerifiedBy || latest?.by || '';
                 const verifiedAt = tool.calVerifiedAt || latest?.date || '';
-                const overdue = Boolean(tool.calDue && tool.calDue < nowISO().split('T')[0]);
+                const overdue = Boolean(tool.calDue && tool.calDue < todayISO());
                 const rows: [string, string][] = [
+                    [T('Result'), latest?.result || '—'],
                     [T('Verified by'), verifiedBy || '—'],
                     [T('Verified on'), verifiedAt ? fmtDate(verifiedAt) : '—'],
-                    [T('Next due'), tool.calDue ? fmtDate(tool.calDue) : '—'],
+                    [T('Next due'), (tool.calHistory?.at(-1)?.result === 'FAIL' || tool.calHistory?.at(-1)?.result === 'FLAG') ? T('CALIBRATION_NO_VALIDITY') : tool.calDue ? fmtDate(tool.calDue) : '—'],
                     [T('Interval (days)'), tool.calIntervalDays ? String(tool.calIntervalDays) : '—'],
                     [T('Certificate'), tool.calCertNo || '—'],
                 ];
@@ -369,9 +370,10 @@ export class DetailModal {
         const calVerifiedBy = tool.calVerifiedBy || latestCal?.by || '';
         const calVerifiedAt = tool.calVerifiedAt || latestCal?.date || '';
         const calSummaryRows: [string, string][] = [
+            [T('Result'), latestCal?.result || '—'],
             [T('Verified by'), calVerifiedBy || '—'],
             [T('Verified on'), calVerifiedAt ? fmtDate(calVerifiedAt) : '—'],
-            [T('Next due'), tool.calDue ? fmtDate(tool.calDue) : '—'],
+            [T('Next due'), (tool.calHistory?.at(-1)?.result === 'FAIL' || tool.calHistory?.at(-1)?.result === 'FLAG') ? T('CALIBRATION_NO_VALIDITY') : tool.calDue ? fmtDate(tool.calDue) : '—'],
             [T('Interval (days)'), tool.calIntervalDays ? String(tool.calIntervalDays) : '—'],
             [T('Certificate'), tool.calCertNo || '—'],
         ];

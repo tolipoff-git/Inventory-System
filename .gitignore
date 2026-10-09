@@ -27,3 +27,6 @@ Thumbs.db
 
 # e2e screenshots & logs
 .e2e/
+
+# Generated PDF/browser QA output
+tmp/

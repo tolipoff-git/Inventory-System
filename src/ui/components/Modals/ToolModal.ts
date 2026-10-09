@@ -5,7 +5,7 @@
 import { T, getLanguage } from '../../../i18n';
 import { Store } from '../../../storage/store';
 import { CONFIG } from '../../../config/constants';
-import { esc, nowISO } from '../../../utils/formatters';
+import { esc, todayISO } from '../../../utils/formatters';
 import { Tool } from '../../../types/inventory';
 import { suggestToolId, calDueFrom } from '../../../operations/toolOps';
 import { buildBinOptions, isBinOccupied } from '../binOptions';
@@ -527,7 +527,7 @@ export class ToolModal {
             : (CONFIG.CONSUMABLE_PREFIXES.some(p => id.startsWith(p)) ? 'Consumable' : 'Permanent');
 
         // Next due = explicit date, else today + interval.
-        const calDue = calDueManual || (intervalDays > 0 ? calDueFrom(nowISO().split('T')[0], intervalDays) : '');
+        const calDue = calDueManual || (intervalDays > 0 ? calDueFrom(todayISO(), intervalDays) : '');
 
         const newTool: Tool = {
             id,
@@ -551,8 +551,8 @@ export class ToolModal {
             calDue: calDue || undefined,
             calIntervalDays: intervalDays > 0 ? intervalDays : undefined,
             minQty: minQty || undefined,
-            commissioned_date: nowISO().split('T')[0],
-            history: [`${nowISO().split('T')[0]} | Commissioned into service at ${ws}`]
+            commissioned_date: todayISO(),
+            history: [`${todayISO()} | Commissioned into service at ${ws}`]
         };
 
         await Store.saveTool(newTool);
@@ -611,7 +611,7 @@ export class ToolModal {
         };
 
         if (!tool.history) tool.history = [];
-        tool.history.push(`${nowISO().split('T')[0]} | Tool specs & location updated by admin`);
+        tool.history.push(`${todayISO()} | Tool specs & location updated by admin`);
 
         await Store.saveTool(tool);
         toast(`${T('TOOL_UPDATED')} ${tool.id}`, 'success');

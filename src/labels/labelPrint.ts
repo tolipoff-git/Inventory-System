@@ -1,6 +1,6 @@
 import { Store } from '../storage/store';
 import { T } from '../i18n';
-import { esc, fmtDate, nowISO } from '../utils/formatters';
+import { esc, fmtDate, todayISO } from '../utils/formatters';
 import { renderQrToCanvas, toolDeeplink, locationDeeplink } from './qrGenerator';
 import { Tool } from '../types/inventory';
 
@@ -20,13 +20,21 @@ export interface StockDefinition {
   legacy?: string;
 }
 
+// Measured from Avery's official U-0088-01 PDF (5961/5161): Letter 612×792 pt,
+// first column x=12 pt, second x=313.55 pt, rows y=36+72*r pt.
+// https://s3.amazonaws.com/avery.dpp.projects.s3uspdownloadables/US_en/Downloadables/pdf/U-0088-01.pdf
+export const AVERY_5961_GEOMETRY = {
+  w: 101.6, h: 25.4, cols: 2, rows: 10, top: 12.7,
+  left: 12 * 25.4 / 72, pitchX: 301.55 * 25.4 / 72, pitchY: 25.4,
+};
+
 export const STOCKS: Record<string, StockDefinition> = {
   avery5163: {
     brand: 'Avery', pn: '5163', kind: 'sheet', w: 101.6, h: 50.8, cols: 2, rows: 5, top: 12.7, left: 4.8, pitchX: 106.4, pitchY: 50.8,
     info: '2″×4″ · 10/sheet — zones, racks, cabinets, big tool labels',
   },
   avery5161: {
-    brand: 'Avery', pn: '5161 / 5961', kind: 'sheet', w: 101.6, h: 25.4, cols: 2, rows: 10, top: 12.7, left: 4.8, pitchX: 106.4, pitchY: 25.4,
+    brand: 'Avery', pn: '5161 / 5961', kind: 'sheet', ...AVERY_5961_GEOMETRY,
     info: '1″×4″ · 20/sheet — shelves, bins, tool labels',
   },
   avery5366: {
@@ -63,8 +71,8 @@ export const STOCKS: Record<string, StockDefinition> = {
     info: 'Verification tag — who, when, next due + QR',
   },
   calTagSheet: {
-    brand: 'Generic', pn: 'Calibration Tag Sheet (Avery 5161)', kind: 'sheet',
-    w: 101.6, h: 25.4, cols: 2, rows: 10, top: 12.7, left: 4.8, pitchX: 106.4, pitchY: 25.4,
+    brand: 'Avery', pn: '5161 / 5961 — Calibration', kind: 'sheet',
+    ...AVERY_5961_GEOMETRY,
     info: '20 verification tags per sheet — calibration sessions',
   },
   brady: {
@@ -106,14 +114,15 @@ export function addrLine(tool: Tool): string {
   return tool.location || '—';
 }
 
-export function renderLabelCell(stockKey: string, entityId: string, entityType: 'tool' | 'location'): string {
+export function renderLabelCell(stockKey: string, entityId: string, entityType: 'tool' | 'location', toolOverride?: Tool, calibration = false): string {
   const short = (s: string, n: number) => esc((s || '').length > n ? s.slice(0, n) + '…' : (s || ''));
 
   if (entityType === 'tool') {
-    const tool = Store.getTool(entityId) || { id: entityId, name: 'Unknown', status: 'Active', category: 'General' } as Tool;
+    const tool = toolOverride || Store.getTool(entityId) || { id: entityId, name: 'Unknown', status: 'Active', category: 'General' } as Tool;
     const qrUrl = toolDeeplink(tool.id);
+    const qrSize = Math.min(19, (STOCKS[stockKey]?.h || 25.4) - 4);
 
-    switch (stockKey) {
+    switch (calibration ? 'calTag' : stockKey) {
       case 'genA':
       case 'genericA':
         return `
@@ -182,8 +191,10 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
         const verifiedBy = tool.calVerifiedBy || latest?.by || '—';
         const verifiedAtRaw = tool.calVerifiedAt || latest?.date || '';
         const verifiedAt = verifiedAtRaw ? fmtDate(verifiedAtRaw) : '—';
-        const nextDue = tool.calDue ? fmtDate(tool.calDue) : '—';
-        const overdue = Boolean(tool.calDue && tool.calDue < nowISO().split('T')[0]);
+        const result = latest?.result || '—';
+        const nextDue = result === 'FAIL' || result === 'FLAG' ? T('CALIBRATION_NO_VALIDITY') : (tool.calDue ? fmtDate(tool.calDue) : '—');
+        const certNo = latest ? latest.certNo : tool.calCertNo;
+        const overdue = Boolean(tool.calDue && tool.calDue < todayISO());
         // The specification (e.g. `3/8"`, `20-100 Nm ±4%`) is what identifies the
         // tool on the shelf — a torque wrench tag without it is ambiguous.
         const spec = (tool.spec || '').trim();
@@ -197,12 +208,13 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
           <div style="display:flex; width:100%; height:100%; align-items:center; gap:2.5mm; padding:1.5mm 3mm; box-sizing:border-box; font-family:sans-serif; color:#000;">
             <div style="flex:1; overflow:hidden; line-height:1.3;">
               <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom:1px solid #000; padding-bottom:0.5mm;">
-                <strong style="font-size:8px; letter-spacing:0.3px;">${T('CALIBRATION / VERIFICATION')}</strong>
+                <strong style="font-size:8px; letter-spacing:0.3px;">${T('CALIBRATION / VERIFICATION')} · ${esc(result)}</strong>
                 <span style="font-size:8px; font-family:monospace; font-weight:900;">${esc(tool.id)}</span>
               </div>
-              <div style="font-size:9px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:0.6mm;">${esc(tool.name)}${spec ? ` · <span style="font-weight:600;">${esc(spec)}</span>` : ''}</div>
+              <div style="font-size:9px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:0.6mm;">${esc(tool.name)}</div>
+              ${spec ? `<div style="font-size:8px;overflow-wrap:anywhere;">${T('Spec:')} <strong>${esc(spec)}</strong></div>` : ''}
               <div style="font-size:8px;">${T('Verified by')}: <strong>${esc(verifiedBy)}</strong> · <strong>${esc(verifiedAt)}</strong></div>
-              <div style="font-size:8px; color:${overdue ? '#b00020' : '#000'};">${T('Next due')}: <strong>${esc(nextDue)}</strong>${tool.calCertNo ? ` · ${T('Certificate')}: <strong>${esc(tool.calCertNo)}</strong>` : ''}</div>
+              <div style="font-size:8px; color:${overdue ? '#b00020' : '#000'};">${T('Next due')}: <strong>${esc(nextDue)}</strong>${certNo ? ` · ${T('Certificate')}: <strong>${esc(certNo)}</strong>` : ''}</div>
             </div>
             <div style="width:16mm; height:16mm; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
               <canvas class="lbl-qr" data-qr-text="${esc(qrUrl)}" style="width:15mm; height:15mm;"></canvas>
@@ -213,7 +225,7 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
         return `
           <div style="display:flex; flex-direction:column; width:100%; height:100%; padding:3mm; box-sizing:border-box; font-family:sans-serif; color:#000;">
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #000; padding-bottom:1mm;">
-              <strong style="font-size:10px; letter-spacing:0.4px;">${T('CALIBRATION / VERIFICATION')}</strong>
+              <strong style="font-size:10px; letter-spacing:0.4px;">${T('CALIBRATION / VERIFICATION')} · ${esc(result)}</strong>
               <span style="font-size:9px; font-family:monospace; font-weight:900;">${esc(tool.id)}</span>
             </div>
             <div style="display:flex; gap:3mm; flex:1; padding-top:2mm;">
@@ -223,7 +235,7 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
                 <div>${T('Verified by')}: <strong>${esc(verifiedBy)}</strong></div>
                 <div>${T('Verified on')}: <strong>${esc(verifiedAt)}</strong></div>
                 <div style="color:${overdue ? '#b00020' : '#000'};">${T('Next due')}: <strong>${esc(nextDue)}</strong></div>
-                ${tool.calCertNo ? `<div>${T('Certificate')}: <strong>${esc(tool.calCertNo)}</strong></div>` : ''}
+                ${certNo ? `<div>${T('Certificate')}: <strong>${esc(certNo)}</strong></div>` : ''}
               </div>
               <div style="width:22mm; height:22mm; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
                 <canvas class="lbl-qr" data-qr-text="${esc(qrUrl)}" style="width:21mm; height:21mm;"></canvas>
@@ -242,17 +254,18 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
               <div style="font-size:12px; font-family:monospace; font-weight:900; margin:2px 0;">${esc(tool.id)}</div>
               <div style="font-size:9px; color:#333;">Loc: ${esc(addrLine(tool))}</div>
             </div>
-            <div style="width:20mm; height:20mm; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
-              <canvas class="lbl-qr" data-qr-text="${esc(qrUrl)}" style="width:19mm; height:19mm;"></canvas>
+            <div style="width:${qrSize}mm; height:${qrSize}mm; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+              <canvas class="lbl-qr" data-qr-text="${esc(qrUrl)}" style="width:${qrSize}mm; height:${qrSize}mm;"></canvas>
             </div>
           </div>`;
     }
   } else {
     // Location Label
     const qrUrl = locationDeeplink(entityId);
+    const qrSize = Math.min(20, (STOCKS[stockKey]?.h || 25.4) - 4);
     // `LOC:TYPE:Zone:Rack:Shelf:Bin:RESP` — the type token is dropped, and the
     // positional rack/shelf/bin parts are spelled out in full.
-    const parts = entityId.replace(/^LOC:[^:]*:/, '').split(':').filter(Boolean);
+    const parts = entityId.replace(/^LOC:[^:]*:/, '').split(':');
     const labelTitle = [
       parts[0],
       addrPart(parts[1], 'Rack'),
@@ -265,9 +278,10 @@ export function renderLabelCell(stockKey: string, entityId: string, entityType: 
         <div style="flex:1; overflow:hidden; font-family:sans-serif;">
           <div style="font-size:9px; font-weight:bold; color:#555; text-transform:uppercase;">LOCATION / STORAGE BIN</div>
           <div style="font-size:13px; font-weight:800; margin:2px 0; color:#000;">${esc(labelTitle)}</div>
+          ${parts[4] ? `<div style="font-size:8px;">${T('Responsible Person:')} ${esc(parts[4])}</div>` : ''}
         </div>
-        <div style="width:22mm; height:22mm; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
-          <canvas class="lbl-qr" data-qr-text="${esc(qrUrl)}" style="width:20mm; height:20mm;"></canvas>
+        <div style="width:${qrSize}mm; height:${qrSize}mm; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+          <canvas class="lbl-qr" data-qr-text="${esc(qrUrl)}" style="width:${qrSize}mm; height:${qrSize}mm;"></canvas>
         </div>
       </div>`;
   }
@@ -285,103 +299,69 @@ export async function drawAllQrsInContainer(container: HTMLElement): Promise<voi
   }
 }
 
-export function printLabelViaIframe(container: HTMLElement, stockKey: string = 'avery5161'): void {
-  const clone = container.cloneNode(true) as HTMLElement;
-  clone.style.transform = '';
-  clone.style.zoom = '';
+/** A standalone print document: application/theme/report styles never enter it. */
+export function buildLabelPrintDocument(html: string, stockKey: string = 'avery5161'): string {
+  const stock = STOCKS[stockKey] || STOCKS.avery5161;
+  const page = stock.kind === 'sheet' ? '215.9mm 279.4mm' : `${stock.w}mm ${stock.h}mm`;
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>5S Labels</title><style>
+    @page { size: ${page}; margin: 0; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    html, body { margin:0; padding:0; background:#fff; color:#000; font:12px Arial, Helvetica, sans-serif; }
+    .sheet-mode { display:block; margin:0; padding:0; zoom:1; transform:none; }
+    .sheet-page { position:relative; width:215.9mm; height:279.4mm; margin:0; padding:0;
+      overflow:hidden; break-inside:avoid; background:#fff; }
+    .sheet-cell { display:flex; align-items:center; margin:0; padding:0; outline:none; border:none; }
+    .sheet-page > .sheet-cell { position:absolute; }
+    .label-details { font-size:8px; line-height:1.25; flex:1; }
+    .label-qr { flex-shrink:0; }
+    img { display:block; }
+  </style></head><body>${html}</body></html>`;
+}
 
-  const srcCanvases = container.querySelectorAll('canvas');
-  const dstCanvases = clone.querySelectorAll('canvas');
-  srcCanvases.forEach((canvas, i) => {
-    if (dstCanvases[i]) {
+let printInProgress = false;
+
+export async function printLabelViaIframe(container: HTMLElement, stockKey: string = 'avery5161'): Promise<void> {
+  if (printInProgress) throw new Error(T('LABEL_PRINT_BUSY'));
+  printInProgress = true;
+  const iframe = document.createElement('iframe');
+  const cleanup = () => { iframe.remove(); printInProgress = false; };
+  try {
+    const clone = container.cloneNode(true) as HTMLElement;
+    clone.removeAttribute('style');
+    const srcCanvases = container.querySelectorAll('canvas');
+    const dstCanvases = clone.querySelectorAll('canvas');
+    srcCanvases.forEach((canvas, i) => {
       const img = document.createElement('img');
       img.src = canvas.toDataURL('image/png');
       img.style.cssText = canvas.style.cssText;
       img.width = canvas.width;
       img.height = canvas.height;
-      dstCanvases[i].parentNode?.replaceChild(img, dstCanvases[i]);
-    }
-  });
+      dstCanvases[i]?.replaceWith(img);
+    });
 
-  const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-    .map(el => el.outerHTML).join('');
-
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
-  document.body.appendChild(iframe);
-
-  const stock = STOCKS[stockKey] || { kind: 'sheet', w: 101.6, h: 25.4 };
-  const pageCss = stock.kind === 'sheet'
-    ? '@page { size: letter; margin: 0; }'
-    : `@page { size: ${stock.w}mm ${stock.h}mm; margin: 0; }`;
-
-  const doc = iframe.contentWindow?.document;
-  if (!doc) return;
-
-  doc.open();
-  doc.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>Print Labels</title>
-      ${styles}
-      <style>
-        ${pageCss}
-        /* Neutralise the app shell so the printed label is on plain white: the
-           tron theme paints a fixed SVG line grid on body::before and a radial
-           gradient on body, which otherwise bled onto the label. */
-        html, body {
-          margin: 0 !important;
-          padding: 0 !important;
-          display: block !important;
-          min-height: auto !important;
-          overflow: visible !important;
-          background: #ffffff !important;
-          color: #000000 !important;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-        html::before, html::after, body::before, body::after {
-          content: none !important;
-          display: none !important;
-          background: none !important;
-        }
-        /* Critical sheet geometry, inlined so the die-cut alignment never
-           depends on the external stylesheet resolving inside the iframe. */
-        .sheet-mode { display: block !important; }
-        .sheet-page {
-          position: relative !important;
-          width: 215.9mm !important;
-          height: 279.4mm !important;
-          background: #ffffff !important;
-          margin: 0 auto !important;
-          overflow: hidden !important;
-        }
-        .sheet-cell { outline: none !important; border: none !important; }
-        .sheet-page > .sheet-cell { position: absolute !important; }
-        /* Single / roll stock: anchor the label to the page origin instead of
-           centring it, so a tag never prints in the middle of a full sheet when
-           the printer falls back to its default paper size. */
-        .sheet-mode > .sheet-cell { margin: 0 !important; }
-        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .sheet-mode, .sheet-mode * { color: #000000 !important; }
-      </style>
-    </head>
-    <body>
-      ${clone.outerHTML}
-    </body>
-    </html>
-  `);
-  doc.close();
-
-  iframe.contentWindow?.focus();
-  setTimeout(() => {
-    iframe.contentWindow?.print();
-    setTimeout(() => {
-      iframe.remove();
-    }, 1000);
-  }, 400);
+    // Give the frame a real page viewport; a zero-width iframe can trigger
+    // responsive layout rules. Keep it outside the visible application.
+    const stock = STOCKS[stockKey] || STOCKS.avery5161;
+    iframe.style.cssText = `position:fixed;left:-10000px;top:0;width:${stock.kind === 'sheet' ? 215.9 : stock.w}mm;height:${stock.kind === 'sheet' ? 279.4 : stock.h}mm;border:0;`;
+    document.body.appendChild(iframe);
+    const win = iframe.contentWindow;
+    if (!win) throw new Error(T('LABEL_PRINT_FAILED'));
+    const doc = win.document;
+    doc.open();
+    doc.write(buildLabelPrintDocument(clone.outerHTML, stockKey));
+    doc.close();
+    await Promise.all(Array.from(doc.images, img => img.decode()));
+    await doc.fonts.ready;
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    win.addEventListener('afterprint', cleanup, { once: true });
+    // Retain the document while the native print dialog is open (also on Safari
+    // where print() returns immediately). Never remove it on a one-second timer.
+    win.focus();
+    win.print();
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
 }
 
 export type LabelFormat = 'avery5161' | 'avery5163' | 'avery5366' | 'brady' | 'genericA' | 'genericB' | 'genericC' | 'calTag' | 'calTagSheet';
@@ -390,6 +370,10 @@ export type LabelFormat = 'avery5161' | 'avery5163' | 'avery5366' | 'brady' | 'g
 export interface LabelEntity {
   id: string;
   type: 'tool' | 'location';
+  /** Unsaved form snapshot for preview only. */
+  tool?: Tool;
+  /** Calibration content is independent of the selected paper stock. */
+  content?: 'calibration';
 }
 
 import { toast } from '../utils/dom';
@@ -437,16 +421,22 @@ export interface LabelLayoutOptions {
    * wasting the already-consumed labels.
    */
   start?: number;
+  /** Printer feed correction in mm; positive is right/down, negative left/up. */
+  offsetX?: number;
+  offsetY?: number;
 }
 
-/**
- * Compose the printable label sheet.
- *
- * Sheet stock (Avery) is laid out as one or more Letter pages with each label
- * absolutely positioned from the stock definition (`left/top/pitchX/pitchY`),
- * so the output lines up with the die-cut cells. Roll/single stock emits one
- * label per page sized to the stock.
- */
+export function normalizeLabelLayoutOptions(format: string, opts: LabelLayoutOptions = {}): Required<LabelLayoutOptions> {
+  const stock = STOCKS[format] || STOCKS.avery5161;
+  const count = (stock.cols || 1) * (stock.rows || 1);
+  const offset = (n: number | undefined) => Number.isFinite(n) ? Math.max(-3, Math.min(3, n!)) : 0;
+  return {
+    start: Number.isFinite(opts.start) ? Math.max(1, Math.min(count, Math.trunc(opts.start!))) : 1,
+    offsetX: stock.kind === 'sheet' ? offset(opts.offsetX) : 0,
+    offsetY: stock.kind === 'sheet' ? offset(opts.offsetY) : 0,
+  };
+}
+
 /**
  * Pure layout builder for a label run (no DOM access, so it is unit-testable).
  *
@@ -461,10 +451,10 @@ export function buildLabelSheetHtml(
   opts: LabelLayoutOptions = {}
 ): string {
   const stock = STOCKS[format] || STOCKS.avery5161;
+  const { start, offsetX, offsetY } = normalizeLabelLayoutOptions(format, opts);
 
   if (stock.kind === 'sheet' && stock.cols && stock.rows) {
     const perSheet = stock.cols * stock.rows;
-    const start = Math.max(1, Math.min(perSheet, opts.start || 1));
 
     let idx = 0;
     const pages: string[] = [];
@@ -473,13 +463,13 @@ export function buildLabelSheetHtml(
       for (let pos = 1; pos <= perSheet; pos++) {
         const col = (pos - 1) % stock.cols;
         const row = Math.floor((pos - 1) / stock.cols);
-        const style = `position:absolute; left:${stock.left! + col * stock.pitchX!}mm; top:${stock.top! + row * stock.pitchY!}mm; width:${stock.w}mm; height:${stock.h}mm; overflow:hidden;`;
+        const style = `position:absolute; left:${stock.left! + col * stock.pitchX! + offsetX}mm; top:${stock.top! + row * stock.pitchY! + offsetY}mm; width:${stock.w}mm; height:${stock.h}mm; overflow:hidden;`;
         // Only the first page honours `start`; later pages fill from cell 1.
         const printable = pages.length > 0 || pos >= start;
         let inner = '';
         if (printable && idx < entities.length) {
           const e = entities[idx++];
-          inner = renderLabelCell(format, e.id, e.type);
+          inner = renderLabelCell(format, e.id, e.type, e.tool, e.content === 'calibration');
         }
         cells += `<div class="sheet-cell" style="${style}">${inner}</div>`;
       }
@@ -495,7 +485,7 @@ export function buildLabelSheetHtml(
   // centred) so a tag never lands in the middle of a full sheet when the printer
   // falls back to its default paper size.
   return entities.map((e, i) =>
-    `<div class="sheet-cell" style="position:relative; width:${stock.w}mm; height:${stock.h}mm; overflow:hidden;${i < entities.length - 1 ? ' page-break-after:always;' : ''}">${renderLabelCell(format, e.id, e.type)}</div>`
+    `<div class="sheet-cell" style="position:relative; width:${stock.w}mm; height:${stock.h}mm; overflow:hidden;${i < entities.length - 1 ? ' page-break-after:always;' : ''}">${renderLabelCell(format, e.id, e.type, e.tool, e.content === 'calibration')}</div>`
   ).join('');
 }
 
@@ -504,14 +494,16 @@ export async function printLabelsHtml(
   format: LabelFormat = 'avery5161',
   opts: LabelLayoutOptions = {}
 ): Promise<void> {
-  const stock = STOCKS[format] || STOCKS.avery5161;
   const container = document.createElement('div');
   container.className = 'sheet-mode';
   container.innerHTML = buildLabelSheetHtml(entities, format, opts);
-  container.style.zoom = stock.kind === 'sheet' ? '0.55' : (stock.w < 40 ? '2.5' : '1');
+  container.style.cssText = 'position:fixed;left:-10000px;top:0;';
 
   document.body.appendChild(container);
-  await drawAllQrsInContainer(container);
-  printLabelViaIframe(container, format);
-  container.remove();
+  try {
+    await drawAllQrsInContainer(container);
+    await printLabelViaIframe(container, format);
+  } finally {
+    container.remove();
+  }
 }

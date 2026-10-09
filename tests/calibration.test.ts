@@ -1,10 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import { Store } from '../src/storage/store';
 import { AppDB } from '../src/storage/indexedDb';
 import { Tool } from '../src/types/inventory';
 import { parseScanPayload } from '../src/utils/scanPayload';
-import { calDueFrom, recordCalibration, recordCalibrationBatch, completeMaintenance, toolMatchesQuery, requiresCalibration } from '../src/operations/toolOps';
+import { calDueFrom, recordCalibration, recordCalibrationBatch, completeMaintenance, toolMatchesQuery, requiresCalibration, checkoutTool } from '../src/operations/toolOps';
+import { renderLabelCell } from '../src/labels/labelPrint';
+import { CONFIG } from '../src/config/constants';
 import { verifierOptionsHtml, defaultVerifier } from '../src/utils/personnelPicker';
 
 globalThis.indexedDB = new IDBFactory();
@@ -92,6 +94,19 @@ describe('parseScanPayload', () => {
 });
 
 describe('calDueFrom', () => {
+  it('adds calendar days across DST and positive/negative timezones', () => {
+    const original = process.env.TZ;
+    try {
+      for (const tz of ['UTC', 'Asia/Tokyo', 'America/New_York', 'Europe/Berlin']) {
+        process.env.TZ = tz;
+        expect(calDueFrom('2026-03-07', 2), tz).toBe('2026-03-09');
+        expect(calDueFrom('2026-10-31', 2), tz).toBe('2026-11-02');
+        expect(calDueFrom('2028-02-28', 1), tz).toBe('2028-02-29');
+      }
+    } finally { if (original === undefined) delete process.env.TZ; else process.env.TZ = original; }
+    expect(calDueFrom('2026-02-30', 1)).toBeUndefined();
+    expect(calDueFrom('2026-01-01', 1.5)).toBeUndefined();
+  });
   it('adds the interval in days to the verification date', () => {
     expect(calDueFrom('2026-01-01', 180)).toBe('2026-06-30');
   });
@@ -103,6 +118,49 @@ describe('calDueFrom', () => {
 });
 
 describe('recordCalibration', () => {
+  it('keeps new calibration audit entries when the audit log is full', async () => {
+    Store.tools = [tool({ id: 'TW-1' })];
+    for (let i = 0; i < CONFIG.AUDIT_LOG_LIMIT; i++) Store.log('OLD', String(i));
+    await recordCalibration('TW-1', { by: 'Ivanov' });
+    expect(Store.auditLog).toHaveLength(CONFIG.AUDIT_LOG_LIMIT);
+    expect(Store.auditLog[0].action).toBe('TOOL_CALIBRATION');
+  });
+  it('clears stale certificates and validity for FAIL/FLAG and prevents checkout', async () => {
+    Store.tools = [tool({ id: 'TW-1', calCertNo: 'OLD', calDue: '2027-01-01' })];
+    for (const result of ['FAIL', 'FLAG'] as const) {
+      await recordCalibration('TW-1', { by: 'Ivanov', date: '2026-01-01', intervalDays: 180, result });
+      const t = Store.getTool('TW-1')!;
+      expect(t.calDue).toBeNull();
+      expect(t.calCertNo).toBeUndefined();
+      const tag = renderLabelCell('calTagSheet', t.id, 'tool');
+      expect(tag).toContain(result);
+      expect(tag).not.toContain('OLD');
+      expect(tag).not.toContain('1/1/2027');
+      expect((await checkoutTool('TW-1', 'Ivanov')).success).toBe(false);
+    }
+    await recordCalibration('TW-1', { by: 'Ivanov', date: '2026-01-02', intervalDays: 180 });
+    expect((await checkoutTool('TW-1', 'Ivanov')).success).toBe(true);
+  });
+
+  it('rejects invalid form data before changing a tool', async () => {
+    Store.tools = [tool({ id: 'TW-1' })];
+    for (const input of [{ by: '' }, { by: 'Ivanov', date: '2026-02-30' }, { by: 'Ivanov', intervalDays: 1.5 }, { by: 'Ivanov', intervalDays: 0 }, { by: 'Ivanov', intervalDays: Infinity }]) {
+      await expect(recordCalibration('TW-1', input)).rejects.toThrow();
+      expect(Store.tools[0].calHistory).toBeUndefined();
+    }
+  });
+
+  it('rolls back an unsuccessful save so retry cannot duplicate history', async () => {
+    Store.tools = [tool({ id: 'TW-1' })];
+    const before = structuredClone(Store.tools[0]);
+    const save = vi.spyOn(Store, 'save').mockRejectedValueOnce(new Error('disk full'));
+    await expect(recordCalibration('TW-1', { by: 'Ivanov' })).rejects.toThrow('disk full');
+    expect(Store.tools[0]).toEqual(before);
+    expect(Store.auditLog.some(l => l.action === 'TOOL_CALIBRATION')).toBe(false);
+    save.mockRestore();
+    await recordCalibration('TW-1', { by: 'Ivanov' });
+    expect(Store.tools[0].calHistory).toHaveLength(1);
+  });
   it('stamps the structured verification fields and rolls calDue forward', async () => {
     Store.tools = [tool({ id: 'CRIMP-1' })];
 
@@ -138,6 +196,18 @@ describe('recordCalibration', () => {
 });
 
 describe('recordCalibrationBatch', () => {
+  it('deduplicates selections and excludes retired tools', async () => {
+    Store.tools = [tool({ id: 'TW-1' }), tool({ id: 'TW-2', status: 'Decommissioned' })];
+    expect(await recordCalibrationBatch(['TW-1', 'TW-1', 'TW-2'], { by: 'Ivanov' })).toEqual(['TW-1']);
+    expect(Store.tools[0].calHistory).toHaveLength(1);
+    expect(Store.tools[1].calHistory).toBeUndefined();
+  });
+
+  it('validates every selected interval before starting a batch', async () => {
+    Store.tools = [tool({ id: 'TW-1', calIntervalDays: 180 }), tool({ id: 'TW-2', calIntervalDays: -1 })];
+    await expect(recordCalibrationBatch(['TW-1', 'TW-2'], { by: 'Ivanov' })).rejects.toThrow();
+    expect(Store.tools.every(t => !t.calHistory)).toBe(true);
+  });
   it('stamps every selected tool with the same session data', async () => {
     Store.tools = [tool({ id: 'CRIMP-1' }), tool({ id: 'CRIMP-2' }), tool({ id: 'CRIMP-3' })];
 
@@ -198,6 +268,11 @@ describe('toolMatchesQuery (cross-register search)', () => {
 });
 
 describe('requiresCalibration (button gating)', () => {
+  it('recognizes explicitly scheduled or verified screwdrivers outside the default class prefixes', () => {
+    expect(requiresCalibration(tool({ id: 'SD-001', calIntervalDays: 180 }))).toBe(true);
+    expect(requiresCalibration(tool({ id: 'CUSTOM-001', calVerifiedAt: '2026-01-01' }))).toBe(true);
+    expect(requiresCalibration(tool({ id: 'TWIN-001' }))).toBe(false);
+  });
   it('is true only for verification classes', () => {
     for (const id of ['TW-001', 'CT-100', 'DC-100', 'CA-100', 'GA-100']) {
       expect(requiresCalibration(tool({ id })), id).toBe(true);

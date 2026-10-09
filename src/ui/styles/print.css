@@ -21,6 +21,7 @@
    ячейка позиционируется абсолютно по данным носителя
    (cols/rows/top/left/pitchX/pitchY), чтобы попадать в вырубку. */
 .sheet-mode { display: block; }
+.sheet-cell { display:flex; align-items:center; box-sizing:border-box; }
 .sheet-page {
     position: relative;
     width: 215.9mm;

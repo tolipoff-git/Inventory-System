@@ -5,17 +5,19 @@
 
 import { T } from '../../../i18n';
 import { Store } from '../../../storage/store';
-import { esc, fmtDate, nowISO } from '../../../utils/formatters';
+import { esc, fmtDate, todayISO } from '../../../utils/formatters';
 import { toast } from '../../../utils/dom';
 import { verifierOptionsHtml, defaultVerifier } from '../../../utils/personnelPicker';
 import {
     recordCalibration,
+    calDueFrom,
     recordCalibrationBatch,
     workstationAndPostOf,
     toolMatchesQuery,
+    requiresCalibration,
     CalibrationInput,
 } from '../../../operations/toolOps';
-import { printLabelsHtml, STOCKS, LabelFormat } from '../../../labels/labelPrint';
+import { printLabelsHtml, buildLabelSheetHtml, drawAllQrsInContainer, STOCKS, LabelFormat } from '../../../labels/labelPrint';
 import { Tool } from '../../../types/inventory';
 
 /**
@@ -28,8 +30,12 @@ import { Tool } from '../../../types/inventory';
  *                          tick the tools, stamp the same date / inspector /
  *                          interval, then print a run of tags.
  */
+import { labelLayoutControlsHtml, bindLabelLayoutControls, readLabelLayoutControls } from '../labelLayoutControls';
+
 export class CalibrationModal {
     private static modalId = 'calibrationModal';
+    private static busy = false;
+    private static savedIds: string[] = [];
     private static mode: 'single' | 'session' = 'single';
     private static currentToolId: string | null = null;
     /** Ids ticked in the session list — kept across search/station re-renders. */
@@ -38,14 +44,19 @@ export class CalibrationModal {
     public static open(toolId: string): void {
         const tool = Store.getTool(toolId);
         if (!tool) return;
+        if (this.busy) return;
+        this.savedIds = [];
         this.mode = 'single';
         this.currentToolId = toolId;
         this.mount();
         this.populateSingle(tool);
+        void this.updateLabelPreview();
         this.show();
     }
 
     public static openSession(): void {
+        if (this.busy) return;
+        this.savedIds = [];
         this.mode = 'session';
         this.currentToolId = null;
         this.sessionSelected.clear();
@@ -55,6 +66,7 @@ export class CalibrationModal {
     }
 
     public static close(): void {
+        if (this.busy) return;
         const modal = document.getElementById(this.modalId);
         if (modal) modal.classList.remove('active');
         this.currentToolId = null;
@@ -75,13 +87,12 @@ export class CalibrationModal {
             if (e.target === overlay) this.close();
         });
 
-        const today = nowISO().split('T')[0];
+        const today = todayISO();
 
-        // Verification tags are printable as a single 70×50 tag (roll / single
-        // media) or as an Avery 5163 sheet, so a session lays its tags out in
-        // order, 10 per sheet, instead of one tag per page.
-        const calFormats: LabelFormat[] = ['calTagSheet', 'calTag', 'avery5161', 'avery5163', 'avery5366', 'genericA', 'genericB', 'genericC', 'brady'];
-        const defaultFormat: LabelFormat = this.mode === 'session' ? 'calTagSheet' : 'calTag';
+        // Both entry points print on the user's Avery 5961 sheets by default.
+        // Other stocks remain available explicitly.
+        const calFormats: LabelFormat[] = ['calTagSheet', 'calTag', 'avery5163', 'genericA', 'genericB'];
+        const defaultFormat: LabelFormat = 'calTagSheet';
         const formatOptions = calFormats
             .map(k => {
                 const s = STOCKS[k];
@@ -135,7 +146,7 @@ export class CalibrationModal {
                     <div class="form-row">
                         <div class="form-group" style="text-align:left;">
                             <label>${T('Interval (days)')}:</label>
-                            <input type="number" id="calInterval" class="form-control" min="1" value="180">
+                            <input type="number" id="calInterval" class="form-control" min="1" max="36500" step="1" value="180">
                         </div>
                         <div class="form-group" style="text-align:left;">
                             <label>${T('Certificate #')}:</label>
@@ -158,6 +169,8 @@ export class CalibrationModal {
                         <label>${T('Select Label Stock / Format:')}</label>
                         <select id="calFormat" class="form-control">${formatOptions}</select>
                     </div>
+                    ${labelLayoutControlsHtml('cal')}
+                    <div id="calLabelPreview" style="background:#e2e8f0;padding:10px;border-radius:8px;max-height:340px;overflow:auto;display:flex;justify-content:center;"></div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-muted" id="calCancelBtn">${T('Close')}</button>
@@ -168,6 +181,11 @@ export class CalibrationModal {
         `;
 
         document.body.appendChild(overlay);
+        const refreshLayout = bindLabelLayoutControls(overlay, 'cal', () => this.readFormat(), () => { void this.updateLabelPreview(); });
+        overlay.querySelector('#calFormat')?.addEventListener('change', refreshLayout);
+        for (const id of ['calBy', 'calDate', 'calInterval', 'calCert', 'calResult', 'calNotes']) {
+            overlay.querySelector(`#${id}`)?.addEventListener('input', () => { void this.updateLabelPreview(); });
+        }
 
         overlay.querySelector('#calCloseBtn')?.addEventListener('click', () => this.close());
         overlay.querySelector('#calCancelBtn')?.addEventListener('click', () => this.close());
@@ -207,7 +225,7 @@ export class CalibrationModal {
         const station = (document.getElementById('calSessionStation') as HTMLSelectElement | null)?.value || '';
         const q = ((document.getElementById('calSessionSearch') as HTMLInputElement | null)?.value || '').trim();
 
-        const tools = Store.activeTools()
+        const tools = Store.activeTools().filter(requiresCalibration)
             .filter(t => {
                 if (station && workstationAndPostOf(t).ws !== station) return false;
                 // Searches the class label (EN/RU), category, spec, program, SN,
@@ -250,7 +268,7 @@ export class CalibrationModal {
 
     /** All ticked ids — including rows currently hidden by the search/station filter. */
     private static selectedIds(): string[] {
-        return Array.from(this.sessionSelected);
+        return Array.from(this.sessionSelected).sort((a, b) => a.localeCompare(b));
     }
 
     private static updateSessionCount(found?: number): void {
@@ -259,9 +277,11 @@ export class CalibrationModal {
             const foundStr = found === undefined ? '' : `${T('Found:')} ${found} · `;
             el.textContent = `${foundStr}${T('Selected:')} ${this.sessionSelected.size}`;
         }
+        void this.updateLabelPreview();
     }
 
     private static toggleAll(on: boolean): void {
+        if (!on) this.sessionSelected.clear();
         document.querySelectorAll<HTMLInputElement>('.cal-session-cb').forEach(cb => {
             cb.checked = on;
             if (on) this.sessionSelected.add(cb.value);
@@ -272,9 +292,8 @@ export class CalibrationModal {
 
     private static readInput(): CalibrationInput {
         const by = (document.getElementById('calBy') as HTMLSelectElement | null)?.value.trim() || '';
-        const date = (document.getElementById('calDate') as HTMLInputElement | null)?.value || nowISO().split('T')[0];
-        const intervalRaw = parseInt((document.getElementById('calInterval') as HTMLInputElement | null)?.value || '', 10);
-        const intervalDays = Number.isFinite(intervalRaw) && intervalRaw > 0 ? intervalRaw : undefined;
+        const date = (document.getElementById('calDate') as HTMLInputElement | null)?.value || '';
+        const intervalDays = Number((document.getElementById('calInterval') as HTMLInputElement | null)?.value);
         const certNo = (document.getElementById('calCert') as HTMLInputElement | null)?.value.trim() || undefined;
         const result = ((document.getElementById('calResult') as HTMLSelectElement | null)?.value || 'PASS') as 'PASS' | 'FAIL' | 'FLAG';
         const notes = (document.getElementById('calNotes') as HTMLInputElement | null)?.value.trim() || undefined;
@@ -286,40 +305,71 @@ export class CalibrationModal {
         return (v && v in STOCKS ? v : 'calTag') as LabelFormat;
     }
 
-    private static async submit(print: boolean): Promise<void> {
-        const input = this.readInput();
+    private static async updateLabelPreview(): Promise<void> {
+        const host = document.getElementById('calLabelPreview');
+        if (!host) return;
+        const ids = this.savedIds.length ? this.savedIds : this.mode === 'single' ? [this.currentToolId!].filter(Boolean) : this.selectedIds();
+        const format = this.readFormat();
+        const stock = STOCKS[format];
+        host.innerHTML = `<div class="sheet-mode" style="zoom:${stock.kind === 'sheet' ? 0.3 : 1};flex:0 0 auto;">${buildLabelSheetHtml(ids.map(id => {
+            const tool = Store.getTool(id);
+            if (!tool || this.savedIds.length) return { id, type: 'tool' as const, content: 'calibration' as const };
+            const input = this.readInput();
+            const nextDue = input.result === 'PASS' ? calDueFrom(input.date || '', input.intervalDays) : undefined;
+            return { id, type: 'tool' as const, content: 'calibration' as const, tool: { ...tool, calVerifiedBy: input.by, calVerifiedAt: input.date, calDue: nextDue, calCertNo: input.certNo, calHistory: [...(tool.calHistory || []), { date: input.date || '', by: input.by || '', result: input.result || 'PASS', certNo: input.certNo, nextDue }] } };
+        }), format, readLabelLayoutControls(document, 'cal', format))}</div>`;
+        await drawAllQrsInContainer(host);
+    }
 
-        // The tag must name who performed the verification — pick a person.
-        if (!input.by) {
+    private static async submit(print: boolean): Promise<void> {
+        if (this.busy) return;
+        const input = this.readInput();
+        if (!this.savedIds.length && !input.by) {
             toast(T('VERIFIER_REQUIRED'), 'warning');
             return;
         }
-
-        try {
-            if (this.mode === 'single') {
-                if (!this.currentToolId) return;
-                const id = this.currentToolId;
-                await recordCalibration(id, input);
-                toast(`${T('CALIBRATION_SAVED')} ${id}`, 'success');
-                if (print) await printLabelsHtml([{ id, type: 'tool' }], this.readFormat());
-                this.close();
-            } else {
-                const ids = this.selectedIds();
-                if (!ids.length) {
-                    toast(T('CALIBRATION_NO_SELECTION'), 'warning');
-                    return;
-                }
-                const updated = await recordCalibrationBatch(ids, input);
-                toast(`${T('CALIBRATION_SAVED')} ${updated.length}`, 'success');
-                if (print && updated.length) {
-                    // Laid out in tick order on the chosen stock (Avery sheet by
-                    // default), exactly like the print queue.
-                    await printLabelsHtml(updated.map(id => ({ id, type: 'tool' as const })), this.readFormat());
-                }
-                this.close();
-            }
-        } catch (e: any) {
-            toast(`${T('CALIBRATION_FAILED')}: ${e.message}`, 'danger');
+        const ids = this.savedIds.length ? this.savedIds : this.mode === 'single' ? [this.currentToolId!].filter(Boolean) : this.selectedIds();
+        if (!ids.length) { toast(T('CALIBRATION_NO_SELECTION'), 'warning'); return; }
+        if (ids.some(id => !Store.getTool(id) || Store.getTool(id)!.status === 'Decommissioned')) {
+            toast(T('CALIBRATION_MISSING_TOOL'), 'warning'); return;
         }
+        const format = this.readFormat();
+        const opts = readLabelLayoutControls(document, 'cal', format);
+        const modal = document.getElementById(this.modalId)!;
+        this.busy = true;
+        const fields = Array.from(modal.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('input,select,button'));
+        const disabledBefore = fields.map(field => field.disabled);
+        fields.forEach(field => { field.disabled = true; });
+        let close = false;
+        try {
+            if (!this.savedIds.length) {
+                if (this.mode === 'single') {
+                    if (!await recordCalibration(ids[0], input)) throw new Error(T('CALIBRATION_MISSING_TOOL'));
+                    this.savedIds = ids;
+                } else {
+                    this.savedIds = await recordCalibrationBatch(ids, input);
+                }
+                toast(`${T('CALIBRATION_SAVED')} ${this.savedIds.length}`, 'success');
+            }
+            if (print) await printLabelsHtml(this.savedIds.map(id => ({ id, type: 'tool', content: 'calibration' })), format, opts);
+            close = true;
+        } catch (error) {
+            toast(`${T(this.savedIds.length ? 'CALIBRATION_PRINT_RETRY' : 'CALIBRATION_FAILED')}: ${esc((error as Error).message)}`, 'danger');
+        } finally {
+            this.busy = false;
+            fields.forEach((field, i) => { field.disabled = disabledBefore[i]; });
+            if (this.savedIds.length && !close) {
+                // The saved event is immutable in this dialog. Retrying the
+                // printer must not append another calibration history row.
+                for (const id of ['calBy', 'calDate', 'calInterval', 'calCert', 'calResult', 'calNotes', 'calSessionStation', 'calSessionSearch', 'calSaveBtn', 'calSelectAllBtn', 'calDeselectAllBtn']) {
+                    const field = modal.querySelector<HTMLInputElement>(`#${id}`);
+                    if (field) field.disabled = true;
+                }
+                modal.querySelectorAll<HTMLInputElement>('.cal-session-cb').forEach(cb => { cb.disabled = true; });
+                modal.querySelector('#calSavePrintBtn')!.textContent = T('CALIBRATION_REPRINT');
+                await this.updateLabelPreview();
+            }
+        }
+        if (close) this.close();
     }
 }

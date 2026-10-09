@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import { execSync } from 'child_process';
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync, readdirSync } from 'fs';
 import { resolve } from 'path';
 
 let commitHash = 'v98-refactor';
@@ -25,11 +25,16 @@ const stampSwCache = {
   name: 'stamp-sw-cache',
   apply: 'build' as const,
   closeBundle() {
-    try {
-      const swPath = resolve(__dirname, 'dist/sw.js');
-      const stamp = `inv-inventory-${appVersion}-${commitHash}-${buildTime.replace(/[^0-9]/g, '')}`;
-      writeFileSync(swPath, readFileSync(swPath, 'utf8').replace(/inv-inventory-__CACHE_STAMP__/g, stamp));
-    } catch {}
+    const swPath = resolve(__dirname, 'dist/sw.js');
+    const stamp = `${appVersion}-${commitHash}-${buildTime.replace(/[^0-9]/g, '')}`;
+    // The initial page loads before the worker controls it. Precache EVERY
+    // generated chunk/CSS asset so the first offline reload can start the app.
+    const assets = readdirSync(resolve(__dirname, 'dist/assets')).sort().map(file => `./assets/${file}`);
+    const template = readFileSync(swPath, 'utf8');
+    if (!template.includes('/* __BUNDLE_ASSETS__ */')) throw new Error('Missing service worker bundle manifest marker');
+    writeFileSync(swPath, template
+      .replace(/^const CACHE_VERSION = .*$/m, `const CACHE_VERSION = '${stamp}';`)
+      .replace('/* __BUNDLE_ASSETS__ */', assets.map(asset => JSON.stringify(asset)).join(',')));
   },
 };
 
