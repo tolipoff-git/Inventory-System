@@ -12,6 +12,7 @@ import './ui/styles/print.css';
 import { Store } from './storage/store';
 import { SyncManagerInstance } from './sync/syncManager';
 import { App } from './ui/app';
+import { installGlobalErrorLogging } from './utils/errorLogger';
 
 // 3. Application Bootstrap
 async function bootstrap(): Promise<void> {
@@ -21,6 +22,9 @@ async function bootstrap(): Promise<void> {
         // Initialize IndexedDB state & migrations
         await Store.init();
         console.log('[5S Command Center] Store initialized with', Store.tools.length, 'tools.');
+
+        // Persist uncaught errors / rejections so field failures remain diagnosable.
+        installGlobalErrorLogging({ log: (action, details) => Store.log(action, details) });
 
         // Initialize Distributed Cloudflare Worker + SSE live relay
         SyncManagerInstance.init();

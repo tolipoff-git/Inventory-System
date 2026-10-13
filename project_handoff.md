@@ -3,18 +3,20 @@
 ## Overview
 - **Repository:** `/home/admin/git/Inventory-System`
 - **Current Version:** `v129` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
-- **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith is preserved as `index.monolith.v97.html` for reference only and is **not** the active app.
+- **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith was removed from HEAD in v131; it lives on under tag `monolith-v97-final` and is **not** the active app.
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** A single Cloudflare Worker (`wrangler.jsonc`: static assets from `./dist`, sync API, KV bindings), deployed by the Workers Git integration on push to `main`. There is no separate Pages project.
 
-## Session Continuity — Resume Point (2026-10-13, v130)
+## Session Continuity — Resume Point (2026-10-13, v131)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v130` (`package.json` = 130.0.0). `sw.js` `CACHE_VERSION` = `v130-<hash>`.
+- **Version:** `v131` (`package.json` = 131.0.0). `sw.js` `CACHE_VERSION` = `v131-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
+- **Gates (v131):** `npm run typecheck` · `npm run lint` · `npm test` (163/163) · `bash build.sh`.
+  Audits: [`AUDIT_INHERITED_V129.md`](AUDIT_INHERITED_V129.md) — P1 done in v130, P2 done here, P3 pending.
 - **Gates (v130):** `npm run typecheck` · `npm run lint` · `npm test` (159/159) · `bash build.sh` ·
   local `wrangler dev`: security headers present on `/` and on built assets, `/api/health` 200.
   Inherited-code findings live in [`AUDIT_INHERITED_V129.md`](AUDIT_INHERITED_V129.md) — P1 done, P2/P3 pending.
@@ -158,9 +160,18 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
   with the centred **FSE** ownership plate (`drawOwnershipMark`). Keep both together: dropping
   back to level `M` would make the mark unsafe to scan.
 
-## Recent Accomplishments (v49 – v130)
+## Recent Accomplishments (v49 – v131)
 
-### 0. Inherited-Audit P1 — Security Headers on the Shell & Docs Truthfulness (v130 Release)
+### 0. Inherited-Audit P2 — Runtime Error Capture & Dead-Weight Pruning (v131 Release)
+- `src/utils/errorLogger.ts`: installs `error` + `unhandledrejection` forwarding into the persisted
+  audit log as `RUNTIME_ERROR`. Fingerprint dedupe + per-minute cap protect the trail from a repeating
+  fault; formatting collapses whitespace and caps at 600 chars; a throwing sink is swallowed.
+  Wired in `bootstrap()` immediately after `Store.init()`. Covered by four unit tests.
+- Removed from HEAD: legacy monolith (now annotated tag **`monolith-v97-final`**) and the duplicated
+  root/`public/manifest.json`. Root REQ-003 template zip deliberately kept — the embedded base64 was
+  regenerated from it after corrupt XML parts were found.
+- Revised an audit finding in review: the zip is provenance, not dead weight (§3.3).
+
 - Audit (`AUDIT_INHERITED_V129.md`) found the advertised anti-indexing/isolation headers never reached
   the HTML shell: Workers assets answered directly because `run_worker_first` was unset.
 - Fix: `assets.run_worker_first: true`, one module-level `BASELINE_SECURITY_HEADERS`, CORS gate
@@ -962,7 +973,8 @@ An external "improvement patches" document (XSS / quota / salting / partial rend
 ## Modular TypeScript Refactoring & Distributed Cloud Sync Release (v98 - September 2026)
 
 ### 1. Monolith Deconstruction & Modular Architecture
-- **Monolith Preserved:** Original 12,116-line single-file monolith permanently backed up to `index.monolith.v97.html` (`1,856,480` bytes).
+- **Monolith Preserved:** Original 12,116-line single-file monolith wrote `index.monolith.v97.html`
+  (`1,856,480` bytes); removed from HEAD in v131 and kept under git tag `monolith-v97-final`.
 - **Vite 6 + TypeScript 5.6 Pipeline:** Transitioned to modern modular build architecture with strict typing (`strict: true`, `noUnusedLocals: true`, `noUnusedParameters: true`).
 - **Codebase Modularization:** Decomposed into 14 isolated, cleanly exported submodules:
   - `src/types/`: Strict TypeScript domain interfaces for `inventory.ts`, `procurement.ts`, `personnel.ts`, `audit.ts`, and `sync.ts`.

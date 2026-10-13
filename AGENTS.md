@@ -11,10 +11,8 @@ Do not re-audit or re-document what is already recorded there; append to it inst
   sync, types, ui/components, ui/Modals, utils, + `src/worker/index.ts`
   (Cloudflare Worker: sync API + photo route). Build: Vite (`npm run build`).
 - `index.html` — 85-line app shell only.
-- `index.monolith.v97.html` — legacy single-file monolith (~12k lines), kept
-  for reference only; NOT the active app.
-  A `СОДЕРЖАНИЕ ФАЙЛА` comment block at the top maps all sections with line
-  anchors — keep it in sync when adding or moving modules (`МОДУЛЬ: X` banners).
+- Legacy single-file monolith (v97, ~12k lines) was removed from HEAD in v131 and is
+  preserved in git under tag `monolith-v97-final` (reference only, NOT the active app).
 - `sw.js` — service worker; `CACHE_VERSION` is generated, do not hand-edit.
 - `build.sh` — refreshes `sw.js` cache version from `CONFIG.APP_VERSION` + git short hash.
 - `project_handoff.md` — session-to-session memory (update it after every release).
