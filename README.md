@@ -1,9 +1,21 @@
-# 5S Tool Command Center — v3 (v130)
+# 5S Tool Command Center — v3 (v131)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
 Worker sync, built as a **modular TypeScript/Vite project** (migrated away from
 the original single-file monolith).
+
+---
+
+## v131 — Field diagnostics + dead-weight pruning (inherited-audit P2)
+
+- Uncaught errors and unhandled promise rejections are written to the persisted audit log as
+  `RUNTIME_ERROR` (`src/utils/errorLogger.ts`): fingerprint-deduplicated, capped per minute, wraps
+  stack/file context and never throws back into the page.
+- Repository slimmed by removing the legacy single-file monolith from HEAD — it stays archived under
+  the annotated tag **`monolith-v97-final`** — and by dropping duplicated manifest copies.
+  Root REQ-003 template zip is **retained on purpose** as regeneration provenance for the embedded one.
+- Verified: `tsc`, ESLint, Vitest **163/163**, production build.
 
 ---
 

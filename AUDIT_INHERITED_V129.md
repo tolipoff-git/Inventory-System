@@ -56,7 +56,10 @@ Legend: **[BUG]** real defect · **[DOC]** documentation contradicts reality ·
   does not hold for the HTML shell itself; framing protection relies solely on
   crawler etiquette plus `robots.txt`.
 
-### 2.2 [BUG] No global error capture despite an audit log that could hold it
+### 2.2 [BUG] ~~No global error capture despite an audit log that could hold it~~ — RESOLVED in v131
+- `src/utils/errorLogger.ts` funnels `error` / `unhandledrejection` into the persisted log as
+  `RUNTIME_ERROR`, fingerprinted and rate-capped; installed from `bootstrap()` after `Store.init()`.
+- Unit-tested (`tests/errorLogger.test.ts`). Next planned step belongs to code:
 - No `window.onerror` / `unhandledrejection` listener exists anywhere in `src`
   (only element-level handlers such as image/reader errors).
 - A previously identified improvement ("persist runtime errors into the audit log")
@@ -80,21 +83,19 @@ Legend: **[BUG]** real defect · **[DOC]** documentation contradicts reality ·
 
 ## 3. Dead weight
 
-### 3.1 [DEAD] Legacy monolith still tracked — ~1.86 MB
-- `index.monolith.v97.html` (1,856,348 bytes) is referenced only by docs and audit reports,
-  never by build/runtime code.
-- Recommendation: move to a release tag or an archive branch; keeping it in-tree costs clone
-  size and invites accidental edits.
+### 3.1 [DEAD] ~~Legacy monolith still tracked~~ — RESOLVED in v131
+- Removal from HEAD done; archived as annotated tag **`monolith-v97-final`** so the artifact and its
+  history stay retrievable without costing clone size for everyone.
 
-### 3.2 [DEAD] Duplicate manifest artifacts in three places
-- Root `manifest.json`, plus both `public/manifest.json` and `public/manifest.webmanifest`
-  (byte-identical pair). Only one source should exist; Vite copies whatever is under `public/`.
-- Same duplication pattern existed for `sw.js` (root + `public/`) and was already reconciled in v129.
+### 3.2 [DEAD] ~~Duplicate manifest artifacts~~ — RESOLVED in v131
+- Deleted root `manifest.json` and the byte-identical duplicate `public/manifest.json`;
+  `public/manifest.webmanifest` (the file `/index.html` actually links) is now the only copy.
+- The analogous root/`public/sw.js` duplication was already reconciled in v129.
 
-### 3.3 [DEAD] Unused template archive
-- Root-level zip archive (~36 KB) is ignored by ESLint but not consumed by any source file;
-  procurement uses an embedded base64 template instead (`src/procure/req003Template.ts`,
-  49 KB). Either wire it up or drop it.
+### 3.3 [DEAD-ish] Template archive — RETAINED deliberately
+- Revised finding: the root-level REQ-003 zip (~36 KB) **is** a source artifact — the embedded base64
+  template was regenerated from it after three XML parts were found corrupt
+  (`project_handoff.md`, "Template validity fix"). Keeping it is intentional provenance, not dead weight.
 
 ---
 
@@ -126,3 +127,13 @@ third-party API work. These are lower bounds under ideal assumptions.
 | P3 | §4.1 reduce any-density in reports/store | L | Refactor risk > benefit today |
 
 Items §2.3–§2.4 need a product decision, not code.
+
+---
+
+## Progress log
+
+- **P1 — done (v130):** §2.1 baseline headers on the shell, CORS narrowed to the API surface,
+  docs/deploy aligned with the real single-Worker deployment (§1.1–§1.3).
+- **P2 — done (v131):** §3.1 monolith → tag `monolith-v97-final`, §3.2 duplicate manifests deleted,
+  §3.3 template zip retained with reason on record, §2.2 global error capture shipped.
+- **P3 — pending:** §4.1 `any` reduction in store/reports (estimate L).
