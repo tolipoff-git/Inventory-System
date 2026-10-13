@@ -911,6 +911,11 @@ The archive modal lost its stats counters and retire-detail columns.
 - **§7 Revisit Triggers** — the explicit condition that would justify each rejected item.
 Do not re-open a rejected item on "best practice" grounds unless its trigger has fired.
 
+> **Inherited-state audit (2026-10-13, v129):** an evidence-based audit of the code and docs
+> left by the previous agent(s) — deploy-path contradictions, ineffective security headers,
+> dead artifacts, stale anchors — is recorded in [`AUDIT_INHERITED_V129.md`](AUDIT_INHERITED_V129.md)
+> with priorities and estimates. Consult it before re-litigating any of the items below.
+
 ## Deferred Audit Items (post-MVP, consciously postponed)
 A rendering-architecture audit flagged four items. Decision (user, MVP stage): do NOT implement now — the app works and the refactor risk outweighs the benefit. Revisit after MVP:
 - Memory leak on re-render (proposal: WeakMap-cached DOM elements).
