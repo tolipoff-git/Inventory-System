@@ -1,9 +1,28 @@
-# 5S Tool Command Center — v3 (v129)
+# 5S Tool Command Center — v3 (v130)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
 Worker sync, built as a **modular TypeScript/Vite project** (migrated away from
 the original single-file monolith).
+
+---
+
+## v130 — Security headers on the shell + docs match the real deployment (inherited-audit P1)
+
+- `wrangler.jsonc` sets `assets.run_worker_first`, so every request is answered through the
+  Worker. Static HTML/assets now carry the same `X-Robots-Tag`, `X-Content-Type-Options`,
+  `X-Frame-Options` and `Referrer-Policy` as the API (defined once in
+  `BASELINE_SECURITY_HEADERS`). Previously Workers assets replied directly and the shell shipped
+  without them.
+- CORS allowlisting now applies to the API/photo surface only; a navigation or subresource with an
+  unexpected `Origin` can no longer lock the whole app out.
+- Docs corrected to reality: this project deploys as **one Cloudflare Worker** on push (Workers Git
+  integration), not Cloudflare Pages; `deploy.sh` rewritten for that path (no stale env
+  placeholders); the phantom `POST /api/photo` contract and the outdated password-hardening item are
+  annotated as superseded.
+- Verified: `tsc`, ESLint, Vitest **159/159**, production build, and a local `wrangler dev`
+  runtime probe showing the headers on `/` and on built assets with `/api/health` answering.
+  Full findings: [`AUDIT_INHERITED_V129.md`](AUDIT_INHERITED_V129.md).
 
 ---
 
@@ -54,7 +73,7 @@ See the appended v128 findings in [AUDIT_LABEL_PRINT_REPORT.md](AUDIT_LABEL_PRIN
 |---|---|
 | **UI / App** | TypeScript ~5.6 · Vite 6 · React-free components · i18n (en/ru, 1:1 parity) |
 | **Storage** | IndexedDB (photos, blobs) + localStorage (prefs) · schema-migrated (`onupgradeneeded`) |
-| **Cloud** | Cloudflare Pages (hosting) + **Worker API** (sync, photo fetch) + **KV** + **ntfy.sh SSE relay** for live multi-device push |
+| **Cloud** | One **Cloudflare Worker** hosts the static app (`assets`) *and* serves the API (`sync`, photo fetch), backed by **KV** + an **ntfy.sh SSE relay** for live multi-device push |
 | **Extras** | ExcelJS (labels/XLSX/REQ003), JSQR + camera QR scanner, ZXing-free |
 
 ```
@@ -263,22 +282,29 @@ npm ci                    # install
 npm run dev               # vite dev server (localhost:3000/3001/5173)
 npm run typecheck         # tsc --noEmit
 npm run build             # production build (dist/)
-npm test                  # vitest 99 tests (crypto, store, conflict, tombstones, registry import, SOP, calibration, worker, migration)
+npm test                  # vitest suite (crypto, store, conflict, tombstones, registry import, SOP, calibration, worker, migration)
 npm run lint              # eslint (strict; legacy no-explicit-any excluded)
 npm run check:i18n        # EN/RU key + placeholder parity gate (must stay 1:1)
 ```
 
-### Deploy (Cloudflare)
+### Deploy (Cloudflare Workers)
+Hosting, sync API and KV all live in one Worker declared by `wrangler.jsonc`
+(`assets.directory = ./dist`, the KV bindings, and the CORS allowlist).
+Push to `main`: the Workers Build runs the build and deploys.
+Manual redeploy from a workstation:
+
 ```bash
-npx wrangler deploy -e staging   # Worker
-npm run build && deploy.sh       # Pages static (see deploy.sh for env/kv-substitution)
+npm run deploy        # npm run build && npx wrangler deploy
+# or: ./deploy.sh      # same steps, with a version banner
 ```
-Secrets required: `SYNC_SECRET`, `INVENTORY_KV_BINDING` (KV id) — set via
-`wrangler secret put`, **never** commit.
+
+No environment variables are required — namespace ids and the allowlist are
+committed configuration. Optional secrets belong to `wrangler secret put`,
+**never** to git.
 
 ## CI
-- GitHub Actions (optional): `npm ci` → `typecheck` → `build` → (on main) deploy
-  hook to Cloudflare Pages via `CF_DEPLOY_HOOK_ID`.
+- GitHub Actions (optional): `npm ci` → `typecheck` → test → `build`. Deployment
+  itself stays on the Cloudflare Workers Git integration.
 
 ## Tests & Quality
 - `tests/` — Vitest: crypto (hash/verify/timing), inventory (real Store+fake-indexeddb:
