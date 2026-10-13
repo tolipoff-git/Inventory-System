@@ -1,9 +1,9 @@
 {
-  "id": "./index.html",
+  "id": "./",
   "name": "5S Inventory System",
   "short_name": "5S Inventory",
   "description": "5S Tool & Equipment Inventory System with QR / Barcode & Label Generator",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "display_override": [

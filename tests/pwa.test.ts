@@ -32,7 +32,7 @@ describe('PWA offline printing prerequisites', () => {
     expect(installed).toContain('./assets/styles.css');
     let response: Promise<Response> | undefined;
     handlers.fetch({ request: { url: 'https://inventory.example/?tool=TW-001', mode: 'navigate', method: 'GET' }, respondWith: (promise: Promise<Response>) => { response = promise; } });
-    expect(await (await response!).text()).toBe('./index.html');
+    expect(await (await response!).text()).toBe('./');
   });
 
   it('does not intercept API requests, POSTs or external requests', () => {
