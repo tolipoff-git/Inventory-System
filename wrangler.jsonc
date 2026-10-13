@@ -35,9 +35,14 @@
   // with zero setup). If SYNC_SECRET is set here, every device must supply the
   // same Bearer token in the app's Sync dialog.
   //   wrangler secret put SYNC_SECRET
+  // Route requests through the Worker first so static responses are returned by
+  // `env.ASSETS.fetch` and receive BASELINE_SECURITY_HEADERS uniformly. Without
+  // this the asset server answers directly and the HTML shell ships without the
+  // advertised anti-indexing / framing headers.
   "assets": {
     "directory": "./dist",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    "run_worker_first": true
   },
   "observability": {
     "enabled": true,

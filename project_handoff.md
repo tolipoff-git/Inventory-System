@@ -5,16 +5,19 @@
 - **Current Version:** `v129` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
 - **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith is preserved as `index.monolith.v97.html` for reference only and is **not** the active app.
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
-- **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
+- **Platform:** A single Cloudflare Worker (`wrangler.jsonc`: static assets from `./dist`, sync API, KV bindings), deployed by the Workers Git integration on push to `main`. There is no separate Pages project.
 
-## Session Continuity — Resume Point (2026-10-13, v129)
+## Session Continuity — Resume Point (2026-10-13, v130)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v129` (`package.json` = 129.0.0). `sw.js` `CACHE_VERSION` = `v129-<hash>`.
+- **Version:** `v130` (`package.json` = 130.0.0). `sw.js` `CACHE_VERSION` = `v130-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
+- **Gates (v130):** `npm run typecheck` · `npm run lint` · `npm test` (159/159) · `bash build.sh` ·
+  local `wrangler dev`: security headers present on `/` and on built assets, `/api/health` 200.
+  Inherited-code findings live in [`AUDIT_INHERITED_V129.md`](AUDIT_INHERITED_V129.md) — P1 done, P2/P3 pending.
 - **Gates (v129):** `npm run typecheck` · `npm run lint` · `npm test` (157/157) ·
   `bash build.sh` · `npm run test:pwa-browser`. The installed-PWA launch bug was reproduced
   and re-verified in headless Chromium (`page.goto('/index.html')` with a 307: before = ERR_FAILED,
@@ -25,7 +28,7 @@ working session; the per-release history below is the long-term record.
   partial sheet with two copies and −1 mm correction; first-install offline deep-link bootstrap.
   QA PDFs: Letter 612×792 pt, page counts 1/2/2, Cyrillic/spec text verified, visually checked.
   `tsconfig.json` includes tests; keep it that way.
-- **Deploy:** push to `main` → Cloudflare Pages auto-deploy. Release workflow is defined in
+- **Deploy:** push to `main` → Cloudflare Workers Build deploys. Release workflow is defined in
   `AGENTS.md` (bump version → README + handoff → `bash build.sh` → feature commit →
   `chore(pwa): refresh sw.js …` commit → push) — **run it without asking**.
 
@@ -155,7 +158,17 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
   with the centred **FSE** ownership plate (`drawOwnershipMark`). Keep both together: dropping
   back to level `M` would make the mark unsafe to scan.
 
-## Recent Accomplishments (v49 – v129)
+## Recent Accomplishments (v49 – v130)
+
+### 0. Inherited-Audit P1 — Security Headers on the Shell & Docs Truthfulness (v130 Release)
+- Audit (`AUDIT_INHERITED_V129.md`) found the advertised anti-indexing/isolation headers never reached
+  the HTML shell: Workers assets answered directly because `run_worker_first` was unset.
+- Fix: `assets.run_worker_first: true`, one module-level `BASELINE_SECURITY_HEADERS`, CORS gate
+  narrowed to the API/photo surface, and two regression tests (`tests/worker.test.ts`, now 16 cases).
+- Docs/deploy brought in line with reality: single Worker deployment described consistently in
+  README/handoff; stale env-placeholder deploy script replaced by a thin wrapper; phantom
+  `POST /api/photo` and obsolete password-hardening items annotated as superseded.
+
 
 ### 0. Installed-PWA Launch Fixed — `/index.html` Redirect vs Service Worker (v129 Release)
 - **Symptom:** the app worked in a normal browser tab, but launching the installed PWA showed
@@ -899,7 +912,9 @@ The archive modal lost its stats counters and retire-detail columns.
 
 ## Maintenance & Deployment Guidelines
 - **Updating App Version:** single source is `package.json` `version` (substituted into the bundle as `CONFIG.APP_VERSION`); `build.sh` stamps `sw.js` from the same value. Do not hand-edit a version string.
-- **Cloudflare Pages Build Command:** Configure `bash build.sh` in Cloudflare Pages Build Settings.
+- **Cloudflare Workers Build:** the git integration runs `npm run build` then `npx wrangler deploy`
+  against the committed `wrangler.jsonc` (ids and `ALLOWED_ORIGIN` are configuration, not env vars).
+  `./deploy.sh` reproduces the same steps manually.
 - **Local Testing:** Run `./build.sh` locally to verify `sw.js` updates with current commit short hash.
 
 ## Enterprise Architecture Plan — Audited & Corrected (2026-09-17, non-release docs change)
@@ -928,7 +943,11 @@ An external "improvement patches" document (XSS / quota / salting / partial rend
 - **NOT applicable (already done):** XSS — all dynamic lists already escape via `Utils.esc` (`detHistory` :8119, audit lifecycle :8136–8138, emp history :8220, `integrityList` :7114); localStorage quota — `Store.save` alert + audit-log trim (1000) + 4M-char warn, `Ops.stagePhoto` sentry at 4.3M, photos in IndexedDB since v91.
 - **NOT applicable (duplicates/risky):** DateHelper module (duplicates `Utils.d`/`fmtDate`/`daysUntil`/`durationStr`/`nowISO` + `CONFIG.DAY_MS`); rAF render batching (breaks code reading DOM right after render: `Photos.hydrate` :8127/:8291, QR canvas draws :9045/:9489+, `Charts.update` chained in `init()` :11547); `?test` self-test harness — greenfield, separate decision.
 - **Worth doing post-MVP (in priority order):**
-  1. **Password hardening (the only real security item):** seed hashes are unsalted SHA-256 (`Utils.hashPw` :2842) and dictionary-weak — seed passwords crack trivially. Change seed passwords, add `Store.meta.salt` with re-hash-on-next-login migration (no change-password flow exists — one must be added). Plain salting without migration breaks all existing hashes on deployed machines.
+  1. ~~**Password hardening:**~~ **Superseded in the modular app (verified 2026-10-13):** stored secrets
+     are now salted PBKDF2-HMAC-SHA256, 210 000 iterations, per-secret random salt, with legacy
+     SHA-256 verifiers upgraded on next login (`src/utils/crypto.ts:17-21`, format
+     `pbkdf2$iters$salt$hash`). Seed passwords are still weak by design and can be rotated from
+     RBAC if that matters for a given deployment.
   2. **Filter caching:** `applyFilters` (:5827) re-runs on every keystroke (`onSearchInput` :5820); memoize the filtered result, invalidate on filter/data change. Input list `Store._activeTools` is already memoized.
   3. **Persist runtime errors:** route `window.error` / `unhandledrejection` (:11596) into `Store.log` instead of console-only.
   4. **Dedup `isOverdue`** — predicate inlined at :8053, :8175, :10654.
@@ -965,7 +984,10 @@ An external "improvement patches" document (XSS / quota / salting / partial rend
     - `GET /api/sync/:key`: State retrieval with `Cache-Control: no-cache`.
     - `POST /api/sync/:key`: Validates and commits state with 7-day TTL.
     - `GET /api/photo/:room/:photoId`: Serves raw binary images (`?raw=1` / `Accept: image/*`) or renders responsive dark-mode HTML viewer.
-    - `POST /api/photo/:room/:photoId`: Uploads photo binary directly into KV.
+    - *(corrected 2026-10-13)* Photo uploads do **not** use a `/api/photo` POST route: the client
+      stores them through the generic sync endpoint as keys `photo_<ROOM>_<id>`
+      (`src/sync/syncApi.ts:223`), and the Worker exposes only the GET viewer at
+      `/photo/:room/:id` (+ `/api/photo/...` alias). See `AUDIT_INHERITED_V129.md` §1.3.
 - **Zero-Data Public Relay Signaling:** Real-time push/pull coordination via `ntfy.sh` SSE relay (`https://ntfy.sh/inv-room-{ROOM}/sse`). Only lightweight, data-free pings are transmitted; all sensitive data travels strictly through the Cloudflare Worker API.
 - **Client Synchronization Engine (`src/sync/`):** Persistent `deviceId`, room switching, debounced push (1200ms), automatic periodic poll fallback (15s), and Last-Write-Wins (LWW) entity reconciliation.
 - **Sync UI (`SyncModal.ts`):** Real-time status badge in header (🟢 Synced / 🟡 Syncing / 🔵 Pending Push / 🔴 Offline), pairing QR code, shareable room links, and manual push/pull controls.

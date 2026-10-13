@@ -204,4 +204,27 @@ describe('worker security surface', () => {
     const res = await worker.fetch(req, { ...photoEnv, INVENTORY_KV: kv });
     expect(res.status).toBe(302);
   });
+
+  it('serves static assets with the baseline security headers (run_worker_first)', async () => {
+    // The asset binding is reached only when the Worker runs first; the HTML shell
+    // must carry the same anti-indexing / isolation headers as the API.
+    const htmlAssets = { fetch: async () => new Response('<html></html>', { headers: { 'Content-Type': 'text/html' } }) };
+    const res = await worker.fetch(new Request('https://inv.workers.dev/'), { ASSETS: htmlAssets });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('X-Robots-Tag')).toContain('noindex');
+    expect(res.headers.get('X-Frame-Options')).toBe('SAMEORIGIN');
+    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(res.headers.get('Referrer-Policy')).toBe('no-referrer');
+  });
+
+  it('does not gate static navigation on the CORS allowlist', async () => {
+    // A navigation carrying an unexpected Origin must not be blocked; only the
+    // API/photo surface enforces ALLOWED_ORIGIN.
+    const htmlAssets = { fetch: async () => new Response('<html></html>', { headers: { 'Content-Type': 'text/html' } }) };
+    const req = new Request('https://inv.workers.dev/index.html', {
+      headers: { Origin: 'https://someone-elses-host.example.com' },
+    });
+    const res = await worker.fetch(req, { ASSETS: htmlAssets, ALLOWED_ORIGIN: 'https://inventory-system.tolipoff.workers.dev' });
+    expect(res.status).toBe(200);
+  });
 });

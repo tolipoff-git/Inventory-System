@@ -19,17 +19,34 @@ export interface Env {
 // In-memory fallback cache across edge isolate invocations
 const memoryStore = new Map<string, string>();
 
+/** Photo viewer route shared by the CORS classifier and the handler below. */
+const PHOTO_ROUTE = /^\/(?:api\/)?photo\/([^/]+)\/([^/]+)\/?$/;
+
+/**
+ * Single source of truth for the anti-indexing / isolation headers. Applied to
+ * API responses *and* to static asset responses so the deployed HTML shell
+ * carries the same guarantees as the documented posture.
+ */
+const BASELINE_SECURITY_HEADERS: Record<string, string> = {
+  'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet, noimageindex',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'Referrer-Policy': 'no-referrer',
+};
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const kv = env.INVENTORY_KV || env.KV;
 
-    // CORS origin policy: only explicit allowlisted origins are reflected back.
-    // Requests without an Origin header (curl, server-side clients, same-origin
-    // navigation) are unaffected; disallowed origins are rejected with 403.
+    // CORS applies to the JSON/sync and photo surfaces only. Static assets are
+    // fetched by the browser itself — a scheme/host mismatch there must not take
+    // the whole app offline — while cross-origin reads/writes happen on /api/*.
+    // Requests without an Origin header (curl, server-side clients) pass through.
+    const isApiSurface = url.pathname.startsWith('/api/') || PHOTO_ROUTE.test(url.pathname);
     const originHeader = request.headers.get('Origin');
     const allowedOrigin = originIsAllowed(originHeader, env.ALLOWED_ORIGIN);
-    if (originHeader && !allowedOrigin) {
+    if (isApiSurface && originHeader && !allowedOrigin) {
       return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
         status: 403,
         headers: {
@@ -41,13 +58,10 @@ export default {
 
     // Security & Privacy Headers (Anti-indexing & strict isolation)
     const securityHeaders: Record<string, string> = {
+      ...BASELINE_SECURITY_HEADERS,
       'Access-Control-Allow-Origin': allowedOrigin || 'null',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Device-ID',
-      'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet, noimageindex',
-      'X-Content-Type-Options': 'nosniff',
-      'X-Frame-Options': 'SAMEORIGIN',
-      'Referrer-Policy': 'no-referrer',
     };
 
     if (request.method === 'OPTIONS') {
@@ -70,7 +84,7 @@ export default {
     }
 
     // Cloudflare Worker Photo Viewing Endpoint: /photo/:room/:photoId and /api/photo/:room/:photoId
-    const photoMatch = url.pathname.match(/^\/(?:api\/)?photo\/([^/]+)\/([^/]+)\/?$/);
+    const photoMatch = url.pathname.match(PHOTO_ROUTE);
     if (photoMatch) {
       // Photos follow the same access model as sync: open, keyed by the room id
       // that is part of the photo key. Browsers cannot set the Authorization
@@ -370,9 +384,9 @@ export default {
     if (env.ASSETS && typeof env.ASSETS.fetch === 'function') {
       const assetResponse = await env.ASSETS.fetch(request);
       const assetHeaders = new Headers(assetResponse.headers);
-      assetHeaders.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet, noimageindex');
-      assetHeaders.set('X-Content-Type-Options', 'nosniff');
-      assetHeaders.set('X-Frame-Options', 'SAMEORIGIN');
+      for (const [name, value] of Object.entries(BASELINE_SECURITY_HEADERS)) {
+        assetHeaders.set(name, value);
+      }
 
       return new Response(assetResponse.body, {
         status: assetResponse.status,

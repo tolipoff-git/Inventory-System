@@ -18,7 +18,7 @@ Do not re-audit or re-document what is already recorded there; append to it inst
 - `sw.js` — service worker; `CACHE_VERSION` is generated, do not hand-edit.
 - `build.sh` — refreshes `sw.js` cache version from `CONFIG.APP_VERSION` + git short hash.
 - `project_handoff.md` — session-to-session memory (update it after every release).
-- `_headers` — Cloudflare Pages CDN cache rules.
+- `_headers` — Workers static-asset cache/header rules.
 
 ## Conventions
 - **Release workflow — do this automatically, do NOT ask the user first:**
@@ -26,7 +26,7 @@ Do not re-audit or re-document what is already recorded there; append to it inst
   `README.md` and `project_handoff.md`, (3) run `bash build.sh` to refresh the
   `sw.js` cache stamp, (4) commit the feature, (5) commit the refreshed `sw.js`
   as `chore(pwa): refresh sw.js cache version for vNN`, (6) `git push origin main`
-  (this auto-deploys to Cloudflare Pages). The user has explicitly asked for this
+  (this triggers the Cloudflare Workers build). The user has explicitly asked for this
   end-to-end flow every time without being prompted.
 - **Versioning:** single source = `package.json` `version` + build-time
   substitution into the built bundle (`CONFIG.APP_VERSION` in src/config).
@@ -39,7 +39,7 @@ Do not re-audit or re-document what is already recorded there; append to it inst
 - **Storage:** IndexedDB (`inv_inventory_db` + photo blobs) is the source of
   truth; localStorage only for prefs. Optional cloud sync: Cloudflare Worker +
   KV + ntfy SSE (room-token authed, best-effort).
-- **Deploy:** push to `main` → Cloudflare Pages auto-deploys via `bash build.sh`.
+- **Deploy:** push to `main` → the Cloudflare Workers Build runs the build and deploys (`wrangler.jsonc`).
 
 ## Verification before committing
 1. Extract all inline `<script>` blocks and run `node --check` on each (18 blocks).

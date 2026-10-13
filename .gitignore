@@ -15,9 +15,10 @@ verify*.js
 run_*.js
 syntax_*.js
 
-# Node / dependencies
+# Node / dependencies / local tooling state
 node_modules/
 dist/
+.wrangler/
 
 # OS / Editor junk
 .DS_Store
