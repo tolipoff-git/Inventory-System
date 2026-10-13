@@ -54,4 +54,12 @@ describe('d (date parser)', () => {
   it('returns a Date for valid values', () => {
     expect(d('2026-09-17T12:00:00')).toBeInstanceOf(Date);
   });
+
+  it('accepts Date instances and rejects structured input (typed unknown contract)', () => {
+    const when = new Date('2026-09-17T12:00:00');
+    expect(d(when)?.getTime()).toBe(when.getTime());
+    // Previously an object was coerced through toString(); now it is N/A.
+    expect(d({ toString: () => '2026-09-17' })).toBeNull();
+    expect(fmtDate({})).toBe('N/A');
+  });
 });

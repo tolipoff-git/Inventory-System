@@ -44,8 +44,8 @@ export interface RetireStats {
 export function retireStats(): RetireStats {
   const retired = Store.retiredTools();
   const data: RetireStat[] = retired.map(t => {
-    let reason: string | null = (t as any).retireReason || null;
-    let ts: string = (t as any).updatedAt || '';
+    let reason: string | null = t.retireReason || null;
+    let ts: string = t.updatedAt || '';
 
     // Tool history: "<ts> | Decommissioned on <date> (Reason: X, Wear: N%, Insp: Y)"
     const evt = (t.history || []).find(h => /Decommissioned on|Decommissioned:|Retired on|Retired:/.test(h));

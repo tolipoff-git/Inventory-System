@@ -174,7 +174,7 @@ export function renderDonutSvg(
         cy,
         r,
         fill: 'none',
-        stroke: (CONFIG.STATUS_COLORS as any)[key] || '#999',
+        stroke: (CONFIG.STATUS_COLORS)[key] || '#999',
         'stroke-width': strokeWidth,
         style: 'cursor: pointer;',
       });
@@ -187,7 +187,7 @@ export function renderDonutSvg(
       shape = createSvgEl('path', {
         d: `M ${sx} ${sy} A ${r} ${r} 0 ${slice > Math.PI ? 1 : 0} 1 ${ex} ${ey}`,
         fill: 'none',
-        stroke: (CONFIG.STATUS_COLORS as any)[key] || '#999',
+        stroke: (CONFIG.STATUS_COLORS)[key] || '#999',
         'stroke-width': strokeWidth,
         style: 'cursor: pointer;',
       });
@@ -203,7 +203,7 @@ export function renderDonutSvg(
     }
 
     // Legend on the right side
-    const legendColor = (CONFIG.STATUS_COLORS as any)[key] || '#999';
+    const legendColor = (CONFIG.STATUS_COLORS)[key] || '#999';
     const legendRect = createSvgEl('rect', {
       x: 180,
       y: legendY,

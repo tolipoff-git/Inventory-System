@@ -8,6 +8,10 @@ export interface Employee {
   badge?: string;
   ws?: string;
   post?: string;
+  /** Removed from the monolith schema; read only by `migrate()` and cleared there. */
+  workstation?: string;
+  defaultWs?: string;
+  defaultPost?: string;
   careScore?: number;
   email?: string;
   phone?: string;

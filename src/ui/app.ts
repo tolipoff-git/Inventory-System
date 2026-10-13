@@ -1,5 +1,9 @@
 // ============================================================================
 // 5S Tool Command Center — Main Application UI Orchestrator
+//
+// `declare global` below is the typed contract for the functions the inline
+// `onclick=` handlers in server-rendered HTML call. They are optional because
+// templates are rendered before `attachGlobalWindowApi()` runs.
 // ============================================================================
 
 import { T, toggleLanguage, onLanguageChange, getLanguage, applyLanguage } from '../i18n';
@@ -38,6 +42,23 @@ import { parseScanPayload } from '../utils/scanPayload';
 import { toast } from '../utils/dom';
 import { windowConfirm } from '../utils/dialogCompat';
 import { hardReloadPwa } from '../utils/pwa';
+import type { UserRole } from '../types/personnel';
+
+declare global {
+  interface Window {
+    openModal?: (id: string) => void;
+    closeModal?: (id: string | HTMLElement) => void;
+    doAction?: (role: UserRole, callback: () => void) => void;
+    handleScanResult?: (code: string) => void;
+    toggleLanguage?: () => void;
+    forceUpdatePWA?: () => void;
+    T?: typeof T;
+    getLanguage?: typeof getLanguage;
+    CONFIG?: typeof CONFIG;
+    Store?: typeof Store;
+    Auth?: typeof Auth;
+  }
+}
 
 export class AppUI {
     private header: HeaderComponent | null = null;
@@ -555,23 +576,23 @@ export class AppUI {
     }
 
     private attachGlobalWindowApi(): void {
-        (window as any).openModal = (id: string) => {
+        window.openModal = (id: string) => {
             const el = document.getElementById(id);
             if (el) el.classList.add('active');
         };
-        (window as any).closeModal = (id: string | HTMLElement) => {
+        window.closeModal = (id: string | HTMLElement) => {
             const el = typeof id === 'string' ? document.getElementById(id) : id;
             if (el) el.classList.remove('active');
         };
-        (window as any).doAction = (role: any, cb: any) => Auth.doAction(role, cb);
-        (window as any).handleScanResult = (code: string) => this.handleScanResult(code);
-        (window as any).toggleLanguage = () => toggleLanguage();
-        (window as any).forceUpdatePWA = () => hardReloadPwa();
-        (window as any).T = T;
-        (window as any).getLanguage = getLanguage;
-        (window as any).CONFIG = CONFIG;
-        (window as any).Store = Store;
-        (window as any).Auth = Auth;
+        window.doAction = (role: UserRole, cb: () => void) => Auth.doAction(role, cb);
+        window.handleScanResult = (code: string) => this.handleScanResult(code);
+        window.toggleLanguage = () => toggleLanguage();
+        window.forceUpdatePWA = () => hardReloadPwa();
+        window.T = T;
+        window.getLanguage = getLanguage;
+        window.CONFIG = CONFIG;
+        window.Store = Store;
+        window.Auth = Auth;
     }
 }
 

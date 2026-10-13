@@ -1,9 +1,24 @@
-# 5S Tool Command Center — v3 (v131)
+# 5S Tool Command Center — v3 (v132)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
 Worker sync, built as a **modular TypeScript/Vite project** (migrated away from
 the original single-file monolith).
+
+---
+
+## v132 — Type-safety pass on the hot paths + a real export fix (inherited-audit P3.1)
+
+- Explicit `any` cut from ~136 to **53** sites (−61%); the hotspot files are clean:
+  `utils/formatters` (`unknown` contracts), `storage/store` + `storage/indexedDb`
+  (`RollbackSnapshot`, generic puts, typed legacy fields), `reports/*`, and the typed
+  `window` bridge used by inline handlers.
+- The type work exposed and fixed a genuine defect: retirement reason / wear / notes were only
+  written as prose into tool history, so the Archive sheet's Reason / Wear / Inspector / Notes
+  columns were always blank. `decommissionTool()` now records those structured fields.
+- New/lifecycle guards: timestamped normalization of legacy lowercase statuses, a single
+  workpost normalizer shared by load and rollback, and stricter date parsing.
+- Verified: `tsc --noEmit` clean, ESLint clean, Vitest **165/165**, production build.
 
 ---
 

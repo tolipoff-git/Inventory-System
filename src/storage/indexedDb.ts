@@ -4,6 +4,7 @@ import { Employee, SystemUser } from '../types/personnel';
 import { AuditLogEntry, Audit5S } from '../types/audit';
 import { RegistryEvents } from '../types/registry';
 import { SopDocument } from '../types/sop';
+import { RollbackSnapshot } from '../types/rollback';
 import { nowISO } from '../utils/formatters';
 import { SCHEMA_VERSION } from '../config/constants';
 
@@ -22,9 +23,10 @@ export interface DBState {
   /** Controlled documents (SOP & Standards hub). */
   sops?: SopDocument[];
   audits5s: Audit5S[];
-  meta: Record<string, any>;
-  labelQueue: any[];
-  rollback?: any;
+  meta: Record<string, unknown>;
+  /** Queue of tool ids waiting to be printed, newest last. */
+  labelQueue: string[];
+  rollback?: RollbackSnapshot | null;
 }
 
 export const AppDB = {
@@ -125,7 +127,7 @@ export const AppDB = {
     });
   },
 
-  async put(storeName: string, item: any): Promise<void> {
+  async put<T extends object>(storeName: string, item: T): Promise<void> {
     const db = await this.open();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(storeName, 'readwrite');
@@ -161,7 +163,7 @@ export const AppDB = {
     });
   },
 
-  async setAll(storeName: string, items: any[]): Promise<void> {
+  async setAll<T extends object>(storeName: string, items: T[]): Promise<void> {
     const db = await this.open();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(storeName, 'readwrite');
@@ -176,12 +178,12 @@ export const AppDB = {
     });
   },
 
-  async getSetting<T = any>(key: string, fallback: T | null = null): Promise<T | null> {
+  async getSetting<T = unknown>(key: string, fallback: T | null = null): Promise<T | null> {
     const res = await this.get(this.STORES.settings, key);
     return res ? res.value : fallback;
   },
 
-  async setSetting(key: string, value: any): Promise<void> {
+  async setSetting(key: string, value: unknown): Promise<void> {
     return this.put(this.STORES.settings, { key, value });
   },
 

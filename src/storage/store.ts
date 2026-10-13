@@ -4,6 +4,7 @@ import { Employee, SystemUser } from '../types/personnel';
 import { AuditLogEntry, Audit5S } from '../types/audit';
 import { RegistryEvents, REGISTRY_KEYS, isTombstoned } from '../types/registry';
 import { SopDocument, SopStatus } from '../types/sop';
+import { RollbackSnapshot } from '../types/rollback';
 import { AppDB, DBState } from './indexedDb';
 import { SEED_USERS, SEED_WORKSTATIONS, SEED_TOOLS } from './seedData';
 import { SEED_SOPS } from './sopSeed';
@@ -36,7 +37,7 @@ class StoreManager {
   private _activeTools: Tool[] | null = null;
   private _subscribers: Set<StoreSubscriber> = new Set();
   private _dbChannel: BroadcastChannel | null = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('inv_db_sync') : null;
-  private _rollbackSnap: any = null;
+  private _rollbackSnap: RollbackSnapshot | null = null;
   /**
    * Last-persisted JSON per record, used by `stampDirtyRecords()` to guarantee
    * that every mutation — whatever path it took — advances `updatedAt`. Without
@@ -60,7 +61,7 @@ class StoreManager {
   public auditLog: AuditLogEntry[] = [];
   public procurementLog: PurchaseOrder[] = [];
   public audits5s: Audit5S[] = [];
-  public meta: Record<string, any> = { schemaVersion: CONFIG.SCHEMA_VERSION };
+  public meta: Record<string, unknown> = { schemaVersion: CONFIG.SCHEMA_VERSION };
 
   /** Current actor published by AuthManager; used to attribute audit-log entries. */
   public actor: { username: string; role: string } = { username: 'operator', role: 'Operator' };
@@ -129,6 +130,11 @@ class StoreManager {
     this.notify();
   }
 
+  /** Accepts both current `WorkpostItem` rows and legacy bare station strings. */
+  private normalizeWorkposts(raw: (string | { name: string; ws?: string | null })[]): WorkpostItem[] {
+    return raw.map(p => (typeof p === 'string' ? { name: p, ws: null } : { name: p.name, ws: p.ws || null }));
+  }
+
   public applyLoadedData(data: Partial<DBState>): void {
     this.tools = Array.isArray(data.tools) && data.tools.length ? data.tools : [...SEED_TOOLS];
     this.personnel = Array.isArray(data.personnel) ? data.personnel : [];
@@ -139,9 +145,7 @@ class StoreManager {
     
     // Normalize workposts
     if (Array.isArray(data.workposts)) {
-      this.workposts = data.workposts.map((p: any) =>
-        typeof p === 'string' ? { name: p, ws: null } : { name: p.name, ws: p.ws || null }
-      );
+      this.workposts = this.normalizeWorkposts(data.workposts);
     } else {
       this.workposts = [];
     }
@@ -224,9 +228,8 @@ class StoreManager {
 
   public empEvent(emp: Employee, text: string): void {
     emp.updatedAt = nowISO();
-    const e = emp as any;
-    if (!Array.isArray(e.history)) e.history = [];
-    e.history.push(`${nowISO().replace('T', ' ').slice(0, 16)} | ${text}`);
+    if (!Array.isArray(emp.history)) emp.history = [];
+    emp.history.push(`${nowISO().replace('T', ' ').slice(0, 16)} | ${text}`);
   }
 
   public getTool(id: string): Tool | undefined {
@@ -283,7 +286,7 @@ class StoreManager {
 
   public getEmp(idOrName: string): Employee | undefined {
     return this.personnel.find(
-      p => p.id === idOrName || p.name === idOrName || ((p as any).badge && String((p as any).badge).toUpperCase() === String(idOrName).toUpperCase())
+      p => p.id === idOrName || p.name === idOrName || Boolean(p.badge && String(p.badge).toUpperCase() === String(idOrName).toUpperCase())
     );
   }
 
@@ -368,22 +371,20 @@ class StoreManager {
 
   public activeTools(): Tool[] {
     if (!this._activeTools) {
-      this._activeTools = this.tools.filter(
-        t => t.status !== 'Decommissioned' && (t.status as any) !== 'Retired' && (t.status as any) !== 'retired'
-      );
+      this._activeTools = this.tools.filter(t => t.status !== 'Decommissioned' && t.status !== 'Retired');
     }
     return this._activeTools;
   }
 
   public retiredTools(): Tool[] {
-    return this.tools.filter(
-      t => t.status === 'Decommissioned' || (t.status as any) === 'Retired' || (t.status as any) === 'retired'
-    );
+    return this.tools.filter(t => t.status === 'Decommissioned' || t.status === 'Retired');
   }
 
   public wearOf(tool: Tool): number {
     const a = tool.audit_history;
-    return a && a.length ? a[a.length - 1].wear_pct || 0 : 0;
+    if (!a || !a.length) return 0;
+    // Legacy imports may store the percentage as a numeric string.
+    return Number(a[a.length - 1].wear_pct) || 0;
   }
 
   public touch(tool: Tool): void {
@@ -440,7 +441,7 @@ class StoreManager {
   public recomputeStatuses(): void {
     const now = Date.now();
     this.tools.forEach(t => {
-      if ((t.status as any) === 'Retired' || (t.status as any) === 'retired' || t.status === 'Decommissioned' || t.status === 'Maintenance' || t.status === 'Pending Delivery') return;
+      if (t.status === 'Retired' || t.status === 'Decommissioned' || t.status === 'Maintenance' || t.status === 'Pending Delivery') return;
       const lateReturn = t.dueReturn && d(t.dueReturn) && (d(t.dueReturn)!.getTime() < now);
       const lateCal = t.calDue && d(t.calDue) && (d(t.calDue)!.getTime() < now);
       if (lateReturn || lateCal) t.status = 'Overdue';
@@ -814,9 +815,8 @@ class StoreManager {
     //    for assigned tools (`workstationAndPostOf` prefers the holder's station).
     this.personnel.forEach(e => {
       if (e.deletedAt) return;
-      const legacy = e as any;
-      const ws = (e.ws || legacy.workstation || legacy.defaultWs || '').trim();
-      const post = (e.post || legacy.defaultPost || '').trim();
+      const ws = (e.ws || e.workstation || e.defaultWs || '').trim();
+      const post = (e.post || e.defaultPost || '').trim();
       if (!this.isRegisterableStation(ws)) return;
       addStation(ws);
       addPost(post, ws);
@@ -901,7 +901,7 @@ class StoreManager {
 
   public snapshot(reason: string): void {
     try {
-      this._rollbackSnap = JSON.parse(JSON.stringify({
+      const draft: RollbackSnapshot = {
         ts: nowISO(),
         reason,
         workstations: this.workstations,
@@ -913,15 +913,17 @@ class StoreManager {
         personnel: this.personnel,
         tools: this.tools,
         audits5s: this.audits5s,
-      }));
+      };
+      // Deep copy so later mutations of live collections cannot rewrite history.
+      this._rollbackSnap = JSON.parse(JSON.stringify(draft)) as RollbackSnapshot;
     } catch (e) {
       console.error('[store:snapshot] Failed to capture rollback snapshot:', e);
     }
   }
 
-  /** Snapshot metadata for the "rollback last cascade" UI, or null when none exists. */
-  public rollbackInfo(): { ts: string; reason: string } | null {
-    return this._rollbackSnap || null;
+  /** Snapshot for the "rollback last cascade" UI (`ts`/`reason` are displayed), or null when none exists. */
+  public rollbackInfo(): RollbackSnapshot | null {
+    return this._rollbackSnap;
   }
 
   /**
@@ -932,26 +934,26 @@ class StoreManager {
    * module deliberately does not import `Auth`, which imports `Store`.
    */
   public async rollback(): Promise<boolean> {
-    const snap = this.rollbackInfo();
-    if (!snap) return false;
+    const s = this.rollbackInfo();
+    if (!s) return false;
 
     // Validate the critical arrays before applying, so a corrupt snapshot can
     // never wipe live data.
-    if (!Array.isArray((snap as any).tools) || !Array.isArray((snap as any).personnel)) {
-      console.error('[store:rollback] Corrupt snapshot — tools or personnel not arrays:', snap);
+    if (!Array.isArray(s.tools) || !Array.isArray(s.personnel)) {
+      console.error('[store:rollback] Corrupt snapshot — tools or personnel not arrays:', s);
       return false;
     }
 
-    const s = snap as any;
-    this.workstations = Array.isArray(s.workstations) ? JSON.parse(JSON.stringify(s.workstations)) : this.workstations;
-    this.workposts = Array.isArray(s.workposts) ? JSON.parse(JSON.stringify(s.workposts)) : this.workposts;
-    this.programs = s.programs ? JSON.parse(JSON.stringify(s.programs)) : [];
-    this.wsProgram = s.wsProgram ? JSON.parse(JSON.stringify(s.wsProgram)) : {};
-    this.registryEvents = s.registryEvents ? JSON.parse(JSON.stringify(s.registryEvents)) : {};
-    this.sops = s.sops ? JSON.parse(JSON.stringify(s.sops)) : (this.sops || []);
-    this.personnel = JSON.parse(JSON.stringify(s.personnel));
-    this.tools = JSON.parse(JSON.stringify(s.tools));
-    this.audits5s = s.audits5s ? JSON.parse(JSON.stringify(s.audits5s)) : (this.audits5s || []);
+    const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+    if (Array.isArray(s.workstations)) this.workstations = clone(s.workstations);
+    if (Array.isArray(s.workposts)) this.workposts = this.normalizeWorkposts(clone(s.workposts));
+    this.programs = s.programs ? clone(s.programs) : [];
+    this.wsProgram = s.wsProgram ? clone(s.wsProgram) : {};
+    this.registryEvents = s.registryEvents ? clone(s.registryEvents) : {};
+    this.sops = s.sops ? clone(s.sops) : (this.sops || []);
+    this.personnel = clone(s.personnel);
+    this.tools = clone(s.tools);
+    this.audits5s = s.audits5s ? clone(s.audits5s) : (this.audits5s || []);
 
     this.migrate();
     this.log('ROLLBACK', `to ${s.ts} (${s.reason})`);
@@ -961,15 +963,18 @@ class StoreManager {
 
   public migrate(): void {
     this.tools.forEach(t => {
+      // Older records may carry the lowercase monolith spelling; normalize once
+      // here so every status predicate downstream can compare literally.
+      if ((t.status as string) === 'retired') t.status = 'Retired';
       if (!t.commissioned_date) t.commissioned_date = '2025-05-10';
       if (!Array.isArray(t.audit_history)) t.audit_history = [];
       if (!Array.isArray(t.calHistory)) t.calHistory = [];
       if (!Array.isArray(t.history)) t.history = [];
-      if (!t.serialNumber && !(t as any).sn) {
+      if (!t.serialNumber && !t.sn) {
         const rnd = Math.random().toString(36).substring(2, 10).toUpperCase();
         t.serialNumber = (t.id.includes('-') ? t.id.split('-')[0] : 'SN') + '-' + rnd;
-      } else if (!t.serialNumber && (t as any).sn) {
-        t.serialNumber = (t as any).sn;
+      } else if (!t.serialNumber && t.sn) {
+        t.serialNumber = t.sn;
       }
       if (t.type === 'Permanent') {
         if (t.qty === undefined || t.qty === null) t.qty = 1;
@@ -983,9 +988,8 @@ class StoreManager {
     // Personnel: normalize legacy monolith fields (`workstation`/`defaultWs`,
     // `defaultPost`) onto the current `ws`/`post` so station/post resolve everywhere.
     this.personnel.forEach(e => {
-      const legacy = e as any;
-      if (!e.ws && (legacy.workstation || legacy.defaultWs)) e.ws = legacy.workstation || legacy.defaultWs;
-      if (!e.post && legacy.defaultPost) e.post = legacy.defaultPost;
+      if (!e.ws && (e.workstation || e.defaultWs)) e.ws = e.workstation || e.defaultWs;
+      if (!e.post && e.defaultPost) e.post = e.defaultPost;
     });
     // Users: any account without a real verifier must go through PIN setup
     // before it can authenticate. This covers both brand-new seed accounts

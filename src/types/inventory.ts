@@ -8,7 +8,9 @@ export type ToolStatus =
   | 'Overdue'
   | 'Decommissioned'
   | 'Pending Delivery'
-  | 'Calibration';
+  | 'Calibration'
+  /** Historical monolith status kept recognizable on load; normalized on migrate(). */
+  | 'Retired';
 
 export interface ToolAddress {
   zone?: string;
@@ -20,7 +22,8 @@ export interface ToolAddress {
 export interface ToolAuditRecord {
   date: string;
   inspector: string;
-  wear_pct: number;
+  /** Number for new records; legacy imports may still carry a numeric string. */
+  wear_pct: number | string;
   notes: string;
   result: 'PASS' | 'FAIL' | 'FLAG';
   photoId?: string;
@@ -85,6 +88,12 @@ export interface Tool {
   maxQty?: number;
   organizer?: boolean;
   address?: ToolAddress;
+  /** Structured record of the commissioning-out event (`decommissionTool`). */
+  retiredAt?: string;
+  retireReason?: string;
+  retireWear?: number;
+  retiredBy?: string;
+  retireNotes?: string;
   updatedAt?: string;
 }
 

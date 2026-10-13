@@ -7,16 +7,19 @@
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** A single Cloudflare Worker (`wrangler.jsonc`: static assets from `./dist`, sync API, KV bindings), deployed by the Workers Git integration on push to `main`. There is no separate Pages project.
 
-## Session Continuity — Resume Point (2026-10-13, v131)
+## Session Continuity — Resume Point (2026-10-13, v132)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v131` (`package.json` = 131.0.0). `sw.js` `CACHE_VERSION` = `v131-<hash>`.
+- **Version:** `v132` (`package.json` = 132.0.0). `sw.js` `CACHE_VERSION` = `v132-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
+- **Gates (v132):** `npm run typecheck` · `npm run lint` · `npm test` (165/165) · `bash build.sh`.
+  Audits: [`AUDIT_INHERITED_V129.md`](AUDIT_INHERITED_V129.md) — P1 v130, P2 v131, P3 phase 1 here
+  (`any` 136 → 53); long-tail typing remains (S–M).
 - **Gates (v131):** `npm run typecheck` · `npm run lint` · `npm test` (163/163) · `bash build.sh`.
-  Audits: [`AUDIT_INHERITED_V129.md`](AUDIT_INHERITED_V129.md) — P1 done in v130, P2 done here, P3 pending.
+  Audits: [`AUDIT_INHERITED_V129.md`](AUDIT_INHERITED_V129.md) — P1 done in v130, P2 done there.
 - **Gates (v130):** `npm run typecheck` · `npm run lint` · `npm test` (159/159) · `bash build.sh` ·
   local `wrangler dev`: security headers present on `/` and on built assets, `/api/health` 200.
   Inherited-code findings live in [`AUDIT_INHERITED_V129.md`](AUDIT_INHERITED_V129.md) — P1 done, P2/P3 pending.
@@ -160,9 +163,22 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
   with the centred **FSE** ownership plate (`drawOwnershipMark`). Keep both together: dropping
   back to level `M` would make the mark unsafe to scan.
 
-## Recent Accomplishments (v49 – v131)
+## Recent Accomplishments (v49 – v132)
 
-### 0. Inherited-Audit P2 — Runtime Error Capture & Dead-Weight Pruning (v131 Release)
+### 0. Inherited-Audit P3.1 — Type Contracts on Hot Paths & Retirement Metadata Fix (v132 Release)
+- Explicit `any`: ~136 → **53** sites (−61%). Hotspot files now typed end to end:
+  `utils/formatters.ts` (`unknown` + strict date parsing), `storage/store.ts`,
+  `storage/indexedDb.ts` (*generic* store operations), `reports/{s5Scores,reportExports,radarChart}`,
+  the inline-handler bridge via typed `declare global`, plus adjoining cleanups.
+- Domain types gained the missing reality: `RollbackSnapshot` (`src/types/rollback.ts`),
+  retirement fields on `Tool`, legacy migration fields on `Employee`, phone-book-compatible
+  status spelling (`'Retired'`) and numeric-string tolerant audit wear.
+- **Defect fixed:** the Archive export's Reason / Wear % / Inspector / Notes columns were always
+  empty because decommission wrote those values only as prose; `decommissionTool()` now stores them
+  structurally and a regression test asserts persistence.
+- Deliberately deferred (§13 scope cut, not silent): the ~53-site long tail — half are
+  `catch (e: any)` message extraction across ~27 files; sized S–M.
+
 - `src/utils/errorLogger.ts`: installs `error` + `unhandledrejection` forwarding into the persisted
   audit log as `RUNTIME_ERROR`. Fingerprint dedupe + per-minute cap protect the trail from a repeating
   fault; formatting collapses whitespace and caps at 600 chars; a throwing sink is swallowed.

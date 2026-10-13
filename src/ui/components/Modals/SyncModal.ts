@@ -6,6 +6,14 @@ import { copyText, toast } from '../../../utils/dom';
 import { esc } from '../../../utils/formatters';
 import { getLanguage, T } from '../../../i18n';
 
+declare global {
+  interface Window {
+    handleSyncRoomChange?: () => Promise<void>;
+    handleSyncTokenChange?: () => void;
+    openSyncModal?: () => void;
+  }
+}
+
 let unsubscribeStatusListener: (() => void) | null = null;
 
 export function renderSyncModalHtml(): string {
@@ -299,8 +307,9 @@ export function initSyncModalLogic(): void {
     };
   }
 
-  // Global window handler for room change form
-  (window as any).handleSyncRoomChange = async () => {
+  // Global window handlers referenced by inline `onclick=` in the modal markup
+  // are declared in the module-level `declare global` block above.
+  window.handleSyncRoomChange = async () => {
     const input = document.getElementById('syncRoomInput') as HTMLInputElement;
     if (!input || !input.value.trim()) return;
     const newRoom = input.value.trim().toUpperCase();
@@ -309,8 +318,7 @@ export function initSyncModalLogic(): void {
     toast(`☁️ Room switched to: ${newRoom}`);
   };
 
-  // Global window handler for sync token change form
-  (window as any).handleSyncTokenChange = () => {
+  window.handleSyncTokenChange = () => {
     const input = document.getElementById('syncTokenInput') as HTMLInputElement;
     if (!input) return;
     const newToken = input.value.trim();
@@ -319,7 +327,7 @@ export function initSyncModalLogic(): void {
     toast('🔑 ' + (getLanguage() === 'RU' ? 'Секретный токен синхронизации сохранён' : 'Sync secret token saved'));
   };
 
-  (window as any).openSyncModal = () => {
+  window.openSyncModal = () => {
     SyncModal.open();
   };
 

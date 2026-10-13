@@ -101,10 +101,18 @@ Legend: **[BUG]** real defect · **[DOC]** documentation contradicts reality ·
 
 ## 4. Consistency / hygiene
 
-### 4.1 Typed escape hatches concentrated in reporting code
-- ~136 occurrences of explicit any-ish annotations across ~88 files; heaviest:
-  report exports (30), store (15), app shell (11), formatters (9).
-- Not urgent, but these are exactly where silent shape drift hides.
+### 4.1 Typed escape hatches — hotspot set cleaned in v132, long tail deferred
+- Measured before: ~136 `any` sites. After v132: **53 sites across 27 files (−61%)**.
+- Cleaned out entirely: `formatters`, `store`, `indexedDb`, `s5Scores`, `reportExports`,
+  `app` (window bridge), plus adjacency (`toolOps`, `radarChart`, one modal status check).
+  Concrete techniques: real domain types (`RollbackSnapshot`, `Audit5S`, `Employee` legacy fields),
+  ExcelJS library types for styles/protection, generic storage methods, typed `declare global`
+  contracts for the inline-handler bridge.
+- **Latent defect surfaced by the type work and fixed here:** retirement reason/wear/notes were only
+  ever written into free-text history, so the export columns reading them were permanently empty;
+  `decommissionTool()` now persists structured fields (`retiredAt/Reason/Wear/By/Notes`).
+- Remaining tail (~53 sites, ~half of them `catch (e: any)` message extraction): mechanical,
+  low-risk but wide; estimated **S–M (1–4 h +25%)**, deliberately not swept blindly in this pass.
 
 ### 4.2 Version strings are now single-sourced — keep it that way
 - Good news worth recording: version flows from one place into both bundle and SW stamp.
@@ -136,4 +144,5 @@ Items §2.3–§2.4 need a product decision, not code.
   docs/deploy aligned with the real single-Worker deployment (§1.1–§1.3).
 - **P2 — done (v131):** §3.1 monolith → tag `monolith-v97-final`, §3.2 duplicate manifests deleted,
   §3.3 template zip retained with reason on record, §2.2 global error capture shipped.
-- **P3 — pending:** §4.1 `any` reduction in store/reports (estimate L).
+- **P3 — phase 1 done (v132):** hotspot files (§4.1) clean, a real export defect fixed along the way;
+  long-tail typing (§4.1) remains and is sized S–M.

@@ -1,4 +1,4 @@
-import { Tool, CalibrationRecord } from '../types/inventory';
+import { Tool, ToolAddress, CalibrationRecord } from '../types/inventory';
 import { Employee } from '../types/personnel';
 import { Store } from '../storage/store';
 import { CONFIG } from '../config/constants';
@@ -36,7 +36,7 @@ export function passportRecords(tool: Tool): PassportRecord[] {
     ].filter(Boolean).join(' · ') || '—',
   }));
 
-  const wearRecords: PassportRecord[] = (tool.audit_history || []).map((a: any) => ({
+  const wearRecords: PassportRecord[] = (tool.audit_history || []).map(a => ({
     date: a.date || '',
     inspector: a.inspector || 'N/A',
     result: a.result || 'N/A',
@@ -92,9 +92,8 @@ export function workstationAndPostOf(tool: Tool): { ws: string; post: string } {
     if (emp) {
       // Legacy records (migrated from the monolith) store `workstation`/`defaultWs`
       // and `defaultPost` instead of the current `ws`/`post`.
-      const legacy = emp as any;
-      const empWs = emp.ws || legacy.workstation || legacy.defaultWs || '';
-      const empPost = emp.post || legacy.defaultPost || '';
+      const empWs = emp.ws || emp.workstation || emp.defaultWs || '';
+      const empPost = emp.post || emp.defaultPost || '';
       if (empWs || empPost) return { ws: empWs || 'Unassigned', post: empPost };
     }
   }
@@ -161,7 +160,7 @@ export function toolMatchesQuery(tool: Tool, query: string): boolean {
 }
 
 export function careOf(emp: Employee) {
-  const hist = (emp as any).history || [];
+  const hist = emp.history || [];
   const cnt = (re: RegExp) => hist.filter((h: string) => re.test(h)).length;
   const good = cnt(/Returned .+ — Good/);
   const maint = cnt(/Returned .+ — Needs Maintenance/);
@@ -311,7 +310,7 @@ export async function transferTool(
   toolId: string,
   zone: string,
   rackOrPost: string = '',
-  shelfOrAddress: any = '',
+  shelfOrAddress: string | ToolAddress = '',
   binOrNotes: string = ''
 ): Promise<boolean> {
   const tool = Store.getTool(toolId);
@@ -496,6 +495,15 @@ export async function decommissionTool(
 
   const wear = typeof wearOrReason === 'number' ? wearOrReason : 100;
   const reason = typeof wearOrReason === 'string' ? wearOrReason : reasonOrNotes;
+
+  // Structural retirement record: previously the entered reason / notes / wear
+  // survived only inside free-text history, so the export columns that read them
+  // were permanently empty.
+  tool.retiredAt = dateStr;
+  tool.retireReason = reason;
+  tool.retireWear = wear;
+  tool.retiredBy = initials;
+  tool.retireNotes = notes;
 
   if (!Array.isArray(tool.audit_history)) tool.audit_history = [];
   tool.audit_history.push({
