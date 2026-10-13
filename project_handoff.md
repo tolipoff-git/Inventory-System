@@ -2,19 +2,23 @@
 
 ## Overview
 - **Repository:** `/home/admin/git/Inventory-System`
-- **Current Version:** `v128` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
+- **Current Version:** `v129` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
 - **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith is preserved as `index.monolith.v97.html` for reference only and is **not** the active app.
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** Cloudflare Pages (auto-deploy on push to `main`, using `bash build.sh` build command).
 
-## Session Continuity — Resume Point (2026-10-09, v128)
+## Session Continuity — Resume Point (2026-10-13, v129)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v128` (`package.json` = 128.0.0). `sw.js` `CACHE_VERSION` = `v128-<hash>`.
+- **Version:** `v129` (`package.json` = 129.0.0). `sw.js` `CACHE_VERSION` = `v129-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
+- **Gates (v129):** `npm run typecheck` · `npm run lint` · `npm test` (157/157) ·
+  `bash build.sh` · `npm run test:pwa-browser`. The installed-PWA launch bug was reproduced
+  and re-verified in headless Chromium (`page.goto('/index.html')` with a 307: before = ERR_FAILED,
+  after = shell renders). See the v129 entry below. The v128 gates below were also green.
 - **Gates (v128):** `npm ci` · `npm run typecheck` · `npm run lint` · `npm test` (157/157) ·
   `bash build.sh` · `npm run check:i18n` (712/712) · `npm audit` (0 vulnerabilities).
   Browser checks passed in Chromium 153: label iframe/PDF in RU, single / 25-tool session /
@@ -151,7 +155,26 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
   with the centred **FSE** ownership plate (`drawOwnershipMark`). Keep both together: dropping
   back to level `M` would make the mark unsafe to scan.
 
-## Recent Accomplishments (v49 – v127)
+## Recent Accomplishments (v49 – v129)
+
+### 0. Installed-PWA Launch Fixed — `/index.html` Redirect vs Service Worker (v129 Release)
+- **Symptom:** the app worked in a normal browser tab, but launching the installed PWA showed
+  "This site can't be reached — `net::ERR_FAILED`".
+- **Root cause:** the manifest `start_url` was `./index.html`. Cloudflare Assets serves that path
+  with a **307 redirect to `/`**. The service worker forwarded the navigation `Request` straight
+  into `fetch()`; a navigation request has `redirect:"manual"`, so the redirect surfaced as an
+  unusable opaque response and Chromium aborted the app-mode navigation. A browser tab usually sits
+  at `/`, which is served directly, hence it worked there.
+- **Fix:** `manifest.json` / `manifest.webmanifest` — `id` and `start_url` are `./`. `sw.js` —
+  precache the scope root, and in the navigation handler locally unwrap a legacy `/index.html`
+  request to `/` before fetching. Already-installed shortcuts that still launch `/index.html`
+  therefore work too.
+- **Evidence (headless Chromium, Cloudflare-like 307 on `/index.html`):** with the service worker
+  active and old logic → `page.goto('/index.html')` = `net::ERR_FAILED`, no app shell; with the fix →
+  same URL renders the shell (body text present). With service workers blocked both cases succeed,
+  isolating the interaction to the SW ↔ redirect path. Repro script was throwaway (removed).
+- **Invariant to keep:** nothing on this host may depend on `/index.html` resolving without a
+  redirect; address the scope root instead.
 
 ### 0. Avery 5961 Geometry, Calibration Integrity & Offline Startup (v128 Release)
 - Both calibration entry points default to `calTagSheet` (Avery 5161/5961). Paper stock and

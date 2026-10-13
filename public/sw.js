@@ -2,7 +2,10 @@ const CACHE_PREFIX = 'inv-inventory-';
 const CACHE_VERSION = 'v128-1ed364e';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
 const ASSETS_TO_CACHE = [
-  './', './index.html', './manifest.webmanifest', './favicon.ico',
+  // Precache the scope root only: Cloudflare Assets answers a direct request for
+  // `/index.html` with a 307 back to `/`, and a redirected precache entry cannot
+  // be relied on as the offline app shell.
+  './', './manifest.webmanifest', './favicon.ico',
   './icon-32.png', './icon-48.png', './icon-72.png', './icon-96.png',
   './icon-128.png', './icon-144.png', './icon-192.png', './icon-256.png', './icon-512.png'
 ];
@@ -29,9 +32,15 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
   if (request.mode === 'navigate') {
     event.respondWith((async () => {
-      const cached = () => caches.open(CACHE_NAME).then(cache => cache.match('./index.html', { ignoreVary: true }));
+      const cached = () => caches.open(CACHE_NAME).then(cache => cache.match('./', { ignoreVary: true }));
       try {
-        const response = await fetch(request);
+        // Shortcuts installed before the manifest fix still open `/index.html`,
+        // which Cloudflare Assets answers with a 307 back to `/`. Following that
+        // hop inside a service-worker navigation aborts app-mode launches with
+        // net::ERR_FAILED, so unwrap it locally and request the scope root.
+        const target = new URL(request.url);
+        target.pathname = target.pathname.replace(/\/index\.html$/, '/');
+        const response = await fetch(target.href);
         // Keep the installation's coherent shell: a new navigation HTML could
         // refer to bundles that have not yet been cached by a new worker.
         return response.ok ? response : (await cached()) || response;

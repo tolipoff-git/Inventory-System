@@ -1,9 +1,25 @@
-# 5S Tool Command Center — v3 (v128)
+# 5S Tool Command Center — v3 (v129)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
 Worker sync, built as a **modular TypeScript/Vite project** (migrated away from
 the original single-file monolith).
+
+---
+
+## v129 — Installed-PWA launch fixed (net::ERR_FAILED)
+
+- An installed app opened its manifest `start_url` `/index.html`; Cloudflare Assets answers
+  that path with a `307` back to `/`. Navigating through that hop from inside the service
+  worker aborted the launch with **`net::ERR_FAILED`** while an ordinary browser tab at `/`
+  worked. Reproduced and fixed in headless Chromium.
+- `manifest.json` / `manifest.webmanifest`: `id` and `start_url` are now `./`, so an install
+  starts at the scope root and never touches the redirecting path.
+- `sw.js`: the navigation handler unwraps a legacy `/index.html` request locally and fetches
+  the scope root instead of following the host redirect; the offline shell is precached under
+  `./`. Shortcuts created before this release therefore keep working.
+- Verified: `npm test` (157/157), `npm run typecheck`, `npm run lint`,
+  `npm run test:pwa-browser`, plus a before/after headless-Chromium repro (`ERR_FAILED` → app renders).
 
 ---
 
