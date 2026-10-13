@@ -120,7 +120,8 @@ export async function submitKaizen(
     photoAfter,
   };
 
-  const kaizenList: KaizenEntry[] = Store.meta.kaizenEvents || [];
+  const storedKaizen = Store.meta.kaizenEvents;
+  const kaizenList: KaizenEntry[] = Array.isArray(storedKaizen) ? storedKaizen : [];
   kaizenList.unshift(entry);
   Store.meta.kaizenEvents = kaizenList;
 

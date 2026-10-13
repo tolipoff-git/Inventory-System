@@ -127,7 +127,7 @@ export class EmployeeProfileModal {
         if (initialsEl) initialsEl.textContent = emp.initials || 'N/A';
         if (badgeEl) badgeEl.textContent = emp.badge || emp.id || 'N/A';
 
-        const assigned = Store.tools.filter(t => t.assigneeId === emp.id && t.status !== 'Decommissioned' && (t.status as any) !== 'Retired');
+        const assigned = Store.tools.filter(t => t.assigneeId === emp.id && t.status !== 'Decommissioned' && t.status !== 'Retired');
         let overdue = 0;
         let amber = 0;
         let ok = 0;

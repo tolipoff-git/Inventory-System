@@ -8,6 +8,7 @@ import { Store } from '../storage/store';
 import { S5_RUBRICS } from '../config/constants';
 import { T } from '../i18n';
 import { get5SRubricExplanation } from '../operations/auditOps';
+import type { Audit5S } from '../types/audit';
 
 export interface S5PillarScore {
   /** 0-based pillar index (Sort..Sustain). */
@@ -31,7 +32,7 @@ export function compute5SPillars(): S5PillarScore[] {
     Store.workposts.some(p => p.name === a.post && p.ws === a.ws));
 
   if (validAudits.length) {
-    const latest: Record<string, any> = {};
+    const latest: Record<string, Audit5S> = {};
     validAudits.forEach(a => {
       const k = `${a.ws}|${a.post}`;
       if (!latest[k] || String(a.date) > String(latest[k].date)) latest[k] = a;
@@ -40,11 +41,11 @@ export function compute5SPillars(): S5PillarScore[] {
 
     return PILLAR_KEYS.map((p, pi) => {
       const rid = S5_RUBRICS[pi].id;
-      const ranked = [...posts].sort((a: any, b: any) => (b.scores[rid] || 0) - (a.scores[rid] || 0));
-      const best: any = ranked[0];
-      const worst: any = ranked[ranked.length - 1];
-      const avg = posts.reduce((s, a: any) => s + (a.scores[rid] || 0), 0) / posts.length;
-      const fmt = (a: any) => `${a.ws} | ${a.post}`;
+      const ranked = [...posts].sort((a, b) => (b.scores[rid] || 0) - (a.scores[rid] || 0));
+      const best = ranked[0];
+      const worst = ranked[ranked.length - 1];
+      const avg = posts.reduce((s, a) => s + (a.scores[rid] || 0), 0) / posts.length;
+      const fmt = (a: Audit5S) => `${a.ws} | ${a.post}`;
       const bestExp = get5SRubricExplanation(pi, best.scores[rid]);
       const worstExp = get5SRubricExplanation(pi, worst.scores[rid]);
 

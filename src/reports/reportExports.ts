@@ -20,11 +20,11 @@ async function writeInventoryWorkbook(): Promise<void> {
     dark: 'FF1F2833', accent: 'FF45A29E', ok: 'FF00B894',
     warn: 'FFE0A000', bad: 'FFD0003C', zebra: 'FFF2F5F7'
   };
-  const thin: any = { style: 'thin', color: { argb: 'FFB0B8C0' } };
-  const border: any = { top: thin, bottom: thin, left: thin, right: thin };
+  const thin = { style: 'thin', color: { argb: 'FFB0B8C0' } } as ExcelJS.Border;
+  const border: Partial<ExcelJS.Borders> = { top: thin, bottom: thin, left: thin, right: thin };
 
   const styleHeader = (row: ExcelJS.Row) => row.eachCell((c) => {
-    c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 } as any;
+    c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
     c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.dark } };
     c.alignment = { vertical: 'middle' }; // type-cast applied via cell
     c.border = border;
@@ -125,7 +125,7 @@ async function writeInventoryWorkbook(): Promise<void> {
     row.getCell(2).border = border;
     row.getCell(1).font = { bold: true };
     row.getCell(2).font = { bold: true };
-    row.getCell(2).alignment = { horizontal: 'center' } as any;
+    row.getCell(2).alignment = { horizontal: 'center' };
     if (k[0] === 'Overdue Alerts' && (k[1] as number) > 0) {
       row.getCell(2).font = { bold: true, color: { argb: 'FFFFFFFF' } };
       row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.bad } };
@@ -146,7 +146,7 @@ async function writeInventoryWorkbook(): Promise<void> {
     row.getCell(3).border = border;
     row.getCell(3).font = { bold: true };
     row.getCell(4).font = { bold: true };
-    row.getCell(4).alignment = { horizontal: 'center' } as any;
+    row.getCell(4).alignment = { horizontal: 'center' };
     row.getCell(4).border = border;
     if (i % 2) {
       row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.zebra } };
@@ -182,7 +182,7 @@ async function writeInventoryWorkbook(): Promise<void> {
     row.getCell(1).border = border; row.getCell(2).border = border;
     row.getCell(1).font = { bold: true };
     row.getCell(2).font = { bold: true };
-    row.getCell(2).alignment = { horizontal: 'center' } as any;
+    row.getCell(2).alignment = { horizontal: 'center' };
     if (i % 2) {
       row.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.zebra } };
       row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.zebra } };
@@ -205,7 +205,7 @@ async function writeInventoryWorkbook(): Promise<void> {
     row.getCell(1).border = border; row.getCell(2).border = border;
     row.getCell(1).font = { bold: true };
     row.getCell(2).font = { bold: true };
-    row.getCell(2).alignment = { horizontal: 'center' } as any;
+    row.getCell(2).alignment = { horizontal: 'center' };
     if (i % 2) {
       row.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.zebra } };
       row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.zebra } };
@@ -310,7 +310,7 @@ async function writeInventoryWorkbook(): Promise<void> {
     const cls = TOOL_CLASSES.find(c => c.p === prefix);
     const className = cls ? `${cls.p} — ${cls.en}` : 'Custom ID';
     const minDisplay = t.type === 'Consumable' ? (t.minQty || 5) : '—';
-    const maxDisplay = t.type === 'Consumable' ? ((t as any).maxQty || 20) : '—';
+    const maxDisplay = t.type === 'Consumable' ? ((t).maxQty || 20) : '—';
 
     const row = inv.addRow([
       t.id,
@@ -337,12 +337,12 @@ async function writeInventoryWorkbook(): Promise<void> {
     // Status fill colors
     const sc = row.getCell(9);
     sc.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    sc.alignment = { horizontal: 'center' } as any;
+    sc.alignment = { horizontal: 'center' };
     sc.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: statusFill[t.status] || 'FF999999' } };
 
     // Wear % formatting
     const wc = row.getCell(15);
-    wc.alignment = { horizontal: 'center' } as any;
+    wc.alignment = { horizontal: 'center' };
     if (wear > WEAR_RETIRE_PCT) {
       wc.font = { bold: true, color: { argb: 'FFFFFFFF' } };
       wc.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.bad } };
@@ -374,10 +374,10 @@ async function writeInventoryWorkbook(): Promise<void> {
   styleHeader(perHeadRow);
 
   const personnel = Store.activePersonnel();
-  personnel.forEach((p: any, i: number) => {
+  personnel.forEach((p, i) => {
     const held = Store.tools.filter(t => t.assigneeId === p.id);
     const overdue = held.filter(t => t.status === 'Overdue').length;
-    const wear = Math.max(0, ...held.map((t: any) => Store.wearOf(t)));
+    const wear = Math.max(0, ...held.map(t => Store.wearOf(t)));
     const care = careOf(p);
     const row = per.addRow([
       p.id, p.name, p.initials || '', p.badge || '',
@@ -405,27 +405,28 @@ async function writeInventoryWorkbook(): Promise<void> {
   const retired = Store.retiredTools();
   let arc: ExcelJS.Worksheet | null = null;
   if (retired.length) {
-    arc = workbook.addWorksheet('Archive');
-    arc.columns = [{ width: 10 }, { width: 42 }, { width: 14 }, { width: 14 }, { width: 20 }, { width: 10 }, { width: 12 }, { width: 44 }];
+    const archiveSheet = workbook.addWorksheet('Archive');
+    arc = archiveSheet;
+    archiveSheet.columns = [{ width: 10 }, { width: 42 }, { width: 14 }, { width: 14 }, { width: 20 }, { width: 10 }, { width: 12 }, { width: 44 }];
     const arcHeadLabels = ['ID', 'Name', 'Commissioned', 'Retired At', 'Reason', 'Wear %', 'Inspector', 'Notes'];
-    const arcHeadRow = (arc as any).addRow(arcHeadLabels);
+    const arcHeadRow = archiveSheet.addRow(arcHeadLabels);
     styleHeader(arcHeadRow);
 
-    retired.forEach((t: any, i: number) => {
-      const row = (arc as any).addRow([
+    retired.forEach((t, i) => {
+      const row = archiveSheet.addRow([
         t.id, t.name,
         t.commissioned_date || '',
-        (t as any).retiredAt || '',
-        (t as any).retireReason || '',
-        (t as any).retireWear !== undefined ? (t as any).retireWear : Store.wearOf(t),
-        (t as any).retiredBy || '',
-        (t as any).retireNotes || ''
+        t.retiredAt || '',
+        t.retireReason || '',
+        t.retireWear !== undefined ? t.retireWear : Store.wearOf(t),
+        t.retiredBy || '',
+        t.retireNotes || ''
       ]);
-      row.eachCell((c: any) => { c.border = border; });
-      if (i % 2) row.eachCell((c: any) => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.zebra } });
+      row.eachCell(c => { c.border = border; });
+      if (i % 2) row.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.zebra } });
     });
-    arc.autoFilter = { from: 'A1', to: `H${retired.length + 1}` };
-    arc.views = [{ state: 'frozen', ySplit: 1 }];
+    archiveSheet.autoFilter = { from: 'A1', to: `H${retired.length + 1}` };
+    archiveSheet.views = [{ state: 'frozen', ySplit: 1 }];
   }
 
   // ================= SHEET 5: AUDIT LOG =================
@@ -435,7 +436,7 @@ async function writeInventoryWorkbook(): Promise<void> {
   const logHeadRow = logSheet.addRow(logHeadLabels);
   styleHeader(logHeadRow);
 
-  [...Store.auditLog].reverse().forEach((e: any, i: number) => {
+  [...Store.auditLog].reverse().forEach((e, i) => {
     const row = logSheet.addRow([
       (e.ts || '').replace('T', ' ').slice(0, 19),
       e.user || '',
@@ -443,11 +444,11 @@ async function writeInventoryWorkbook(): Promise<void> {
       e.action || '',
       e.details || ''
     ]);
-    row.eachCell((c: any) => {
+    row.eachCell((c) => {
       c.border = border;
-      c.alignment = { vertical: 'middle', wrapText: true } as any;
+      c.alignment = { vertical: 'middle', wrapText: true };
     });
-    if (i % 2) row.eachCell((c: any) => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.zebra } });
+    if (i % 2) row.eachCell((c) => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.zebra } });
     const detCell = row.getCell(5);
     if (e.action === 'INVENTORY_EXPORT') {
       detCell.font = { name: 'Courier New', size: 9.5 };
@@ -456,7 +457,7 @@ async function writeInventoryWorkbook(): Promise<void> {
   logSheet.views = [{ state: 'frozen', ySplit: 1 }];
 
   // ================= SHEET PROTECTION =================
-  const protectOpts: any = {
+  const protectOpts: Partial<ExcelJS.WorksheetProtection> = {
     selectLockedCells: true,
     selectUnlockedCells: true,
     formatCells: false,
@@ -476,7 +477,7 @@ async function writeInventoryWorkbook(): Promise<void> {
   await sum.protect(protectPw, protectOpts);
   await inv.protect(protectPw, protectOpts);
   await per.protect(protectPw, protectOpts);
-  if (arc) await (arc as any).protect(protectPw, protectOpts);
+  if (arc) await (arc).protect(protectPw, protectOpts);
   await logSheet.protect(protectPw, protectOpts);
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -501,9 +502,9 @@ export async function exportFullInventoryExcel(): Promise<void> {
 }
 
 export function exportInventoryCSV(): void {
-  const q = (v: any) => '"' + String(v || '').replace(/"/g, '""') + '"';
+  const q = (v: unknown) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
   const header = 'ID,Name,Qty,Min Qty,Max Qty,Category,Type,Status,Location,Holder,Issued,Return Due,Cal Due,Wear %,SN,Spec\n';
-  const body = Store.activeTools().map((t: any) => [
+  const body = Store.activeTools().map(t => [
     q(t.id), q(t.name), parseInt(String(t.qty)) || 1, t.minQty || '', t.maxQty || '',
     q(t.category), q(t.type), q(t.status), q(t.location),
     q(t.assigneeId ? Store.empName(t.assigneeId) : ''),

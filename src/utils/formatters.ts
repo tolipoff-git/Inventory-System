@@ -1,7 +1,7 @@
 import { TOOL_CLASSES, DAY_MS } from '../config/constants';
 
 /** Escapes HTML characters to prevent XSS */
-export function esc(s: any): string {
+export function esc(s: unknown): string {
   return String(s ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -11,7 +11,7 @@ export function esc(s: any): string {
 }
 
 /** Escapes strings for safe inclusion in JS double-escaped attributes */
-export function js(s: any): string {
+export function js(s: unknown): string {
   return esc(String(s ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
 }
 
@@ -23,14 +23,18 @@ export function js(s: any): string {
  * `fmtDate` rendered the previous day — a verification stamped on the 18th
  * printed as `9/17/2026`. Timestamps (with time/`Z`) keep native parsing.
  */
-export function d(v: any): Date | null {
-  if (!v) return null;
+export function d(v: unknown): Date | null {
+  if (v === null || v === undefined || v === '') return null;
   let dt: Date;
   if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.trim())) {
     const [y, m, day] = v.trim().split('-').map(Number);
     dt = new Date(y, m - 1, day);
-  } else {
+  } else if (v instanceof Date) {
+    dt = v;
+  } else if (typeof v === 'string' || typeof v === 'number') {
     dt = new Date(v);
+  } else {
+    return null; // structured input has no unambiguous date interpretation
   }
   return isNaN(dt.getTime()) ? null : dt;
 }
@@ -46,14 +50,14 @@ export function d(v: any): Date | null {
  *
  * Returns 'N/A' for missing or unparseable input.
  */
-export function fmtDate(v: any): string {
+export function fmtDate(v: unknown): string {
   const dt = d(v);
   if (!dt) return 'N/A';
   return dt.toLocaleDateString('en-US');
 }
 
 /** Canonical date+time format: US `M/D/YYYY, h:mm:ss AM/PM`. */
-export function fmtDateTime(v: any): string {
+export function fmtDateTime(v: unknown): string {
   const dt = d(v);
   if (!dt) return 'N/A';
   return dt.toLocaleString('en-US');
@@ -71,14 +75,14 @@ export function nowISO(): string {
 }
 
 /** Validate and clean safe URL */
-export function safeUrl(url: any): string {
+export function safeUrl(url: unknown): string {
   if (!url) return '';
   const clean = String(url).trim();
   return /^(https?:\/\/|\/)/i.test(clean) ? esc(clean) : '#';
 }
 
 /** Check if serial number is auto-generated */
-export function isAutoSn(sn: any): boolean {
+export function isAutoSn(sn: unknown): boolean {
   if (!sn) return false;
   const parts = String(sn).split('-');
   if (parts.length !== 2) return false;
@@ -87,13 +91,13 @@ export function isAutoSn(sn: any): boolean {
 }
 
 /** Days until target date (negative = overdue) */
-export function daysUntil(v: any): number | null {
+export function daysUntil(v: unknown): number | null {
   const dt = d(v);
   return dt ? Math.ceil((dt.getTime() - Date.now()) / DAY_MS) : null;
 }
 
 /** Format duration string: "3 days 5 hrs" */
-export function durationStr(v: any): string {
+export function durationStr(v: unknown): string {
   const dt = d(v);
   if (!dt) return 'N/A';
   const ms = Date.now() - dt.getTime();

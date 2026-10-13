@@ -145,3 +145,21 @@ describe('rollback last cascade (registry snapshot)', () => {
     expect(Store.personnel.map(p => p.id)).toEqual(['EMP-2']);
   });
 });
+
+describe('decommission metadata (v132)', () => {
+  it('persists the structured retirement fields the reports read', async () => {
+    await freshStore();
+    Store.tools = [seedTool({ id: 'TW-009' })];
+
+    await ops.decommissionTool('TW-009', 87, 'Beyond repair', 'QA', 'bearing seized');
+
+    const tool = Store.getTool('TW-009');
+    expect(tool?.status).toBe('Decommissioned');
+    expect(tool?.retireReason).toBe('Beyond repair');
+    expect(tool?.retireWear).toBe(87);
+    expect(tool?.retiredBy).toBe('QA');
+    expect(tool?.retireNotes).toBe('bearing seized');
+    // Previously these fields were never written, so the export columns stayed empty.
+    expect(tool?.retiredAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
