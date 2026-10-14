@@ -8,6 +8,8 @@ import { transferTool } from '../../../operations/toolOps';
 import { buildBinOptions, isBinOccupied } from '../binOptions';
 import { esc } from '../../../utils/formatters';
 import { toast } from '../../../utils/dom';
+import { toErrorMessage } from '../../../utils/errors';
+import { Tool } from '../../../types/inventory';
 
 export class TransferModal {
     private static modalId = 'transferModal';
@@ -110,7 +112,7 @@ export class TransferModal {
         overlay.querySelector('#transShelfSelect')?.addEventListener('change', onLocChange);
     }
 
-    private static populate(tool: any): void {
+    private static populate(tool: Tool): void {
         const titleEl = document.getElementById('transTitle');
         const infoEl = document.getElementById('transToolInfo');
         const wsSelect = document.getElementById('transWsSelect') as HTMLSelectElement;
@@ -206,8 +208,8 @@ export class TransferModal {
             );
             toast(`Tool ${this.currentToolId} transferred to ${ws}!`, 'success');
             this.close();
-        } catch (e: any) {
-            toast(`Transfer failed: ${e.message}`, 'danger');
+        } catch (e) {
+            toast(`Transfer failed: ${toErrorMessage(e)}`, 'danger');
         }
     }
 }

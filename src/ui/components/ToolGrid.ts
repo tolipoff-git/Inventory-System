@@ -9,9 +9,10 @@ import { esc, daysUntil } from '../../utils/formatters';
 import { orderStatusKey } from '../../operations/orderOps';
 import { requiresCalibration } from '../../operations/toolOps';
 import { Tool } from '../../types/inventory';
+import { PurchaseOrder } from '../../types/procurement';
 
 export interface ToolGridCallbacks {
-    onAction: (action: string, id: string, extra?: any) => void;
+    onAction: (action: string, id: string, extra?: unknown) => void;
     onSetFilter: (type: string, value: string) => void;
     onResetFilter: () => void;
     onOpenSop: (code: string) => void;
@@ -137,7 +138,7 @@ export class ToolGridComponent {
                 </div></div>
             </div>`;
 
-        const row = (left: string, right: any, rColor?: string) => `
+        const row = (left: string, right: string | number, rColor?: string) => `
             <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:5px 4px; border-bottom:1px dashed var(--border); font-size:0.88rem;">
                 <span style="color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${left}</span>
                 <span style="flex-shrink:0; color:${rColor || 'var(--text-main)'}; font-weight:bold;">${right}</span>
@@ -219,7 +220,7 @@ export class ToolGridComponent {
         const poOpen = plog.filter(l => orderStatusKey(l.status) === 'open');
         const poRecv = plog.filter(l => orderStatusKey(l.status) === 'received');
         const poCncl = plog.filter(l => orderStatusKey(l.status) === 'cancelled');
-        const poSum = (arr: any[]) => arr.reduce((s, r) => s + (+r.total || ((+r.qty || 0) * (+r.cost || 0)) || 0), 0);
+        const poSum = (arr: PurchaseOrder[]) => arr.reduce((s, r) => s + (+(r.total || 0) || ((+(r.qty || 0)) * (+(r.cost || 0))) || 0), 0);
 
         const poLatest = [...plog].reverse().slice(0, 3).map(l => {
             const key = orderStatusKey(l.status);

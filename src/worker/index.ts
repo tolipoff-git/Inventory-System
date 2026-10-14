@@ -1,3 +1,5 @@
+import { toErrorMessage } from '../utils/errors';
+
 export interface WorkerFetcher {
   fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
@@ -164,9 +166,9 @@ export default {
       let payload: { id?: string; url?: string; caption?: string; timestamp?: string } = {};
       try {
         payload = JSON.parse(rawData);
-      } catch (err: any) {
+      } catch (err) {
         return new Response(
-          JSON.stringify({ error: 'Corrupt photo data', details: err?.message }),
+          JSON.stringify({ error: 'Corrupt photo data', details: toErrorMessage(err) }),
           { status: 500, headers: { ...securityHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -368,9 +370,9 @@ export default {
               headers: { ...securityHeaders, 'Content-Type': 'application/json' },
             }
           );
-        } catch (err: any) {
+        } catch (err) {
           return new Response(
-            JSON.stringify({ success: false, error: 'Invalid JSON body', details: err?.message }),
+            JSON.stringify({ success: false, error: 'Invalid JSON body', details: toErrorMessage(err) }),
             {
               status: 400,
               headers: { ...securityHeaders, 'Content-Type': 'application/json' },

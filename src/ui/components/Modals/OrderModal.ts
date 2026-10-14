@@ -506,7 +506,7 @@ export class OrderModal {
         }
 
         container.style.display = 'block';
-        tbody.innerHTML = cart.map((item: any, idx: number) => `
+        tbody.innerHTML = cart.map((item, idx) => `
             <tr>
                 <td>${idx + 1}</td>
                 <td><strong>${esc(item.name)}</strong></td>
@@ -545,7 +545,7 @@ export class OrderModal {
         }
 
         try {
-            await exportReq003Workbook(items as any, {
+            await exportReq003Workbook(items, {
                 ws,
                 wp: '',
                 initials,
@@ -578,8 +578,8 @@ export class OrderModal {
             requester: initials,
             workstation: ws,
             workpost: wp || undefined,
-            name: cart.map((i: any) => i.name).join(', '),
-            items: cart.map((item: any, idx: number) => ({
+            name: cart.map(i => i.name).join(', '),
+            items: cart.map((item, idx) => ({
                 id: `${poNumber}-${idx + 1}`,
                 name: item.name,
                 qty: item.qty,

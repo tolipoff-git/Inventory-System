@@ -7,6 +7,8 @@ import { Store } from '../../../storage/store';
 import { checkoutTool } from '../../../operations/toolOps';
 import { esc } from '../../../utils/formatters';
 import { toast } from '../../../utils/dom';
+import { toErrorMessage } from '../../../utils/errors';
+import { Tool } from '../../../types/inventory';
 
 export class CheckoutModal {
     private static modalId = 'assignModal';
@@ -81,7 +83,7 @@ export class CheckoutModal {
         overlay.querySelector('#assignSubmitBtn')?.addEventListener('click', () => this.submit());
     }
 
-    private static populate(tool: any): void {
+    private static populate(tool: Tool): void {
         const titleEl = document.getElementById('assignTitle');
         const infoEl = document.getElementById('assignToolInfo');
         const empSelect = document.getElementById('assignEmployeeSelect') as HTMLSelectElement;
@@ -133,8 +135,8 @@ export class CheckoutModal {
             }
             toast(`Tool successfully assigned to ${Store.empName(empId)}!`, 'success');
             this.close();
-        } catch (e: any) {
-            toast(`Checkout failed: ${e.message}`, 'danger');
+        } catch (e) {
+            toast(`Checkout failed: ${toErrorMessage(e)}`, 'danger');
         }
     }
 }

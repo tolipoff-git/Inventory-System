@@ -232,7 +232,7 @@ export class ChartsViewComponent {
             const loc = workstationAndPostOf(t);
             const history = t.history || [];
             const reason = history.length ? history[history.length - 1] : T('Routine Service');
-            const progs = (t as any).program || Store.wsProgram[loc.ws] || 'N/A';
+            const progs = t.program || Store.wsProgram[loc.ws] || 'N/A';
             const emp = t.assigneeId ? Store.getEmp(t.assigneeId) : null;
             const persona = emp ? emp.name : (t.assigneeId || 'Unassigned / Team');
             const hasPost = loc.post && loc.post !== 'Unknown' && loc.post !== loc.ws;
@@ -259,7 +259,7 @@ export class ChartsViewComponent {
             const wear = Store.wearOf(t);
             const color = wear > CONFIG.WEAR_RETIRE_PCT ? 'var(--danger)' : wear > CONFIG.WEAR_WARN_PCT ? 'var(--warning)' : 'var(--success)';
             const loc = workstationAndPostOf(t);
-            const progs = (t as any).program || Store.wsProgram[loc.ws] || 'N/A';
+            const progs = t.program || Store.wsProgram[loc.ws] || 'N/A';
             const emp = t.assigneeId ? Store.getEmp(t.assigneeId) : null;
             const persona = emp ? emp.name : (t.assigneeId || 'Unassigned / Team');
             const hasPost = loc.post && loc.post !== 'Unknown' && loc.post !== loc.ws;

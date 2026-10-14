@@ -8,6 +8,8 @@ import { decommissionTool } from '../../../operations/toolOps';
 import { esc } from '../../../utils/formatters';
 import { toast } from '../../../utils/dom';
 import { windowConfirm } from '../../../utils/dialogCompat';
+import { toErrorMessage } from '../../../utils/errors';
+import { Tool } from '../../../types/inventory';
 
 export class RetireModal {
     private static modalId = 'retireModal';
@@ -77,7 +79,7 @@ export class RetireModal {
         overlay.querySelector('#retireSubmitBtn')?.addEventListener('click', () => this.submit());
     }
 
-    private static populate(tool: any): void {
+    private static populate(tool: Tool): void {
         const titleEl = document.getElementById('retireTitle');
         const infoEl = document.getElementById('retireToolInfo');
 
@@ -99,8 +101,8 @@ export class RetireModal {
                 await decommissionTool(this.currentToolId, 100, reason, 'Admin', notes || '');
                 toast(T('RETIRE_SUCCESS').replace('{id}', this.currentToolId), 'warning');
                 this.close();
-            } catch (e: any) {
-                toast(T('RETIRE_FAILED').replace('{msg}', e.message), 'danger');
+            } catch (e) {
+                toast(T('RETIRE_FAILED').replace('{msg}', toErrorMessage(e)), 'danger');
             }
         }
     }

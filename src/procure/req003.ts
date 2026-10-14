@@ -19,6 +19,8 @@ export interface ProcureCartItem {
   qty: number;
   cost: number;
   total: number;
+  /** Preferred unit price in newer cart entries; `cost` remains the legacy alias. */
+  unitCost?: number;
   reason: string;
   link?: string;
   toolId?: string | null;

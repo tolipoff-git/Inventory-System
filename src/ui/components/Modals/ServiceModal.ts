@@ -8,6 +8,8 @@ import { serviceTool, completeMaintenance } from '../../../operations/toolOps';
 import { esc, todayISO } from '../../../utils/formatters';
 import { verifierOptionsHtml, defaultVerifier } from '../../../utils/personnelPicker';
 import { toast } from '../../../utils/dom';
+import { toErrorMessage } from '../../../utils/errors';
+import { Tool } from '../../../types/inventory';
 
 export class ServiceModal {
     private static modalId = 'serviceModal';
@@ -118,7 +120,7 @@ export class ServiceModal {
         overlay.querySelector('#serviceCompleteSubmitBtn')?.addEventListener('click', () => this.submitCompleteMaint());
     }
 
-    private static populate(tool: any): void {
+    private static populate(tool: Tool): void {
         const titleEl = document.getElementById('serviceTitle');
         const infoEl = document.getElementById('serviceToolInfo');
         const completeSection = document.getElementById('serviceCompleteSection');
@@ -158,8 +160,8 @@ export class ServiceModal {
             await serviceTool(this.currentToolId, reason, type);
             toast(`Tool ${this.currentToolId} queued for ${type}!`, 'warning');
             this.close();
-        } catch (e: any) {
-            toast(`Failed: ${e.message}`, 'danger');
+        } catch (e) {
+            toast(`Failed: ${toErrorMessage(e)}`, 'danger');
         }
     }
 
@@ -183,8 +185,8 @@ export class ServiceModal {
             });
             toast(`Tool ${this.currentToolId} returned to Active service!`, 'success');
             this.close();
-        } catch (e: any) {
-            toast(`Failed: ${e.message}`, 'danger');
+        } catch (e) {
+            toast(`Failed: ${toErrorMessage(e)}`, 'danger');
         }
     }
 }

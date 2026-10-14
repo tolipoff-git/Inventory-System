@@ -31,8 +31,8 @@ interface Pbkdf2Params {
 /** Best-effort WebCrypto accessor (browser `window.crypto` or `globalThis.crypto`). */
 function webCrypto(): Crypto | null {
   if (typeof window !== 'undefined' && window.crypto) return window.crypto;
-  const g = globalThis as any;
-  if (g && typeof g.crypto === 'object' && g.crypto !== null) return g.crypto as Crypto;
+  const g = globalThis as { crypto?: Crypto };
+  if (g && typeof g.crypto === 'object' && g.crypto !== null) return g.crypto;
   return null;
 }
 

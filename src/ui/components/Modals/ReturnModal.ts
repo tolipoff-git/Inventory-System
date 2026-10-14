@@ -7,6 +7,8 @@ import { Store } from '../../../storage/store';
 import { returnTool } from '../../../operations/toolOps';
 import { esc } from '../../../utils/formatters';
 import { toast } from '../../../utils/dom';
+import { toErrorMessage } from '../../../utils/errors';
+import { Tool } from '../../../types/inventory';
 
 export class ReturnModal {
     private static modalId = 'returnModal';
@@ -82,7 +84,7 @@ export class ReturnModal {
         overlay.querySelector('#returnSubmitBtn')?.addEventListener('click', () => this.submit());
     }
 
-    private static populate(tool: any): void {
+    private static populate(tool: Tool): void {
         const titleEl = document.getElementById('returnTitle');
         const infoEl = document.getElementById('returnToolInfo');
         const locSelect = document.getElementById('returnLocationSelect') as HTMLSelectElement;
@@ -113,8 +115,8 @@ export class ReturnModal {
             await returnTool(this.currentToolId, score, notes || 'OP', loc || undefined);
             toast(`Tool ${this.currentToolId} returned to inventory!`, 'success');
             this.close();
-        } catch (e: any) {
-            toast(`Return failed: ${e.message}`, 'danger');
+        } catch (e) {
+            toast(`Return failed: ${toErrorMessage(e)}`, 'danger');
         }
     }
 }

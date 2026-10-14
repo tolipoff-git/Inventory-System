@@ -991,7 +991,7 @@ class StoreManager {
       if (!e.ws && (e.workstation || e.defaultWs)) e.ws = e.workstation || e.defaultWs;
       if (!e.post && e.defaultPost) e.post = e.defaultPost;
     });
-    // Users: any account without a real verifier must go through PIN setup
+    // Users: every account without a real verifier must go through PIN setup
     // before it can authenticate. This covers both brand-new seed accounts
     // (shipped with an empty pwHash) and stored rows that predate the flag.
     this.users.forEach(u => {

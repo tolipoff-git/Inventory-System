@@ -58,7 +58,7 @@ export function calculateKPIs(): InventoryKPIs {
     totalWear += Store.wearOf(tool);
 
     // Valuation
-    const unitPrice = tool.price || (tool as any).cost || 0;
+    const unitPrice = tool.price || tool.cost || 0;
     const qty = tool.qty || 1;
     totalValuation += unitPrice * qty;
 

@@ -61,7 +61,7 @@ export const Photos = {
       ts,
       url: dataUrl,
       caption: caption || ''
-    } as any);
+    });
 
     // Save tool
     await Store.saveTool(tool);

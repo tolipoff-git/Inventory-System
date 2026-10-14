@@ -8,6 +8,7 @@ import { Auth } from '../auth/authManager';
 import { sha256Hex } from '../utils/crypto';
 import { careOf } from '../operations/toolOps';
 import { T } from '../i18n';
+import { toErrorMessage } from '../utils/errors';
 
 async function writeInventoryWorkbook(): Promise<void> {
   const workbook = new ExcelJS.Workbook();
@@ -495,7 +496,7 @@ export async function exportFullInventoryExcel(): Promise<void> {
     await writeInventoryWorkbook();
   } catch (err) {
     console.error('[reportExports:exportFullInventoryExcel] XLSX export failed, falling back to CSV:', err);
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = toErrorMessage(err);
     toast(T('XLSX_FAILED_CSV').replace('{msg}', msg), 'warning');
     exportInventoryCSV();
   }

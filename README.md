@@ -1,9 +1,21 @@
-# 5S Tool Command Center — v3 (v132)
+# 5S Tool Command Center — v3 (v133)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
 Worker sync, built as a **modular TypeScript/Vite project** (migrated away from
 the original single-file monolith).
+
+---
+
+## v133 — Type-safety finish: zero explicit `any` in `src` (inherited-audit P3.2)
+
+- Long tail completed: every catch binding now uses `unknown` with the shared
+  `toErrorMessage()` helper (`src/utils/errors.ts`), modal `populate(tool)` parameters use `Tool`,
+  timers use `ReturnType<typeof setTimeout>`, camera torch / `webkitAudioContext` are typed
+  extensions, and payload validation narrows `unknown`.
+- Result: **0** occurrences of `: any` / `as any` / `any[]` in `src` (from ~136 at audit time).
+- Verified: `tsc --noEmit` clean, ESLint clean, Vitest **168/168**, production build, and the
+  PWA first-install offline bootstrap at runtime — the service worker path is untouched.
 
 ---
 

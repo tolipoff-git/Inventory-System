@@ -30,6 +30,8 @@ Do not re-audit or re-document what is already recorded there; append to it inst
   substitution into the built bundle (`CONFIG.APP_VERSION` in src/config).
   Every release: bump version, update `project_handoff.md`, run `bash build.sh`,
   commit (sw.js cache version refreshes via build.sh — do not hand-edit).
+- **Typing:** no explicit `any` in `src` — use real domain types, `unknown` + narrowing, or a typed
+  helper (`src/utils/errors.ts`); a repo scan must return zero. Catch bindings stay unannotated.
 - **Commit style:** conventional commits — `feat(scope): ... vNN release`,
   `fix(scope): ...`, followed by `chore(pwa): refresh sw.js cache version for vNN`.
 - **i18n:** every user-facing string must exist in BOTH `translations.ENG` and

@@ -74,9 +74,9 @@ export class FilterBarComponent {
     private bindEvents(): void {
         const searchInput = this.container.querySelector<HTMLInputElement>('#globalSearch');
         if (searchInput) {
-            let searchTimeout: any = null;
+            let searchTimeout: ReturnType<typeof setTimeout> | undefined;
             searchInput.addEventListener('input', () => {
-                clearTimeout(searchTimeout);
+                if (searchTimeout !== undefined) clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(() => {
                     this.callbacks.onSearch(searchInput.value.trim().toLowerCase());
                 }, 150);

@@ -210,7 +210,7 @@ export class EmployeeProfileModal {
         // History
         const historyList = document.getElementById('empHistoryList');
         if (historyList) {
-            const hist = (emp as any).history || [];
+            const hist = emp.history || [];
             if (!hist.length) {
                 historyList.innerHTML = `<li class="history-item"><span style="color:var(--text-muted)">No transaction records.</span></li>`;
             } else {

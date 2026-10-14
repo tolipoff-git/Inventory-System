@@ -2,7 +2,7 @@ import { esc } from './formatters';
 import { T, getLanguage } from '../i18n';
 import { windowPrompt } from './dialogCompat';
 
-let toastTimer: any = null;
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
 export function isMobile(): boolean {
   if (typeof window === 'undefined') return false;
@@ -32,7 +32,7 @@ export function toast(msgHtml: string, typeOrMs: string | number = 4000): void {
   el.className = 'show' + (type ? ` ${type}` : '');
   el.innerHTML = msgHtml;
 
-  clearTimeout(toastTimer);
+  if (toastTimer !== undefined) clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
     if (el) el.className = '';
   }, ms);
@@ -58,7 +58,8 @@ export function downloadText(filename: string, text: string, mime: string = 'tex
 
 export function downloadBuffer(filename: string, buffer: ArrayBuffer | Uint8Array, mime: string): void {
   if (typeof document === 'undefined') return;
-  const blob = new Blob([buffer as any], { type: mime });
+  const part: BlobPart = buffer instanceof Uint8Array ? buffer.slice() : buffer;
+  const blob = new Blob([part], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = Object.assign(document.createElement('a'), { href: url, download: filename });
   document.body.appendChild(a);

@@ -174,8 +174,8 @@ export async function rejectOrderItem(
   if (!item) return false;
 
   item.status = 'Cancelled';
-  (item as any).rejectReason = reason;
-  (item as any).cancelledAt = nowISO();
+  item.rejectReason = reason;
+  item.cancelledAt = nowISO();
 
   Store.log('ORDER_ITEM_REJECT', `${orderId} -> ${itemId} reason: ${reason}`);
   recalcOrderStatus(orderId);

@@ -6,6 +6,17 @@ import jsQR from 'jsqr';
 import { T } from '../../../i18n';
 import { toast } from '../../../utils/dom';
 
+/** Non-standard camera extensions used below; typed once instead of casting. */
+type TorchCapabilities = MediaTrackCapabilities & { torch?: boolean };
+type TorchConstraintSet = MediaTrackConstraintSet & { torch?: boolean };
+
+declare global {
+  interface Window {
+    /** Safari/older WebKit spelling of `AudioContext`. */
+    webkitAudioContext?: typeof AudioContext;
+  }
+}
+
 export type ScanCallback = (decoded: string) => void;
 
 export class ScannerModal {
@@ -122,7 +133,7 @@ export class ScannerModal {
             video.srcObject = this.stream;
             await video.play();
             this.scanFrame();
-        } catch (err: any) {
+        } catch (err) {
             console.error('Camera access denied or unavailable:', err);
             toast('Camera unavailable. Use manual entry or barcode wedge.', 'warning');
         }
@@ -146,12 +157,13 @@ export class ScannerModal {
         const track = this.stream.getVideoTracks()[0];
         if (!track) return;
 
-        const capabilities = (track.getCapabilities && track.getCapabilities()) as any;
-        if (capabilities && capabilities.torch) {
+        const capabilities: TorchCapabilities | undefined = track.getCapabilities
+            ? (track.getCapabilities() as TorchCapabilities)
+            : undefined;
+        if (capabilities?.torch) {
             this.isTorchOn = !this.isTorchOn;
-            await (track as any).applyConstraints({
-                advanced: [{ torch: this.isTorchOn }]
-            });
+            const torchConstraint: TorchConstraintSet = { torch: this.isTorchOn };
+            await track.applyConstraints({ advanced: [torchConstraint] });
             toast(this.isTorchOn ? '🔦 Torch ON' : '🔦 Torch OFF');
         } else {
             toast('Torch not supported on this device camera.', 'warning');
@@ -188,7 +200,7 @@ export class ScannerModal {
 
     private static playBeep(): void {
         try {
-            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
             if (!AudioContextClass) return;
             const ctx = new AudioContextClass();
             const osc = ctx.createOscillator();
@@ -221,7 +233,7 @@ export class ScannerModal {
         }
         // No caller-supplied callback (e.g. the Ops menu quick scan): route through
         // the app's shared handler so a label URL resolves to the tool card.
-        const shared = (window as any).handleScanResult;
+        const shared = window.handleScanResult;
         if (typeof shared === 'function') {
             shared(code);
             return;
