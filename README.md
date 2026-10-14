@@ -61,7 +61,7 @@ the original single-file monolith).
   annotated as superseded.
 - Verified: `tsc`, ESLint, Vitest **159/159**, production build, and a local `wrangler dev`
   runtime probe showing the headers on `/` and on built assets with `/api/health` answering.
-  Full findings: [`AUDIT_INHERITED_V129.md`](AUDIT_INHERITED_V129.md).
+  Full findings: [`docs/audits/AUDIT_INHERITED_V129.md`](docs/audits/AUDIT_INHERITED_V129.md).
 
 ---
 
@@ -104,7 +104,7 @@ fix printer scaling/paper size first. Physical feed alignment still needs a test
 **Validation:** `npm run typecheck`, `npm run lint`, `npm test`, `npm run check:i18n`, `bash build.sh`, `npm audit`.
 Browser checks: `npx playwright install chromium`, then `npm run test:labels-browser` and
 `npm run test:pwa-browser` (build first). `LABEL_CHROMIUM_PATH` can select an existing Chromium.
-See the appended v128 findings in [AUDIT_LABEL_PRINT_REPORT.md](AUDIT_LABEL_PRINT_REPORT.md).
+See the appended v128 findings in [docs/audits/AUDIT_LABEL_PRINT_REPORT.md](docs/audits/AUDIT_LABEL_PRINT_REPORT.md).
 
 ## Stack & Architecture
 

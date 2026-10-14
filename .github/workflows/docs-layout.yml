@@ -1,0 +1,28 @@
+name: Documentation layout
+on:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'project_handoff.md'
+      - 'docs/**'
+      - 'scripts/check-doc-layout.mjs'
+      - '.github/workflows/docs-layout.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'README.md'
+      - 'project_handoff.md'
+      - 'docs/**'
+      - 'scripts/check-doc-layout.mjs'
+      - '.github/workflows/docs-layout.yml'
+permissions:
+  contents: read
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/check-doc-layout.mjs
