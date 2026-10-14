@@ -1,6 +1,7 @@
 import { SyncPayload, SyncPing, SyncPhoto } from '../types/sync';
 import { AbortController } from './abortController';
 import { DEFAULT_SYNC_ROOM, DEFAULT_SYNC_SECRET } from '../config/constants';
+import { toErrorMessage } from '../utils/errors';
 
 export function getSyncToken(): string {
   if (typeof window === 'undefined') return DEFAULT_SYNC_SECRET;
@@ -68,14 +69,10 @@ export function getWorkerSyncUrl(room: string): string {
   return `/api/sync/inv_room_${encodeURIComponent(clean)}`;
 }
 
-export function isValidPayload(payload: any): payload is SyncPayload {
-  return Boolean(
-    payload &&
-    typeof payload === 'object' &&
-    Array.isArray(payload.tools) &&
-    payload.deviceId &&
-    payload.updatedAt
-  );
+export function isValidPayload(payload: unknown): payload is SyncPayload {
+  if (!payload || typeof payload !== 'object') return false;
+  const candidate = payload as Record<string, unknown>;
+  return Boolean(Array.isArray(candidate.tools) && candidate.deviceId && candidate.updatedAt);
 }
 
 /**
@@ -202,9 +199,9 @@ export async function pullSyncPayload(room: string): Promise<PullOutcome> {
     const data = await response.json();
     if (!isValidPayload(data)) return { kind: 'error', message: 'invalid payload' };
     return { kind: 'ok', payload: data };
-  } catch (e: any) {
+  } catch (e) {
     console.error(`[syncApi:pullSyncPayload] Pull failed for room ${cleanRoom}:`, e);
-    return { kind: 'error', message: e?.message || 'network error' };
+    return { kind: 'error', message: toErrorMessage(e) || 'network error' };
   } finally {
     if (timeoutId !== undefined) clearTimeout(timeoutId);
   }

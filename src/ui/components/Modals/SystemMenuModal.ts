@@ -14,6 +14,7 @@ import { hardReloadPwa } from '../../../utils/pwa';
 import { fmtDate } from '../../../utils/formatters';
 import { windowConfirm } from '../../../utils/dialogCompat';
 import { Auth } from '../../../auth/authManager';
+import { toErrorMessage } from '../../../utils/errors';
 
 export class SystemMenuModal {
     private static modalId = 'systemMenuModal';
@@ -111,8 +112,8 @@ export class SystemMenuModal {
                             Store.applyLoadedData(parsed);
                             await Store.save();
                             toast('Backup successfully restored!', 'success');
-                        } catch (e: any) {
-                            toast(`Failed to restore backup: ${e.message}`, 'danger');
+                        } catch (e) {
+                            toast(`Failed to restore backup: ${toErrorMessage(e)}`, 'danger');
                         }
                     }
                 });

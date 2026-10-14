@@ -10,6 +10,7 @@ import { printLabelsHtml, printQueueLabels, buildLabelSheetHtml, drawAllQrsInCon
 import { toast } from '../../../utils/dom';
 
 import { labelLayoutControlsHtml, bindLabelLayoutControls, readLabelLayoutControls } from '../labelLayoutControls';
+import { Tool } from '../../../types/inventory';
 
 export class LabelModal {
     private static printModalId = 'printLabelModal';
@@ -286,7 +287,7 @@ export class LabelModal {
      * rendered the real sheet here, so the operator sees the correct Avery cell
      * (and not a lone centred label) before pressing Print.
      */
-    private static async updatePreview(tool: any): Promise<void> {
+    private static async updatePreview(tool: Tool): Promise<void> {
         const container = document.getElementById('labelPreviewContainer');
         if (!container) return;
 

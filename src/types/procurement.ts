@@ -35,6 +35,9 @@ export interface OrderItem {
   reason?: string;
   link?: string;
   status?: OrderItemStatus;
+  /** Set by `rejectOrderItem()` — why the line was refused. */
+  rejectReason?: string;
+  cancelledAt?: string;
 }
 
 export interface OrderComment {

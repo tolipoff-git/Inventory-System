@@ -21,8 +21,8 @@ class SyncManager {
 
   private _statusListeners: Set<SyncStatusListener> = new Set();
   private _sseUnsubscribe: (() => void) | null = null;
-  private _pushDebounceTimer: any = null;
-  private _pollIntervalTimer: any = null;
+  private _pushDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+  private _pollIntervalTimer: ReturnType<typeof setInterval> | undefined;
   private _isSyncing: boolean = false;
   /**
    * True while a remote payload is being written into the Store. Suppresses the
@@ -172,7 +172,7 @@ class SyncManager {
     }
 
     this.setStatus('pending');
-    clearTimeout(this._pushDebounceTimer);
+    if (this._pushDebounceTimer !== undefined) clearTimeout(this._pushDebounceTimer);
     this._pushDebounceTimer = setTimeout(() => {
       this.triggerPush().catch(e => console.error('Debounced push failed:', e));
     }, 1200);

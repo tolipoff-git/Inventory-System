@@ -10,6 +10,7 @@ import { esc, fmtDate } from '../../../utils/formatters';
 import { toast, printHtml } from '../../../utils/dom';
 import { exportCertificatePdf, CertificatePdfRow } from '../../../reports/certPdf';
 import { buildS5Report, renderS5ReportScreen, renderS5ReportPrint } from '../../../reports/s5Report';
+import { toErrorMessage } from '../../../utils/errors';
 
 export class AuditModal {
     private static postAuditModalId = 'postAuditModal';
@@ -196,7 +197,7 @@ export class AuditModal {
             return;
         }
 
-        const scores: any = {
+        const scores: Record<string, number> = {
             sort: +((document.getElementById('auditSlider_sort') as HTMLInputElement).value || 4),
             setOrder: +((document.getElementById('auditSlider_setOrder') as HTMLInputElement).value || 4),
             shine: +((document.getElementById('auditSlider_shine') as HTMLInputElement).value || 4),
@@ -208,8 +209,8 @@ export class AuditModal {
             await submit5SAudit(ws, post, auditor, scores, kaizen);
             toast('5S Audit successfully logged!', 'success');
             this.closePostAudit();
-        } catch (e: any) {
-            toast(`Failed to save audit: ${e.message}`, 'danger');
+        } catch (e) {
+            toast(`Failed to save audit: ${toErrorMessage(e)}`, 'danger');
         }
     }
 

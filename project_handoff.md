@@ -7,17 +7,18 @@
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** A single Cloudflare Worker (`wrangler.jsonc`: static assets from `./dist`, sync API, KV bindings), deployed by the Workers Git integration on push to `main`. There is no separate Pages project.
 
-## Session Continuity — Resume Point (2026-10-13, v132)
+## Session Continuity — Resume Point (2026-10-14, v133)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v132` (`package.json` = 132.0.0). `sw.js` `CACHE_VERSION` = `v132-<hash>`.
+- **Version:** `v133` (`package.json` = 133.0.0). `sw.js` `CACHE_VERSION` = `v133-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
+- **Gates (v133):** `npm run typecheck` · `npm run lint` · `npm test` (168/168) · `bash build.sh` ·
+  `npm run test:pwa-browser`. Audits: [`AUDIT_INHERITED_V129.md`](AUDIT_INHERITED_V129.md) —
+  P1 v130, P2 v131, P3 done (v132 hot paths, v133 tail; explicit `any` in `src` = 0).
 - **Gates (v132):** `npm run typecheck` · `npm run lint` · `npm test` (165/165) · `bash build.sh`.
-  Audits: [`AUDIT_INHERITED_V129.md`](AUDIT_INHERITED_V129.md) — P1 v130, P2 v131, P3 phase 1 here
-  (`any` 136 → 53); long-tail typing remains (S–M).
 - **Gates (v131):** `npm run typecheck` · `npm run lint` · `npm test` (163/163) · `bash build.sh`.
   Audits: [`AUDIT_INHERITED_V129.md`](AUDIT_INHERITED_V129.md) — P1 done in v130, P2 done there.
 - **Gates (v130):** `npm run typecheck` · `npm run lint` · `npm test` (159/159) · `bash build.sh` ·
@@ -163,7 +164,16 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
   with the centred **FSE** ownership plate (`drawOwnershipMark`). Keep both together: dropping
   back to level `M` would make the mark unsafe to scan.
 
-## Recent Accomplishments (v49 – v132)
+## Recent Accomplishments (v49 – v133)
+
+### 0. Inherited-Audit P3.2 — Explicit `any` Eliminated From `src` (v133 Release)
+- `src/utils/errors.ts` → `toErrorMessage(unknown)`; ~12 catch sites converted to bare `catch (e)`
+  with the helper, removing the widespread silent `e.message` assumption.
+- Typed modal parameters (`populate(tool: Tool)` across six modals), `ReturnType<typeof setTimeout>`
+  timers, typed camera torch / `webkitAudioContext` extensions, `unknown` payload validation,
+  legacy cost fields (`Tool.cost`, `OrderItem.rejectReason/cancelledAt`, `ProcureCartItem.unitCost`).
+- Household rule going forward: **no explicit `any` in `src`** — a scan must return zero.
+- Verified with `tsc`, ESLint, 168 unit tests, and the PWA offline bootstrap (SW untouched).
 
 ### 0. Inherited-Audit P3.1 — Type Contracts on Hot Paths & Retirement Metadata Fix (v132 Release)
 - Explicit `any`: ~136 → **53** sites (−61%). Hotspot files now typed end to end:

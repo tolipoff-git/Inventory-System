@@ -290,7 +290,7 @@ export const AppDB = {
           tools: reqTools.result || [],
           personnel: reqPersonnel.result || [],
           users: reqUsers.result || [],
-          auditLog: (reqAudit.result || []).sort((a: any, b: any) => (b.ts || '').localeCompare(a.ts || '')),
+          auditLog: (reqAudit.result || []).sort((a, b) => (b.ts || '').localeCompare(a.ts || '')),
           procurementLog: reqProcure.result || [],
           workstations: settingsMap.workstations || [],
           workposts: settingsMap.workposts || [],

@@ -83,6 +83,8 @@ export interface Tool {
   audit_history?: ToolAuditRecord[];
   photoId?: string | null;
   price?: number;
+  /** Legacy cost field kept for imported records; reports fall back to it. */
+  cost?: number;
   qty?: number;
   minQty?: number;
   maxQty?: number;

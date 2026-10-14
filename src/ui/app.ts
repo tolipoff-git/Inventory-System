@@ -391,7 +391,7 @@ export class AppUI {
         }
     }
 
-    public handleAction(action: string, id: string, extra?: HTMLElement): void {
+    public handleAction(action: string, id: string, extra?: unknown): void {
         switch (action) {
             case 'tool-detail':
                 DetailModal.open(id);
@@ -435,7 +435,8 @@ export class AppUI {
                 break;
             case 'audit-post':
                 Auth.doAction('Tool Crib Manager', () => {
-                    const ws = extra?.dataset.ws;
+                    // Grid callbacks pass the clicked element as opaque `unknown`.
+                    const ws = extra instanceof HTMLElement ? extra.dataset.ws : undefined;
                     AuditModal.openPostAudit(ws, id);
                 });
                 break;

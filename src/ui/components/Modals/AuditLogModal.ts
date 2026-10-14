@@ -162,7 +162,7 @@ export class AuditLogModal {
             const row = worksheet.addRow({
                 timestamp: l.ts || '',
                 user: l.user || '',
-                role: (l as any).role || '',
+                role: l.role || '',
                 action: l.action || '',
                 details: l.details || '',
             });

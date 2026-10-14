@@ -111,8 +111,9 @@ Legend: **[BUG]** real defect · **[DOC]** documentation contradicts reality ·
 - **Latent defect surfaced by the type work and fixed here:** retirement reason/wear/notes were only
   ever written into free-text history, so the export columns reading them were permanently empty;
   `decommissionTool()` now persists structured fields (`retiredAt/Reason/Wear/By/Notes`).
-- Remaining tail (~53 sites, ~half of them `catch (e: any)` message extraction): mechanical,
-  low-risk but wide; estimated **S–M (1–4 h +25%)**, deliberately not swept blindly in this pass.
+- Tail finished in v133 via `src/utils/errors.ts` (`toErrorMessage`), typed modal parameters,
+  `ReturnType<typeof setTimeout>` timers, a typed torch/AudioContext extension surface, and
+  `unknown` payload validation. Final count in `src`: **0**.
 
 ### 4.2 Version strings are now single-sourced — keep it that way
 - Good news worth recording: version flows from one place into both bundle and SW stamp.
@@ -144,5 +145,6 @@ Items §2.3–§2.4 need a product decision, not code.
   docs/deploy aligned with the real single-Worker deployment (§1.1–§1.3).
 - **P2 — done (v131):** §3.1 monolith → tag `monolith-v97-final`, §3.2 duplicate manifests deleted,
   §3.3 template zip retained with reason on record, §2.2 global error capture shipped.
-- **P3 — phase 1 done (v132):** hotspot files (§4.1) clean, a real export defect fixed along the way;
-  long-tail typing (§4.1) remains and is sized S–M.
+- **P3 — done (v133):** hotspot files cleaned in v132 (a real export defect fixed along the way);
+  the long tail — catch bindings, modal `tool: any` parameters, timers, non-standard camera/browser
+  APIs, storage generics — finished in v133. Explicit `any` in `src`: **0**.

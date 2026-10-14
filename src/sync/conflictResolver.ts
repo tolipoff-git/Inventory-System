@@ -164,7 +164,7 @@ export function mergeSettings(localSettings: Record<string, any>, remoteSettings
   };
 
   const workpostSet = new Set<string>();
-  const workposts: any[] = [];
+  const workposts: (string | { name: string; ws: string | null })[] = [];
   [...(localSettings.workposts || []), ...(remoteSettings.workposts || [])].forEach(p => {
     const name = typeof p === 'string' ? p : p.name;
     const ws = typeof p === 'string' ? null : p.ws;
