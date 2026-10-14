@@ -210,7 +210,7 @@ Keep correction zero initially; use negative Y for a uniform downward offset. In
 requires checking Letter/portrait/100% scaling, rather than changing the pitch or applying a fixed offset.
 
 Deliberately unchanged: the previously documented open room-key sync model and deferred architecture
-work in `project_handoff.md`. This release does not alter the ownership mark or QR H correction level.
+work in `../../project_handoff.md`. This release does not alter the ownership mark or QR H correction level.
 
 Final gates: 157/157 tests, typecheck/lint/build green, EN/RU 712/712, npm audit 0 vulnerabilities.
 Browser/PDF and first-install offline checks passed in Chromium 153.

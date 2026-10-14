@@ -16,14 +16,14 @@ working session; the per-release history below is the long-term record.
 - **Version:** `v133` (`package.json` = 133.0.0). `sw.js` `CACHE_VERSION` = `v133-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
 - **Gates (v133):** `npm run typecheck` · `npm run lint` · `npm test` (168/168) · `bash build.sh` ·
-  `npm run test:pwa-browser`. Audits: [`AUDIT_INHERITED_V129.md`](AUDIT_INHERITED_V129.md) —
+  `npm run test:pwa-browser`. Audits: [`docs/audits/AUDIT_INHERITED_V129.md`](docs/audits/AUDIT_INHERITED_V129.md) —
   P1 v130, P2 v131, P3 done (v132 hot paths, v133 tail; explicit `any` in `src` = 0).
 - **Gates (v132):** `npm run typecheck` · `npm run lint` · `npm test` (165/165) · `bash build.sh`.
 - **Gates (v131):** `npm run typecheck` · `npm run lint` · `npm test` (163/163) · `bash build.sh`.
-  Audits: [`AUDIT_INHERITED_V129.md`](AUDIT_INHERITED_V129.md) — P1 done in v130, P2 done there.
+  Audits: [`docs/audits/AUDIT_INHERITED_V129.md`](docs/audits/AUDIT_INHERITED_V129.md) — P1 done in v130, P2 done there.
 - **Gates (v130):** `npm run typecheck` · `npm run lint` · `npm test` (159/159) · `bash build.sh` ·
   local `wrangler dev`: security headers present on `/` and on built assets, `/api/health` 200.
-  Inherited-code findings live in [`AUDIT_INHERITED_V129.md`](AUDIT_INHERITED_V129.md) — P1 done, P2/P3 pending.
+  Inherited-code findings live in [`docs/audits/AUDIT_INHERITED_V129.md`](docs/audits/AUDIT_INHERITED_V129.md) — P1 done, P2/P3 pending.
 - **Gates (v129):** `npm run typecheck` · `npm run lint` · `npm test` (157/157) ·
   `bash build.sh` · `npm run test:pwa-browser`. The installed-PWA launch bug was reproduced
   and re-verified in headless Chromium (`page.goto('/index.html')` with a 307: before = ERR_FAILED,
@@ -198,7 +198,7 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
   regenerated from it after corrupt XML parts were found.
 - Revised an audit finding in review: the zip is provenance, not dead weight (§3.3).
 
-- Audit (`AUDIT_INHERITED_V129.md`) found the advertised anti-indexing/isolation headers never reached
+- Audit (`docs/audits/AUDIT_INHERITED_V129.md`) found the advertised anti-indexing/isolation headers never reached
   the HTML shell: Workers assets answered directly because `run_worker_first` was unset.
 - Fix: `assets.run_worker_first: true`, one module-level `BASELINE_SECURITY_HEADERS`, CORS gate
   narrowed to the API/photo surface, and two regression tests (`tests/worker.test.ts`, now 16 cases).
@@ -502,7 +502,7 @@ The application has undergone massive functional and architectural expansion. Th
 - **Tests:** `tests/sop.test.ts` (12 cases) — seeding, bilingual/control-metadata invariants, seed-not-overwriting-an-edit, upsert + `updatedAt`, revision bump, obsolete lifecycle, audit logging, merge rules (union, newest wins, ties → remote, stale peer cannot roll a revision back) and applicability labels. Suite: 61 → 73.
 
 ### 0. Tombstoned Deletes & Guaranteed `updatedAt` (v112 Release)
-- **Symptom:** a record deleted on one device came back after the next sync — the merge expressed removal as *absence*, so any peer still holding the old copy re-introduced it. This was the one genuine architectural gap named in `ENTERPRISE_ARCHITECTURE_PLAN.md` §0.
+- **Symptom:** a record deleted on one device came back after the next sync — the merge expressed removal as *absence*, so any peer still holding the old copy re-introduced it. This was the one genuine architectural gap named in `docs/architecture/ENTERPRISE_ARCHITECTURE_PLAN.md` §0.
 - **Personnel — `deletedAt` soft delete:** `Employee.deletedAt` + `Store.removePersonnel(id)` (tombstone + `EMP_REMOVE` audit entry). The record stays in `personnel` so tool assignments and history keep resolving real names, but `Store.activePersonnel()` is now used by every list, picker and counter (registry table, checkout assignee select, staff hub, personnel XLSX sheet, Kaizen care advice, REQ003 requestor lookup, `zoneUsage`). `mergePersonnel()` compares `max(updatedAt, deletedAt)`, so a tombstone counts as an edit and a peer's stale live copy cannot undo it.
 - **Registries — `settings.registryEvents`:** programs, stations, posts and station→program links are plain string arrays merged by *union*, so a deletion could never propagate. Each structural change now records `{ t, del }` under a stable key (`src/types/registry.ts` → `REGISTRY_KEYS`); `mergeRegistryEvents()` keeps the newest event per key (ties → remote) and `Store.applyRegistryTombstones()` filters dead entries out. `Store.applyLoadedData()` is the single funnel that applies them after **both** the IndexedDB load and the sync merge, so a peer's stale array cannot resurrect anything. Renames retire the old keys (a station rename also retires its posts' keys, which embed the station name); a re-add is a newer `del: false` event and correctly wins.
 - **`updatedAt` coverage by construction:** instead of auditing call sites by hand, `Store.save()` calls `stampDirtyRecords()`, which re-stamps any tool/employee whose JSON changed since the last write. A mutation path that forgot `touch()` can no longer silently lose the edit on merge. `refreshPersistedFingerprints()` re-baselines after every load/merge/save, so normalization (`migrate()`, `recomputeStatuses()`) and applied remote data never make this device look newer than its peers.
@@ -955,7 +955,7 @@ The archive modal lost its stats counters and retire-detail columns.
 - **Local Testing:** Run `./build.sh` locally to verify `sw.js` updates with current commit short hash.
 
 ## Enterprise Architecture Plan — Audited & Corrected (2026-09-17, non-release docs change)
-`ENTERPRISE_ARCHITECTURE_PLAN.md` was rewritten into a **decision record**. Its previous "current state" section was factually stale (claimed localStorage-only storage, no cloud sync, hardcoded PIN), which made the whole gap analysis misleading. Now:
+`docs/architecture/ENTERPRISE_ARCHITECTURE_PLAN.md` was rewritten into a **decision record**. Its previous "current state" section was factually stale (claimed localStorage-only storage, no cloud sync, hardcoded PIN), which made the whole gap analysis misleading. Now:
 - **§0 Reality Check** audits each stale claim against the as-built system (IndexedDB 7 stores + blobs, Worker+KV sync with room tokens, ntfy SSE live relay, PBKDF2+RBAC, SHA-256 export stamp + sheet lock).
 - **§4 Deliberately NOT Doing** — WASM SQLite/OPFS, Postgres/Aurora+Hyperdrive, Durable Objects/bin locks, CRDT/vector clocks, SAML/OIDC SSO, double-entry ledger, ERP connectors (SAP/NetSuite/Coupa), Logpush→SIEM, microservice split — each with a reason. These are **conscious rejections, not missing features**.
 - **§5 Roadmap** — Phase A is the one genuine architectural gap: **deletes are not tombstoned**, so a peer holding an older copy can resurrect a removed record on merge. Also: audit `updatedAt` coverage on every mutation path, and add `/api/health`.
@@ -965,7 +965,7 @@ Do not re-open a rejected item on "best practice" grounds unless its trigger has
 
 > **Inherited-state audit (2026-10-13, v129):** an evidence-based audit of the code and docs
 > left by the previous agent(s) — deploy-path contradictions, ineffective security headers,
-> dead artifacts, stale anchors — is recorded in [`AUDIT_INHERITED_V129.md`](AUDIT_INHERITED_V129.md)
+> dead artifacts, stale anchors — is recorded in [`docs/audits/AUDIT_INHERITED_V129.md`](docs/audits/AUDIT_INHERITED_V129.md)
 > with priorities and estimates. Consult it before re-litigating any of the items below.
 
 ## Deferred Audit Items (post-MVP, consciously postponed)
@@ -1025,7 +1025,7 @@ An external "improvement patches" document (XSS / quota / salting / partial rend
     - *(corrected 2026-10-13)* Photo uploads do **not** use a `/api/photo` POST route: the client
       stores them through the generic sync endpoint as keys `photo_<ROOM>_<id>`
       (`src/sync/syncApi.ts:223`), and the Worker exposes only the GET viewer at
-      `/photo/:room/:id` (+ `/api/photo/...` alias). See `AUDIT_INHERITED_V129.md` §1.3.
+      `/photo/:room/:id` (+ `/api/photo/...` alias). See `docs/audits/AUDIT_INHERITED_V129.md` §1.3.
 - **Zero-Data Public Relay Signaling:** Real-time push/pull coordination via `ntfy.sh` SSE relay (`https://ntfy.sh/inv-room-{ROOM}/sse`). Only lightweight, data-free pings are transmitted; all sensitive data travels strictly through the Cloudflare Worker API.
 - **Client Synchronization Engine (`src/sync/`):** Persistent `deviceId`, room switching, debounced push (1200ms), automatic periodic poll fallback (15s), and Last-Write-Wins (LWW) entity reconciliation.
 - **Sync UI (`SyncModal.ts`):** Real-time status badge in header (🟢 Synced / 🟡 Syncing / 🔵 Pending Push / 🔴 Offline), pairing QR code, shareable room links, and manual push/pull controls.

@@ -7,7 +7,7 @@
 > app that no longer exists. See **§0** for the audit and **§4** for what we have
 > deliberately decided *not* to build, with reasons.
 >
-> Live status of the app itself lives in `project_handoff.md`. This file is the
+> Live status of the app itself lives in `../../project_handoff.md`. This file is the
 > architecture **decision record**; update it when a decision changes, not on
 > every release.
 

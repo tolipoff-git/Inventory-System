@@ -3,7 +3,7 @@
 Scope: everything left behind by the previous agent(s) in this repository, audited
 against the as-built system. Method: cheap measurement first (`tokei`, `git ls-files`,
 `rg`), then targeted reads; every finding cites `file:line` or a live probe.
-Nothing here is a re-audit of items already recorded in `project_handoff.md`.
+Nothing here is a re-audit of items already recorded in `../../project_handoff.md`.
 
 Legend: **[BUG]** real defect · **[DOC]** documentation contradicts reality ·
 **[DEAD]** unused artifact · **[RISK]** conscious trade-off worth knowing.
@@ -13,7 +13,7 @@ Legend: **[BUG]** real defect · **[DOC]** documentation contradicts reality ·
 ## 1. Documentation vs reality
 
 ### 1.1 [DOC] Deploy target is described as Cloudflare Pages; the app runs on Workers
-- `AGENTS.md:21,29,42`, `README.md:57`, `project_handoff.md:8,28` all say
+- `AGENTS.md:21,29,42`, `README.md:57`, `../../project_handoff.md:8,28` all say
   "push to `main` → Cloudflare Pages auto-deploys".
 - Reality: `wrangler.jsonc` declares a Worker (`name`, `main`, `assets.directory`,
   `kv_namespaces`) and the live origin is `https://inventory-system.tolipoff.workers.dev`
@@ -29,7 +29,7 @@ Legend: **[BUG]** real defect · **[DOC]** documentation contradicts reality ·
 - Impact: dead script that fails loudly if anyone trusts it; superseded by `npm run deploy`.
 
 ### 1.3 [DOC] Handoff claims a photo upload endpoint that does not exist
-- `project_handoff.md:963`: "`POST /api/photo/:room/:photoId`: Uploads photo binary directly into KV."
+- `../../project_handoff.md:963`: "`POST /api/photo/:room/:photoId`: Uploads photo binary directly into KV."
 - Reality: `src/worker/index.ts` handles only GET for `/photo/...` and `/api/photo/...`
   (route regex at line 73; no POST branch). The client uploads through
   `/api/sync/photo_<ROOM>_<id>` instead (`src/sync/syncApi.ts:223`).
@@ -95,7 +95,7 @@ Legend: **[BUG]** real defect · **[DOC]** documentation contradicts reality ·
 ### 3.3 [DEAD-ish] Template archive — RETAINED deliberately
 - Revised finding: the root-level REQ-003 zip (~36 KB) **is** a source artifact — the embedded base64
   template was regenerated from it after three XML parts were found corrupt
-  (`project_handoff.md`, "Template validity fix"). Keeping it is intentional provenance, not dead weight.
+  (`../../project_handoff.md`, "Template validity fix"). Keeping it is intentional provenance, not dead weight.
 
 ---
 
