@@ -1,9 +1,29 @@
-# 5S Tool Command Center — v3 (v133)
+# 5S Tool Command Center — v3 (v134)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
 Worker sync, built as a **modular TypeScript/Vite project** (migrated away from
 the original single-file monolith).
+
+---
+
+## v134 — Procurement workspace, return navigation and selected exports
+
+- Registry, order details and new-request form fill the viewport with fixed header/footer,
+  a scrolling body, responsive controls and horizontally scrollable tables on phones.
+- Closing details or the request form returns to the updated order registry, including
+  Escape, backdrop dismissal and successful submission.
+- Checkboxes, select-all and selection counts in the registry, saved order lines and draft
+  cart. Separate Excel/PDF actions export all rows or only selected rows; selecting an order
+  exports its line items. General XLSX has no REQ-003 15-item cap. The official REQ-003
+  button remains available and uses selected draft lines, or the full cart if none are checked.
+- Both formats include quantities, received quantities, prices, selected-row totals, requestor,
+  location, status, reason and supplier link. PDF embeds a licensed Latin/Cyrillic font and
+  splits oversized rows across pages. Export-only code and font load on demand; the PWA
+  build precaches those chunks for offline use.
+- Validation: 177 tests, typecheck, lint, EN/RU parity (722 keys), production build and PWA offline bootstrap;
+  `npm run test:orders-browser` covers four viewport sizes, selection, XLSX contents/totals,
+  Escape/backdrop return and PDF downloads. PDF text and page renders checked separately.
 
 ---
 

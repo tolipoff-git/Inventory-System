@@ -10,6 +10,8 @@ import { windowConfirm, windowPrompt } from '../../../utils/dialogCompat';
 import { receiveOrderItem, rejectOrderItem, receiveFullOrder, cancelOrder, addOrderComment, orderStatusKey } from '../../../operations/orderOps';
 import { ProcureManager } from '../../../procure/procure';
 import { exportReq003Workbook, REQ003_MAX_ITEMS } from '../../../procure/req003';
+import { purchaseOrderItems, purchaseOrderRows, cartRows, unitCost, lineAmount } from '../../../procure/orderExportRows';
+import { ProcurementExportRow } from '../../../procure/orderExportRows';
 import { PurchaseOrder } from '../../../types/procurement';
 
 export class OrderModal {
@@ -17,6 +19,86 @@ export class OrderModal {
     private static detailModalId = 'orderDetailModal';
     private static procureModalId = 'procureModal';
     public static currentOrderId: string | null = null;
+
+    private static selectedOrders = new Set<string>();
+    private static selectedItems = new Set<number>();
+    private static selectedCart = new Set<number>();
+
+    /** Route every dismissal (buttons, Escape, backdrop) through the same navigation. */
+    public static dismiss(modalId: string): boolean {
+        if (modalId === this.detailModalId) this.closeDetail();
+        else if (modalId === this.procureModalId) this.closeProcure();
+        else if (modalId === this.listModalId) this.closeList();
+        else return false;
+        return true;
+    }
+
+    private static exportToolbar(scope: string): string {
+        return `<div class="order-export-toolbar" id="${scope}ExportToolbar">
+            <button class="btn" data-export="xlsx" data-scope="all">${T('PO_EXCEL_ALL')}</button>
+            <button class="btn" data-export="pdf" data-scope="all">${T('PO_PDF_ALL')}</button>
+            <button class="btn" data-export="xlsx" data-scope="selected" disabled>${T('PO_EXCEL_SELECTED')}</button>
+            <button class="btn" data-export="pdf" data-scope="selected" disabled>${T('PO_PDF_SELECTED')}</button>
+            <span data-selection-count aria-live="polite"></span>
+        </div>`;
+    }
+
+    private static selectAllBox(): string {
+        return `<input type="checkbox" data-select-all aria-label="${T('PO_SELECT_ALL')}">`;
+    }
+
+    private static bindSelection<K>(root: HTMLElement, selected: Set<K>, keyOf: (value: string) => K,
+        rows: (onlySelected: boolean) => ProcurementExportRow[]): void {
+        const boxes = Array.from(root.querySelectorAll<HTMLInputElement>('[data-select-row]'));
+        const selectAll = root.querySelector<HTMLInputElement>('[data-select-all]');
+        const sync = () => {
+            let count = 0;
+            for (const box of boxes) {
+                box.checked = selected.has(keyOf(box.dataset.selectRow!));
+                if (box.checked) count++;
+            }
+            if (selectAll) {
+                selectAll.checked = boxes.length > 0 && count === boxes.length;
+                selectAll.indeterminate = count > 0 && count < boxes.length;
+                selectAll.disabled = boxes.length === 0;
+            }
+            root.querySelectorAll<HTMLButtonElement>('[data-export]').forEach(button => {
+                button.disabled = button.dataset.scope === 'selected' ? count === 0 : boxes.length === 0;
+            });
+            const label = root.querySelector<HTMLElement>('[data-selection-count]');
+            if (label) label.textContent = T('PO_SELECTED_COUNT').replace('{count}', String(count));
+        };
+        boxes.forEach(box => {
+            box.onclick = event => event.stopPropagation();
+            box.onchange = () => {
+                const key = keyOf(box.dataset.selectRow!);
+                if (box.checked) selected.add(key); else selected.delete(key);
+                sync();
+            };
+        });
+        if (selectAll) selectAll.onchange = () => {
+            for (const box of boxes) {
+                const key = keyOf(box.dataset.selectRow!);
+                if (selectAll.checked) selected.add(key); else selected.delete(key);
+            }
+            sync();
+        };
+        root.querySelectorAll<HTMLButtonElement>('[data-export]').forEach(button => {
+            button.onclick = async () => {
+                const data = rows(button.dataset.scope === 'selected');
+                if (!data.length) { toast(T('NO_ITEMS_EXPORT'), 'warning'); return; }
+                button.disabled = true;
+                try {
+                    const { exportPurchaseRows } = await import('../../../procure/orderExport');
+                    await exportPurchaseRows(data, button.dataset.export === 'pdf' ? 'pdf' : 'xlsx');
+                } catch (error) {
+                    console.error('Purchase order export failed', error);
+                    toast(T('PO_EXPORT_FAILED'), 'danger');
+                } finally { sync(); }
+            };
+        });
+        sync();
+    }
 
     // Open Orders Registry
     public static openList(): void {
@@ -36,9 +118,11 @@ export class OrderModal {
 
     // Open Order Detail & Receiving Dock
     public static openDetail(orderId: string): void {
-        this.currentOrderId = orderId;
         const order = Store.procurementLog.find(p => p.orderId === orderId);
         if (!order) return;
+        this.closeList();
+        this.currentOrderId = orderId;
+        this.selectedItems.clear();
 
         let modal = document.getElementById(this.detailModalId);
         if (!modal) {
@@ -53,10 +137,13 @@ export class OrderModal {
         const modal = document.getElementById(this.detailModalId);
         if (modal) modal.classList.remove('active');
         this.currentOrderId = null;
+        this.openList();
     }
 
     // Open Procure / Create Order
     public static openProcure(toolId?: string): void {
+        this.closeList();
+        this.selectedCart.clear();
         let modal = document.getElementById(this.procureModalId);
         if (!modal) {
             this.createProcureModalDOM();
@@ -69,20 +156,21 @@ export class OrderModal {
     public static closeProcure(): void {
         const modal = document.getElementById(this.procureModalId);
         if (modal) modal.classList.remove('active');
+        this.openList();
     }
 
     private static createListModalDOM(): void {
         const overlay = document.createElement('div');
-        overlay.className = 'modal-overlay';
+        overlay.className = 'modal-overlay order-overlay';
         overlay.id = this.listModalId;
 
         overlay.innerHTML = `
-            <div class="modal wide" style="max-width:850px;">
+            <div class="modal order-workspace">
                 <div class="modal-header">
                     <h3 class="modal-title">📦 ${T('Purchase Orders')}</h3>
                     <button class="close-btn" id="ordersListCloseBtn">&times;</button>
                 </div>
-                <div class="modal-body" style="max-height:75vh; overflow-y:auto;" id="ordersListBody"></div>
+                <div class="modal-body" id="ordersListBody"></div>
                 <div class="modal-footer">
                     <button class="btn btn-warning" id="newOrderFromListBtn">+ ${T('New Purchase Order')}</button>
                     <button class="btn btn-muted" id="ordersListFooterCloseBtn">${T('Close')}</button>
@@ -118,8 +206,12 @@ export class OrderModal {
             return `<span style="background:var(--primary); color:#000; padding:2px 8px; border-radius:4px; font-weight:bold;">OPEN</span>`;
         };
 
+        for (const id of this.selectedOrders) {
+            if (!orders.some(order => order.orderId === id)) this.selectedOrders.delete(id);
+        }
         const rows = [...orders].reverse().map(o => `
             <tr style="cursor:pointer;" data-order-id="${esc(o.orderId)}">
+                <td><input type="checkbox" data-select-row="${esc(o.orderId)}" aria-label="${esc(o.orderId)}"></td>
                 <td><strong>${esc(o.orderId)}</strong></td>
                 <td>${fmtDate(o.createdAt || o.orderDate)}</td>
                 <td>${esc(o.name || (o.items && o.items[0]?.name) || 'Order')}</td>
@@ -131,10 +223,12 @@ export class OrderModal {
         `).join('');
 
         body.innerHTML = `
+            ${this.exportToolbar("orders")}
             <div class="table-scroll">
                 <table>
                     <thead>
                         <tr>
+                            <th>${this.selectAllBox()}</th>
                             <th>${T('PO #')}</th>
                             <th>${T('Date')}</th>
                             <th>${T('Description')}</th>
@@ -149,9 +243,14 @@ export class OrderModal {
             </div>
         `;
 
+        this.bindSelection(body, this.selectedOrders, value => value, only => orders
+            .filter(order => !only || this.selectedOrders.has(order.orderId))
+            .flatMap(order => purchaseOrderRows(order)));
+
         body.querySelectorAll('[data-order-id]').forEach(row => {
             row.addEventListener('click', (e) => {
                 const oid = (e.currentTarget as HTMLElement).dataset.orderId;
+                if ((e.target as HTMLElement).closest('input, button, a')) return;
                 if (oid) {
                     this.closeList();
                     this.openDetail(oid);
@@ -162,18 +261,18 @@ export class OrderModal {
 
     private static createDetailModalDOM(): void {
         const overlay = document.createElement('div');
-        overlay.className = 'modal-overlay';
+        overlay.className = 'modal-overlay order-overlay';
         overlay.id = this.detailModalId;
 
         overlay.innerHTML = `
-            <div class="modal wide" style="max-width:800px;">
+            <div class="modal order-workspace">
                 <div class="modal-header">
                     <h3 class="modal-title" id="orderDetailTitle">📦 Purchase Order</h3>
                     <button class="close-btn" id="orderDetailCloseBtn">&times;</button>
                 </div>
-                <div class="modal-body" style="max-height:75vh; overflow-y:auto;" id="orderDetailBody"></div>
+                <div class="modal-body" id="orderDetailBody"></div>
                 <div class="modal-footer">
-                    <button class="btn btn-muted" id="orderDetailFooterCloseBtn">${T('Close')}</button>
+                    <button class="btn btn-muted" id="orderDetailFooterCloseBtn">${T('PO_BACK_TO_LIST')}</button>
                 </div>
             </div>
         `;
@@ -189,27 +288,21 @@ export class OrderModal {
         const body = document.getElementById('orderDetailBody');
         if (!body) return;
 
-        if (titleEl) titleEl.textContent = `📦 PO ${order.orderId} — ${order.name || 'Order'}`;
+        if (titleEl) titleEl.textContent = `📦 ${order.orderId}${order.name ? ' — ' + order.name : ''}`;
 
-        const items = order.items || [{
-            id: order.id || '1',
-            name: order.name,
-            qty: order.qty || 1,
-            unitCost: order.cost || 0,
-            receivedQty: orderStatusKey(order.status) === 'received' ? order.qty || 1 : 0,
-            status: orderStatusKey(order.status) === 'received' ? 'Received' : 'Pending'
-        }];
+        const items = purchaseOrderItems(order);
 
         const itemRows = items.map((item, idx) => {
             const isReceived = (item.receivedQty || 0) >= (item.qty || 1);
             return `
             <tr>
+                <td><input type="checkbox" data-select-row="${idx}" aria-label="${esc(item.name)}"></td>
                 <td>${idx + 1}</td>
                 <td><strong>${esc(item.name)}</strong></td>
                 <td>${item.qty}</td>
                 <td>${item.receivedQty || 0}</td>
-                <td>$${Number(item.unitCost || 0).toFixed(2)}</td>
-                <td>$${((item.qty || 1) * (item.unitCost || 0)).toFixed(2)}</td>
+                <td>$${Number(unitCost(item)).toFixed(2)}</td>
+                <td>$${lineAmount(item.qty, unitCost(item)).toFixed(2)}</td>
                 <td>
                     ${isReceived
                         ? `<span style="color:var(--success); font-weight:bold;">✔ Received</span>`
@@ -241,10 +334,12 @@ export class OrderModal {
             </div>
 
             <h4 style="margin:12px 0 6px; color:var(--primary-hover);">${T('Line Items & Receiving Dock')}</h4>
+            ${this.exportToolbar('orderItems')}
             <div class="table-scroll" style="margin-bottom:15px;">
                 <table>
                     <thead>
                         <tr>
+                            <th>${this.selectAllBox()}</th>
                             <th>#</th>
                             <th>${T('Item')}</th>
                             <th>${T('Qty')}</th>
@@ -274,6 +369,8 @@ export class OrderModal {
                 <button class="btn" id="addOrderCommentBtn">${T('Post')}</button>
             </div>
         `;
+
+        this.bindSelection(body, this.selectedItems, Number, only => purchaseOrderRows(order, only ? this.selectedItems : undefined));
 
         body.querySelectorAll('[data-action="recv-item"]').forEach(btn => {
             btn.addEventListener('click', async (e) => {
@@ -335,16 +432,16 @@ export class OrderModal {
 
     private static createProcureModalDOM(): void {
         const overlay = document.createElement('div');
-        overlay.className = 'modal-overlay';
+        overlay.className = 'modal-overlay order-overlay';
         overlay.id = this.procureModalId;
 
         overlay.innerHTML = `
-            <div class="modal wide" style="max-width:750px;">
+            <div class="modal order-workspace">
                 <div class="modal-header">
                     <h3 class="modal-title">${T('Procure / Order Tool')}</h3>
                     <button class="close-btn" id="procureCloseBtn">&times;</button>
                 </div>
-                <div class="modal-body" style="max-height:75vh; overflow-y:auto;">
+                <div class="modal-body">
                     <div class="form-row">
                         <div class="form-group">
                             <label>${T('Requester Initials:')} *</label>
@@ -395,10 +492,12 @@ export class OrderModal {
 
                     <div id="procureCartContainer" style="display:none; margin-bottom:15px;">
                         <h4 style="margin:10px 0 6px; color:var(--primary-hover);">${T('Order Items Cart')}</h4>
+                        ${this.exportToolbar('cart')}
                         <div class="table-scroll">
                             <table>
                                 <thead>
                                     <tr>
+                                        <th>${this.selectAllBox()}</th>
                                         <th>#</th>
                                         <th>${T('Item')}</th>
                                         <th>${T('Qty')}</th>
@@ -416,7 +515,7 @@ export class OrderModal {
                     </div>
 
                     <div style="display:flex; gap:10px; margin-top:10px;">
-                        <button class="btn btn-success" id="procureExcelBtn">📊 ${T('Download Expense Request (.xlsx)')}</button>
+                        <button class="btn btn-success" id="procureExcelBtn">📊 ${T('PO_REQ003_EXPORT')}</button>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -508,6 +607,7 @@ export class OrderModal {
         container.style.display = 'block';
         tbody.innerHTML = cart.map((item, idx) => `
             <tr>
+                <td><input type="checkbox" data-select-row="${idx}" aria-label="${esc(item.name)}"></td>
                 <td>${idx + 1}</td>
                 <td><strong>${esc(item.name)}</strong></td>
                 <td>${item.qty}</td>
@@ -521,9 +621,16 @@ export class OrderModal {
 
         grandTotalEl.textContent = ProcureManager.getGrandTotal().toFixed(2);
 
+        this.bindSelection(container, this.selectedCart, Number, only => cartRows(
+            cart.filter((_, index) => !only || this.selectedCart.has(index)),
+            (document.getElementById('procureInitials') as HTMLInputElement).value.trim(),
+            [(document.getElementById('procureWs') as HTMLSelectElement).value,
+             (document.getElementById('procureWp') as HTMLSelectElement).value].filter(Boolean).join(' / ')));
+
         tbody.querySelectorAll('[data-cart-del]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const idx = +(e.currentTarget as HTMLElement).dataset.cartDel!;
+                this.selectedCart = new Set([...this.selectedCart].filter(index => index !== idx).map(index => index > idx ? index - 1 : index));
                 ProcureManager.removeItem(idx);
                 this.renderCart();
             });
@@ -533,7 +640,7 @@ export class OrderModal {
     private static async exportExcel(): Promise<void> {
         const initials = (document.getElementById('procureInitials') as HTMLInputElement).value.trim() || 'EMP';
         const ws = (document.getElementById('procureWs') as HTMLSelectElement).value || 'Main';
-        const items = ProcureManager.getCart();
+        const items = ProcureManager.getCart().filter((_, index) => this.selectedCart.size === 0 || this.selectedCart.has(index));
 
         if (!items.length) {
             toast(T('NO_ITEMS_EXPORT'), 'warning');
@@ -547,7 +654,7 @@ export class OrderModal {
         try {
             await exportReq003Workbook(items, {
                 ws,
-                wp: '',
+                wp: (document.getElementById('procureWp') as HTMLSelectElement).value,
                 initials,
                 date: new Date().toISOString().split('T')[0]
             });
