@@ -2,19 +2,25 @@
 
 ## Overview
 - **Repository:** `/home/admin/git/Inventory-System`
-- **Current Version:** `v134` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
+- **Current Version:** `v135` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
 - **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith was removed from HEAD in v131; it lives on under tag `monolith-v97-final` and is **not** the active app.
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** A single Cloudflare Worker (`wrangler.jsonc`: static assets from `./dist`, sync API, KV bindings), deployed by the Workers Git integration on push to `main`. There is no separate Pages project.
 
-## Session Continuity — Resume Point (2026-11-04, v134)
+## Session Continuity — Resume Point (2026-11-04, v135)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v134` (`package.json` = 134.0.0). `sw.js` `CACHE_VERSION` = `v134-<hash>`.
+- **Version:** `v135` (`package.json` = 135.0.0). `sw.js` `CACHE_VERSION` = `v135-<hash>`.
 - **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
+- **SOP hub v135:** removed `height:100%; max-height:190px; overflow-y:auto` from the
+  standards list in `ToolGrid.updateCategoryHub()`. The normal card/grid layout now fits
+  every approved document instead of showing an inner 190 px viewport and blank card space.
+  Browser verification: 4/12 long-title documents at 1440/1280/390 px, all buttons within the
+  list bounds; collapse/expand and opening the final standard passed. Typecheck, lint,
+  177/177 tests, i18n parity (722/722), production build passed. No document data changed.
 - **Gates (v134):** typecheck, lint, 177/177 tests, i18n parity (722/722), production build,
   `npm run test:pwa-browser` offline bootstrap;
   `npm run test:orders-browser` passed in Chromium 134 at 1440×900, 1280×720, 390×844,
