@@ -534,7 +534,7 @@ export class AppUI {
                 if (target.id === 'loginModal') {
                     Auth.clearPendingAction();
                 }
-                target.classList.remove('active');
+                if (!OrderModal.dismiss(target.id)) target.classList.remove('active');
             }
         });
 
@@ -546,7 +546,7 @@ export class AppUI {
                     if (topModal.id === 'loginModal') {
                         Auth.clearPendingAction();
                     }
-                    topModal.classList.remove('active');
+                    if (!OrderModal.dismiss(topModal.id)) topModal.classList.remove('active');
                 }
             }
         });
@@ -583,7 +583,7 @@ export class AppUI {
         };
         window.closeModal = (id: string | HTMLElement) => {
             const el = typeof id === 'string' ? document.getElementById(id) : id;
-            if (el) el.classList.remove('active');
+            if (el && !OrderModal.dismiss(el.id)) el.classList.remove('active');
         };
         window.doAction = (role: UserRole, cb: () => void) => Auth.doAction(role, cb);
         window.handleScanResult = (code: string) => this.handleScanResult(code);

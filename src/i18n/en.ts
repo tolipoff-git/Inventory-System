@@ -1,6 +1,17 @@
 import { FAQ_BODY_EN } from './faqContent';
 
 export const en: Record<string, string> = {
+  "PO_EXCEL_ALL": "Excel: all",
+  "PO_PDF_ALL": "PDF: all",
+  "PO_EXCEL_SELECTED": "Excel: selected",
+  "PO_PDF_SELECTED": "PDF: selected",
+  "PO_SELECT_ALL": "Select all rows",
+  "PO_SELECTED_COUNT": "Selected: {count}",
+  "PO_BACK_TO_LIST": "Back to orders",
+  "PO_EXPORT_FAILED": "Could not export purchase orders. Please retry.",
+  "PO_EXPORT_META": "Order / Requester / Location",
+  "PO_REQ003_EXPORT": "REQ-003 (.xlsx): selected, or all if none",
+
   "LABEL_OFFSET_X": "Horizontal correction (mm)",
   "LABEL_OFFSET_Y": "Vertical correction (mm)",
   "LABEL_ALIGNMENT_HINT": "Positive: right/down. Negative: left/up. If printing is 1 mm too low, use −1 mm vertically. Test on plain paper first.",

@@ -1,7 +1,7 @@
 {
   "name": "inventory-system",
   "private": true,
-  "version": "133.0.0",
+  "version": "134.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,7 +14,8 @@
     "deploy": "npm run build && npx wrangler deploy",
     "deploy:prod": "npm run build && npx wrangler deploy --env production",
     "test:labels-browser": "node scripts/check-label-print.mjs",
-    "test:pwa-browser": "node scripts/check-pwa-offline.mjs"
+    "test:pwa-browser": "node scripts/check-pwa-offline.mjs",
+    "test:orders-browser": "node scripts/check-orders-browser.mjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

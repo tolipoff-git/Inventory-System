@@ -1,6 +1,17 @@
 import { FAQ_BODY_RU } from './faqContent';
 
 export const ru: Record<string, string> = {
+  "PO_EXCEL_ALL": "Excel: все",
+  "PO_PDF_ALL": "PDF: все",
+  "PO_EXCEL_SELECTED": "Excel: выбранные",
+  "PO_PDF_SELECTED": "PDF: выбранные",
+  "PO_SELECT_ALL": "Выбрать все строки",
+  "PO_SELECTED_COUNT": "Выбрано: {count}",
+  "PO_BACK_TO_LIST": "К списку заявок",
+  "PO_EXPORT_FAILED": "Не удалось выгрузить заявки. Повторите попытку.",
+  "PO_EXPORT_META": "Заявка / Заявитель / Место",
+  "PO_REQ003_EXPORT": "REQ-003 (.xlsx): выбранные, или все при отсутствии выбора",
+
   "LABEL_OFFSET_X": "Коррекция по горизонтали (мм)",
   "LABEL_OFFSET_Y": "Коррекция по вертикали (мм)",
   "LABEL_ALIGNMENT_HINT": "Плюс: вправо/вниз. Минус: влево/вверх. Если печать на 1 мм ниже, задайте −1 мм по вертикали. Сначала проверьте на обычной бумаге.",
