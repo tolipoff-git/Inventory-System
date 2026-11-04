@@ -1,7 +1,7 @@
 {
   "name": "inventory-system",
   "private": true,
-  "version": "135.0.0",
+  "version": "136.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,9 +15,11 @@
     "deploy:prod": "npm run build && npx wrangler deploy --env production",
     "test:labels-browser": "node scripts/check-label-print.mjs",
     "test:pwa-browser": "node scripts/check-pwa-offline.mjs",
-    "test:orders-browser": "node scripts/check-orders-browser.mjs"
+    "test:orders-browser": "node scripts/check-orders-browser.mjs",
+    "test:audit-browser": "node scripts/check-audit-browser.mjs"
   },
   "dependencies": {
+    "dompurify": "^3.4.17",
     "exceljs": "^4.4.0",
     "jspdf": "^4.2.1",
     "jsqr": "^1.4.0",

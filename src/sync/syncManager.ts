@@ -10,6 +10,7 @@ import {
 import { subscribeToLiveCloudStream, broadcastPing } from './liveRelay';
 import { mergeSyncPayloads } from './conflictResolver';
 import { Store } from '../storage/store';
+import { AppDB, DBState } from '../storage/indexedDb';
 
 export type SyncStatusListener = (status: SyncStatus, lastSynced: Date | null, room: string) => void;
 
@@ -30,11 +31,30 @@ class SyncManager {
    * just-pulled revision straight back to the relay.
    */
   private _applyingRemote: boolean = false;
-  private _lastPushedTimestamp: string = '';
   private _lastReceivedTimestamp: string = '';
   private _version: number = 1;
   /** In-flight push, so a debounce timer and a manual click cannot race. */
   private _pushPromise: Promise<boolean> | null = null;
+  private _roomEpoch = 0;
+  private _changingRoom = false;
+  private _pullSequence = 0;
+  private _mutationVersion = 0;
+  private _dirty = false;
+  private _retryTimer: ReturnType<typeof setTimeout> | undefined;
+
+  private markDirty(dirty: boolean): void {
+    this._dirty = dirty;
+    try { localStorage.setItem(`inv_sync_dirty_${this.room}`, dirty ? '1' : '0'); }
+    catch { /* Sync metadata unavailable; inventory remains in IndexedDB. */ }
+  }
+
+  private schedulePush(delay = 1200): void {
+    if (this._pushDebounceTimer !== undefined) clearTimeout(this._pushDebounceTimer);
+    this._pushDebounceTimer = setTimeout(() => {
+      this._pushDebounceTimer = undefined;
+      this.triggerPush().catch(error => console.error('Queued push failed', error));
+    }, delay);
+  }
 
   /**
    * Diagnostics surfaced in the Sync modal. `lastSyncError` is set whenever a
@@ -48,12 +68,13 @@ class SyncManager {
   public init(): void {
     this.room = getActiveSyncRoom();
     this.deviceId = getOrCreateDeviceId();
+    this._dirty = localStorage.getItem(`inv_sync_dirty_${this.room}`) === '1';
 
     // Listen to network status
     if (typeof window !== 'undefined') {
       window.addEventListener('online', () => {
         this.setStatus('pending');
-        this.triggerPull().catch(e => console.error('Online pull failed:', e));
+        this.forceSync().catch(e => console.error('Online sync failed:', e));
       });
       window.addEventListener('offline', () => {
         this.setStatus('offline');
@@ -166,27 +187,78 @@ class SyncManager {
 
   private _onStoreMutated(): void {
     if (this._applyingRemote) return;
+    this._mutationVersion++;
+    this.markDirty(true);
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       this.setStatus('offline');
       return;
     }
 
     this.setStatus('pending');
-    if (this._pushDebounceTimer !== undefined) clearTimeout(this._pushDebounceTimer);
-    this._pushDebounceTimer = setTimeout(() => {
-      this.triggerPush().catch(e => console.error('Debounced push failed:', e));
-    }, 1200);
+    this.schedulePush();
   }
 
   public async changeRoom(newRoom: string): Promise<void> {
-    const clean = (newRoom || 'INV-MAIN').trim().toUpperCase();
-    this.room = clean;
-    persistActiveRoom(clean);
-    this._lastPushedTimestamp = '';
-    this._lastReceivedTimestamp = '';
-    this._connectSse();
+    const clean = newRoom.trim().toUpperCase();
+    if (!clean || clean === this.room) return;
+    if (this._changingRoom) throw new Error('Room switch already in progress');
+    this._changingRoom = true;
+    const oldRoom = this.room;
+    const before = structuredClone(Store.getStateSnapshot());
+    const oldDirty = this._dirty;
+    const epoch = ++this._roomEpoch;
+    if (this._pushDebounceTimer !== undefined) clearTimeout(this._pushDebounceTimer);
+    if (this._retryTimer !== undefined) clearTimeout(this._retryTimer);
     this.setStatus('syncing');
-    await this.triggerPull();
+    try {
+      // Keep each room's unsent state recoverable; never merge the departing room into the target.
+      await AppDB.setSetting(`sync_room_${oldRoom}`, { state: before, dirty: oldDirty });
+      const cached = await AppDB.getSetting<{ state: DBState; dirty: boolean }>(`sync_room_${clean}`);
+      const outcome = await pullSyncPayload(clean);
+      if (epoch !== this._roomEpoch) return;
+      if (outcome.kind !== 'ok' && outcome.kind !== 'empty') throw new Error('Target room unavailable');
+      const empty: SyncPayload = {
+        tools: [], personnel: [], procurementLog: [], auditLog: [],
+        settings: { workstations: [], workposts: [], programs: [], wsProgram: {}, registryEvents: {}, sops: [], audits5s: [], meta: {} },
+        deviceId: this.deviceId, updatedAt: '', version: 1, room: clean,
+      };
+      const remote = outcome.kind === 'ok' ? outcome.payload : empty;
+      const local: SyncPayload = cached ? {
+        tools: cached.state.tools, personnel: cached.state.personnel, procurementLog: cached.state.procurementLog,
+        auditLog: cached.state.auditLog, settings: cached.state, deviceId: this.deviceId, updatedAt: '', version: 1, room: clean,
+      } : empty;
+      const target = cached ? mergeSyncPayloads(local, remote) : remote;
+      this._applyingRemote = true;
+      try {
+        Store.applyLoadedData({
+          tools: target.tools, personnel: target.personnel, procurementLog: target.procurementLog, auditLog: target.auditLog,
+          workstations: target.settings.workstations, workposts: target.settings.workposts,
+          programs: target.settings.programs, wsProgram: target.settings.wsProgram,
+          registryEvents: target.settings.registryEvents, sops: target.settings.sops,
+          audits5s: target.settings.audits5s, meta: target.settings.meta,
+          users: before.users, labelQueue: cached?.state.labelQueue || [], rollback: cached?.state.rollback || null,
+        });
+        await Store.save();
+      } finally { this._applyingRemote = false; }
+      this.room = clean;
+      persistActiveRoom(clean);
+      this._lastReceivedTimestamp = remote.updatedAt;
+      this._isSyncing = false;
+      this._version = target.version;
+      this.markDirty(cached?.dirty || false);
+      this._connectSse();
+      this.setStatus(this._dirty ? 'pending' : 'synced');
+      if (this._dirty) this.schedulePush();
+    } catch (error) {
+      if (epoch === this._roomEpoch) {
+        Store.applyLoadedData(before);
+        this.room = oldRoom;
+        this.markDirty(oldDirty);
+        this.lastSyncError = error instanceof Error ? error.message : 'Room switch failed';
+        this.setStatus('error');
+      }
+      throw error;
+    } finally { this._changingRoom = false; this._isSyncing = false; }
   }
 
   public async triggerPull(): Promise<boolean> {
@@ -195,9 +267,13 @@ class SyncManager {
       return false;
     }
 
+    const epoch = this._roomEpoch;
+    const room = this.room;
+    const sequence = ++this._pullSequence;
     try {
       this._isSyncing = true;
-      const outcome = await pullSyncPayload(this.room);
+      const outcome = await pullSyncPayload(room);
+      if (epoch !== this._roomEpoch || room !== this.room || sequence !== this._pullSequence) return false;
 
       // Surface real failures instead of pretending the room is simply empty.
       if (outcome.kind === 'unauthorized') {
@@ -223,7 +299,8 @@ class SyncManager {
         this.lastSyncError = null;
         this.lastRemoteToolCount = 0;
         this.lastRemoteUpdatedAt = null;
-        this.setStatus('synced');
+        this.setStatus(this._dirty ? 'pending' : 'synced');
+        if (this._dirty) this.schedulePush();
         this._isSyncing = false;
         return true;
       }
@@ -235,7 +312,8 @@ class SyncManager {
 
       // Ignore echoes if payload identical to last received
       if (remote.updatedAt === this._lastReceivedTimestamp) {
-        this.setStatus('synced');
+        this.setStatus(this._dirty ? 'pending' : 'synced');
+        if (this._dirty) this.schedulePush();
         this._isSyncing = false;
         return true;
       }
@@ -243,14 +321,15 @@ class SyncManager {
       const localPayload = this._buildLocalPayload();
       const merged = mergeSyncPayloads(localPayload, remote);
 
-      this._lastReceivedTimestamp = remote.updatedAt;
       this.lastSyncedAt = new Date();
       this._version = merged.version;
 
       // Apply merged data to store
       this._applyingRemote = true;
       try {
+        const localState = Store.getStateSnapshot();
         Store.applyLoadedData({
+          users: localState.users, labelQueue: localState.labelQueue, rollback: localState.rollback,
           tools: merged.tools,
           procurementLog: merged.procurementLog,
           personnel: merged.personnel,
@@ -269,10 +348,14 @@ class SyncManager {
       } finally {
         this._applyingRemote = false;
       }
-      this.setStatus('synced');
+      if (epoch !== this._roomEpoch) return false;
+      this._lastReceivedTimestamp = remote.updatedAt;
+      this.setStatus(this._dirty ? 'pending' : 'synced');
+      if (this._dirty) this.schedulePush();
       this._isSyncing = false;
       return true;
     } catch (err) {
+      if (epoch !== this._roomEpoch) return false;
       console.error('Sync pull failed:', err);
       this.setStatus('error');
       this._isSyncing = false;
@@ -288,48 +371,49 @@ class SyncManager {
       return await this._pushPromise;
     } finally {
       this._pushPromise = null;
+      if (this._dirty && this.status === 'pending') this.schedulePush();
     }
   }
 
   private async _doPush(): Promise<boolean> {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      this.markDirty(true);
       this.setStatus('offline');
       return false;
     }
-
+    const epoch = this._roomEpoch;
+    const room = this.room;
+    const revision = this._mutationVersion;
+    this.markDirty(true);
     try {
       this._isSyncing = true;
       this.setStatus('syncing');
-
-      const payload = this._buildLocalPayload();
-      if (payload.updatedAt === this._lastPushedTimestamp) {
-        this.setStatus('synced');
-        this._isSyncing = false;
-        return true;
-      }
-      this._version += 1;
-      payload.version = this._version;
-      this._lastPushedTimestamp = payload.updatedAt;
-
-      const pushOutcome = await pushSyncPayload(this.room, payload);
-      this.lastPushStatus = pushOutcome.status;
-      const ok = pushOutcome.ok;
-      if (ok) {
+      if (!await this.triggerPull()) throw new Error('Pull before push failed');
+      if (epoch !== this._roomEpoch || room !== this.room) return false;
+      const payload = structuredClone(this._buildLocalPayload());
+      payload.version = ++this._version;
+      const outcome = await pushSyncPayload(room, payload);
+      if (epoch !== this._roomEpoch || room !== this.room) return false;
+      this.lastPushStatus = outcome.status;
+      if (outcome.ok) {
         this.lastSyncError = null;
         this.lastSyncedAt = new Date();
-        this.setStatus('synced');
-        // Announce the new revision on the public relay so peers pull immediately
-        // instead of waiting for the 15s polling fallback.
-        broadcastPing(this.room, this.deviceId, payload.updatedAt).catch(() => {});
+        this.markDirty(revision !== this._mutationVersion);
+        this.setStatus(this._dirty ? 'pending' : 'synced');
+        broadcastPing(room, this.deviceId, payload.updatedAt).catch(() => {});
       } else {
+        this.lastSyncError = `HTTP ${outcome.status}`;
         this.setStatus('error');
+        this._retryTimer = setTimeout(() => this.schedulePush(0), 15000);
       }
       this._isSyncing = false;
-      return ok;
-    } catch (err) {
-      console.error('Sync push failed:', err);
+      return outcome.ok;
+    } catch (error) {
+      if (epoch !== this._roomEpoch) return false;
+      this.lastSyncError = error instanceof Error ? error.message : 'Push failed';
       this.setStatus('error');
       this._isSyncing = false;
+      this._retryTimer = setTimeout(() => this.schedulePush(0), 15000);
       return false;
     }
   }
@@ -337,6 +421,7 @@ class SyncManager {
   public async forceSync(): Promise<boolean> {
     this.setStatus('syncing');
     const pulled = await this.triggerPull();
+    if (!pulled) return false;
     const pushed = await this.triggerPush();
     return pulled && pushed;
   }

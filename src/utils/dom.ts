@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify';
 import { esc } from './formatters';
 import { T, getLanguage } from '../i18n';
 import { windowPrompt } from './dialogCompat';
@@ -30,7 +31,7 @@ export function toast(msgHtml: string, typeOrMs: string | number = 4000): void {
   }
 
   el.className = 'show' + (type ? ` ${type}` : '');
-  el.innerHTML = msgHtml;
+  el.innerHTML = DOMPurify.sanitize(msgHtml, { USE_PROFILES: { html: true } });
 
   if (toastTimer !== undefined) clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {

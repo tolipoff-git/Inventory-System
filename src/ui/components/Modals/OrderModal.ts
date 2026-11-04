@@ -12,6 +12,7 @@ import { ProcureManager } from '../../../procure/procure';
 import { exportReq003Workbook, REQ003_MAX_ITEMS } from '../../../procure/req003';
 import { purchaseOrderItems, purchaseOrderRows, cartRows, unitCost, lineAmount } from '../../../procure/orderExportRows';
 import { ProcurementExportRow } from '../../../procure/orderExportRows';
+import { Auth } from '../../../auth/authManager';
 import { PurchaseOrder } from '../../../types/procurement';
 
 export class OrderModal {
@@ -293,6 +294,7 @@ export class OrderModal {
         const items = purchaseOrderItems(order);
 
         const itemRows = items.map((item, idx) => {
+            const isCancelled = orderStatusKey(order.status) === 'cancelled' || orderStatusKey(item.status) === 'cancelled';
             const isReceived = (item.receivedQty || 0) >= (item.qty || 1);
             return `
             <tr>
@@ -304,7 +306,7 @@ export class OrderModal {
                 <td>$${Number(unitCost(item)).toFixed(2)}</td>
                 <td>$${lineAmount(item.qty, unitCost(item)).toFixed(2)}</td>
                 <td>
-                    ${isReceived
+                    ${isCancelled ? `<span>${T('Cancelled')}</span>` : isReceived
                         ? `<span style="color:var(--success); font-weight:bold;">✔ Received</span>`
                         : `<button class="btn btn-success" style="padding:3px 8px; font-size:0.8rem;" data-action="recv-item" data-item-id="${esc(item.id)}">Receive</button>
                            <button class="btn btn-danger" style="padding:3px 8px; font-size:0.8rem;" data-action="reject-item" data-item-id="${esc(item.id)}">Reject</button>`
@@ -353,7 +355,7 @@ export class OrderModal {
                 </table>
             </div>
 
-            ${orderStatusKey(order.status) !== 'received' ? `
+            ${!['received', 'cancelled'].includes(orderStatusKey(order.status)) ? `
                 <div style="display:flex; gap:10px; margin-bottom:15px;">
                     <button class="btn btn-success" id="receiveAllOrderBtn">${T('Receive All Remaining Items')}</button>
                     <button class="btn btn-danger" id="cancelOrderBtn">${T('Cancel Entire Order')}</button>
@@ -373,61 +375,68 @@ export class OrderModal {
         this.bindSelection(body, this.selectedItems, Number, only => purchaseOrderRows(order, only ? this.selectedItems : undefined));
 
         body.querySelectorAll('[data-action="recv-item"]').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
+            btn.addEventListener('click', e => {
                 const itemId = (e.currentTarget as HTMLElement).dataset.itemId!;
-                const item = (order.items || []).find(i => i.id === itemId);
+                Auth.doAction('Tool Crib Manager', async () => {
+                const item = purchaseOrderItems(order).find(i => i.id === itemId);
                 const remaining = item ? Math.max(1, (item.qty || 1) - (item.receivedQty || 0)) : 1;
 
                 const qtyRaw = windowPrompt(T('RECV_QTY_PROMPT'), String(remaining));
-                const qty = Math.max(1, parseInt(qtyRaw, 10) || remaining);
+                if (qtyRaw === null) return;
+                const qty = Number(qtyRaw);
+                if (!Number.isInteger(qty) || qty <= 0) { toast(T('AUDIT_INVALID_QTY'), 'warning'); return; }
                 const targetRaw = windowPrompt(T('RECV_TARGET_PROMPT'), item?.toolId || '');
-                const targetToolId = (targetRaw || '').trim() || undefined;
+                if (targetRaw === null) return;
+                const targetToolId = targetRaw.trim() || undefined;
 
-                const ok = await receiveOrderItem(order.orderId, itemId, qty, targetToolId);
-                toast(ok ? T('ITEM_RECEIVED') : T('RECV_FAILED'), ok ? 'success' : 'warning');
-                const updated = Store.procurementLog.find(p => p.orderId === order.orderId);
-                if (updated) this.renderOrderDetail(updated);
+                await this.applyOrderAction(order.orderId, () => receiveOrderItem(order.orderId, itemId, qty, targetToolId), T('ITEM_RECEIVED'));
+                });
             });
         });
 
         body.querySelectorAll('[data-action="reject-item"]').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
+            btn.addEventListener('click', e => {
                 const itemId = (e.currentTarget as HTMLElement).dataset.itemId!;
+                Auth.doAction('Tool Crib Manager', async () => {
                 const reason = windowPrompt(T('Rejection reason:'));
                 if (reason) {
-                    await rejectOrderItem(order.orderId, itemId, reason);
-                    toast(T('ITEM_REJECTED'), 'warning');
-                    const updated = Store.procurementLog.find(p => p.orderId === order.orderId);
-                    if (updated) this.renderOrderDetail(updated);
+                    await this.applyOrderAction(order.orderId, () => rejectOrderItem(order.orderId, itemId, reason), T('ITEM_REJECTED'), 'warning');
                 }
+                });
             });
         });
 
-        body.querySelector('#receiveAllOrderBtn')?.addEventListener('click', async () => {
-            await receiveFullOrder(order.orderId);
-            toast('Full order marked as received!', 'success');
-            const updated = Store.procurementLog.find(p => p.orderId === order.orderId);
-            if (updated) this.renderOrderDetail(updated);
-        });
+        body.querySelector('#receiveAllOrderBtn')?.addEventListener('click', () => Auth.doAction('Tool Crib Manager', async () => {
+            await this.applyOrderAction(order.orderId, () => receiveFullOrder(order.orderId), T('ORDER_RECEIVED'));
+        }));
 
-        body.querySelector('#cancelOrderBtn')?.addEventListener('click', async () => {
+        body.querySelector('#cancelOrderBtn')?.addEventListener('click', () => Auth.doAction('Tool Crib Manager', async () => {
             if (windowConfirm('Cancel this purchase order?')) {
-                await cancelOrder(order.orderId);
-                toast('Order cancelled.', 'danger');
-                const updated = Store.procurementLog.find(p => p.orderId === order.orderId);
-                if (updated) this.renderOrderDetail(updated);
+                await this.applyOrderAction(order.orderId, () => cancelOrder(order.orderId), T('ORDER_CANCELLED'), 'warning');
             }
-        });
+        }));
 
         body.querySelector('#addOrderCommentBtn')?.addEventListener('click', async () => {
             const input = body.querySelector<HTMLInputElement>('#orderCommentInput');
             if (input && input.value.trim()) {
-                await addOrderComment(order.orderId, input.value.trim());
-                input.value = '';
-                const updated = Store.procurementLog.find(p => p.orderId === order.orderId);
-                if (updated) this.renderOrderDetail(updated);
+                const text = input.value.trim();
+                await this.applyOrderAction(order.orderId, () => addOrderComment(order.orderId, text), T('Post'));
             }
         });
+    }
+
+    private static async applyOrderAction(orderId: string, action: () => Promise<boolean>, success: string, tone = 'success'): Promise<boolean> {
+        try {
+            const ok = await action();
+            toast(ok ? success : T('RECV_FAILED'), ok ? tone : 'warning');
+            const updated = Store.procurementLog.find(order => order.orderId === orderId);
+            if (updated && this.currentOrderId === orderId) this.renderOrderDetail(updated);
+            return ok;
+        } catch (error) {
+            console.error('Order action failed', error);
+            toast(T('RECV_FAILED'), 'danger');
+            return false;
+        }
     }
 
     private static createProcureModalDOM(): void {
@@ -568,10 +577,12 @@ export class OrderModal {
 
     private static addCartItem(): void {
         const name = (document.getElementById('procureItemName') as HTMLInputElement).value.trim();
-        const qty = parseInt((document.getElementById('procureItemQty') as HTMLInputElement).value) || 1;
-        const cost = parseFloat((document.getElementById('procureItemCost') as HTMLInputElement).value) || 0;
+        const qty = Number((document.getElementById('procureItemQty') as HTMLInputElement).value);
+        const cost = Number((document.getElementById('procureItemCost') as HTMLInputElement).value);
         const reason = (document.getElementById('procureItemReason') as HTMLSelectElement).value;
         const link = (document.getElementById('procureItemLink') as HTMLInputElement).value.trim();
+
+        if (!Number.isInteger(qty) || qty <= 0 || !Number.isFinite(cost) || cost < 0) { toast(T('AUDIT_INVALID_QTY'), 'warning'); return; }
 
         if (!name) {
             toast('Please enter the tool/part name.', 'warning');

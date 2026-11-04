@@ -2,19 +2,30 @@
 
 ## Overview
 - **Repository:** `/home/admin/git/Inventory-System`
-- **Current Version:** `v135` (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
+- **Current Version:** `v136` candidate (production remains v135) (single source: `package.json` `version`, substituted at build time into `CONFIG.APP_VERSION`; `build.sh` reads the same value for the SW cache stamp)
 - **Architecture:** Modular TypeScript PWA (Vite 6 + TS 5.6). Entry `src/main.ts` → `src/ui/app.ts`. The legacy 12k-line single-file monolith was removed from HEAD in v131; it lives on under tag `monolith-v97-final` and is **not** the active app.
 - **Storage:** **IndexedDB (`inv_inventory_db`) unified storage** for all application state across 7 object stores (`tools`, `personnel`, `users`, `audit`, `procurement`, `settings`, `photos`). `localStorage` is strictly isolated for lightweight UI preferences (`inv_theme`, `inv_lang`, `inv_mode`, `inv_cards`) and session metadata (`currentUser`).
 - **Platform:** A single Cloudflare Worker (`wrangler.jsonc`: static assets from `./dist`, sync API, KV bindings), deployed by the Workers Git integration on push to `main`. There is no separate Pages project.
 
-## Session Continuity — Resume Point (2026-11-04, v135)
+## Session Continuity — Resume Point (2026-11-04, v136 candidate)
 
 **Read this block first after a context compaction.** It is the live state of the current
 working session; the per-release history below is the long-term record.
 
 ### State
-- **Version:** `v135` (`package.json` = 135.0.0). `sw.js` `CACHE_VERSION` = `v135-<hash>`.
-- **Branch:** `main`, in sync with `origin/main`; working tree clean. `git log --oneline -5` is the authoritative tail.
+- **Version:** candidate `v136` (`package.json` = 136.0.0); production stays on v135 until this draft is merged.
+- **Branch:** `audit/v135-code-ui-fixes` (draft); baseline production commit `4c576fa`.
+- **Audit candidate v136:** full corrected files and regression probes are isolated in this
+  draft. Do not confuse source verification with a production deployment. Sync room changes
+  now archive the departing room under `settings.sync_room_<ROOM>` and join the target instead
+  of importing the previous room's inventory; a cached same-room draft is merged back on return.
+  Dirty metadata is retained per room, pushes read/merge before writing, and stale request
+  epochs are ignored. This reduces client-side loss but does not make KV POST atomic across
+  devices; server-side conflict control remains open.
+- **Verification:** typecheck, lint, 198/198 tests, i18n 726/726, production build,
+  `test:audit-browser`, `test:pwa-browser`. Real browser probes cover explicit receive cancel,
+  cancelled/NaN receipts, zero stock, serial editing, privileged continuation, SOP XSS, login
+  gate dismissal and Unicode/full-notes certificate download. See the audit report for limits.
 - **SOP hub v135:** removed `height:100%; max-height:190px; overflow-y:auto` from the
   standards list in `ToolGrid.updateCategoryHub()`. The normal card/grid layout now fits
   every approved document instead of showing an inner 190 px viewport and blank card space.

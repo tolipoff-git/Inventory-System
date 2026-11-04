@@ -8,6 +8,7 @@
 // switching the whole UI.
 // ============================================================================
 
+import DOMPurify from 'dompurify';
 import { T, initFaqAccordion, getLanguage } from '../../../i18n';
 import { Store } from '../../../storage/store';
 import { printHtml } from '../../../utils/dom';
@@ -131,7 +132,7 @@ export class SopModal {
         title.textContent = `📖 ${sop.id}: ${docTitle}`;
         body.innerHTML =
             this.controlHeader(sop, lang) +
-            (docBody || '') +
+            DOMPurify.sanitize(docBody || '', { USE_PROFILES: { html: true }, FORBID_TAGS: ['style', 'form', 'input', 'button', 'iframe', 'object', 'embed'] }) +
             `<p style="margin-top:18px; padding-top:10px; border-top:1px solid var(--border); color:var(--text-muted); font-size:0.8rem;">${esc(T('SOP_CONTROLLED_NOTE'))}</p>`;
     }
 

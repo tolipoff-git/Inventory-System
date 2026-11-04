@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify';
 // ============================================================================
 // Shared floating tooltip for SVG charts / cards (#svgTooltip).
 // The element is created on demand and survives re-renders. Position is
@@ -19,7 +20,7 @@ function ensureTooltipEl(): HTMLElement | null {
 export function showTooltip(evt: MouseEvent, html: string): void {
   const tt = ensureTooltipEl();
   if (!tt) return;
-  tt.innerHTML = html;
+  tt.innerHTML = DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
   tt.style.display = 'block';
 
   const w = tt.offsetWidth;
