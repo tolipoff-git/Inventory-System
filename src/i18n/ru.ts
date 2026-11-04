@@ -1,6 +1,11 @@
 import { FAQ_BODY_RU } from './faqContent';
 
 export const ru: Record<string, string> = {
+  "AUDIT_INVALID_QTY": "Введите корректное количество и неотрицательную цену.",
+  "AUDIT_UNAVAILABLE_TOOL": "Этот инструмент недоступен для выдачи.",
+  "AUDIT_ROOM_CHANGED": "Комната изменена:",
+  "AUDIT_ROOM_FAILED": "Не удалось сменить комнату. Предыдущая комната и локальные данные сохранены.",
+
   "PO_EXCEL_ALL": "Excel: все",
   "PO_PDF_ALL": "PDF: все",
   "PO_EXCEL_SELECTED": "Excel: выбранные",

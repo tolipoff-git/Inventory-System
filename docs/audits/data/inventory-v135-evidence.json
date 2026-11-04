@@ -1,0 +1,144 @@
+{
+  "baseline_commit": "4c576faaf56c3da813cdf736ac660ea96d0b852b",
+  "baseline_browser": {
+    "operations": {
+      "cancelled": true,
+      "cancelledAfter": {
+        "orderId": "PO-X",
+        "status": "Partial",
+        "total": 5,
+        "items": [
+          {
+            "id": "i",
+            "name": "Bit",
+            "qty": 5,
+            "unitCost": 1,
+            "status": "Partial",
+            "receivedQty": 1
+          }
+        ],
+        "updatedAt": "2026-11-04T15:46:28.457Z"
+      },
+      "bulkCancelled": "Received",
+      "invalid": true,
+      "nan": true,
+      "checkoutZero": {
+        "success": true
+      },
+      "zeroTool": {
+        "id": "CN-001",
+        "name": "Empty",
+        "type": "Consumable",
+        "qty": 0,
+        "status": "Issued",
+        "category": "Consumables",
+        "location": "Tool Gage",
+        "assigneeId": "EMP-X",
+        "assignedAt": "2026-11-04T15:46:28.457Z",
+        "dueReturn": "2026-11-05T15:46:28.457Z",
+        "updatedAt": "2026-11-04T15:46:28.457Z",
+        "history": [
+          "2026-11-04 15:46 | Assigned to Alice (Qty: 1, Signed: OP)"
+        ]
+      }
+    },
+    "edit": {
+      "qty": "1",
+      "sn": ""
+    },
+    "authPending": {
+      "called": 0,
+      "pending": false
+    },
+    "sopXss": true,
+    "promptCancel": 5,
+    "mandatoryGate": {
+      "visible": false,
+      "locked": true
+    }
+  },
+  "proposed_browser": {
+    "operations": {
+      "cancelled": false,
+      "cancelledAfter": {
+        "orderId": "PO-X",
+        "status": "Cancelled",
+        "total": 5,
+        "items": [
+          {
+            "id": "i",
+            "name": "Bit",
+            "qty": 5,
+            "unitCost": 1,
+            "status": "Cancelled",
+            "receivedQty": 0
+          }
+        ]
+      },
+      "bulkCancelled": "Cancelled",
+      "invalid": false,
+      "nan": false,
+      "checkoutZero": {
+        "success": false,
+        "error": "Cannot issue more than available quantity (0)"
+      },
+      "zeroTool": {
+        "id": "CN-001",
+        "name": "Empty",
+        "type": "Consumable",
+        "qty": 0,
+        "status": "Active",
+        "category": "Consumables",
+        "location": "Tool Gage"
+      }
+    },
+    "edit": {
+      "qty": "0",
+      "sn": "ACTUAL-SERIAL"
+    },
+    "authPending": {
+      "called": 1,
+      "pending": false
+    },
+    "sopXss": false,
+    "promptCancel": 0,
+    "mandatoryGate": {
+      "visible": true,
+      "locked": true
+    }
+  },
+  "sync_baseline_failed_tests": 5,
+  "sync_baseline_total_tests": 5,
+  "performance_baseline": {
+    "performance": [
+      {
+        "count": 100,
+        "refreshMs": 6
+      },
+      {
+        "count": 1000,
+        "refreshMs": 59
+      },
+      {
+        "count": 5000,
+        "refreshMs": 750
+      }
+    ]
+  },
+  "performance_proposed": {
+    "performance": [
+      {
+        "count": 100,
+        "refreshMs": 8
+      },
+      {
+        "count": 1000,
+        "refreshMs": 53
+      },
+      {
+        "count": 5000,
+        "refreshMs": 225
+      }
+    ]
+  }
+}

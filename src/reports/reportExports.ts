@@ -42,11 +42,11 @@ async function writeInventoryWorkbook(): Promise<void> {
   const active = Store.activeTools();
   const permTools = active.filter(t => t.type === 'Permanent');
   const consTools = active.filter(t => t.type === 'Consumable');
-  const permQty = permTools.reduce((s, t) => s + (parseInt(String(t.qty)) || 1), 0);
-  const consQty = consTools.reduce((s, t) => s + (parseInt(String(t.qty)) || 1), 0);
+  const permQty = permTools.reduce((s, t) => s + ((t.qty ?? 1)), 0);
+  const consQty = consTools.reduce((s, t) => s + ((t.qty ?? 1)), 0);
   const totalQty = permQty + consQty;
 
-  const hashPayload = active.map(t => `${t.id}|${t.name}|${t.type}|${parseInt(String(t.qty)) || 1}|${t.status}|${t.sn || t.serialNumber || ''}`).join(';') + `::${exportSerial}::${author}`;
+  const hashPayload = active.map(t => `${t.id}|${t.name}|${t.type}|${(t.qty ?? 1)}|${t.status}|${t.sn || t.serialNumber || ''}`).join(';') + `::${exportSerial}::${author}`;
   const checksum = await sha256Hex(hashPayload);
 
   Store.log('INVENTORY_EXPORT', `Serial: ${exportSerial} | SKU: ${active.length} | Perm: ${permQty} pcs | Cons: ${consQty} pcs | Total: ${totalQty} units | Author: ${author} | SHA-256: ${checksum}`);
@@ -316,7 +316,7 @@ async function writeInventoryWorkbook(): Promise<void> {
     const row = inv.addRow([
       t.id,
       t.name,
-      parseInt(String(t.qty)) || 1,
+      (t.qty ?? 1),
       minDisplay,
       maxDisplay,
       className,
@@ -506,7 +506,7 @@ export function exportInventoryCSV(): void {
   const q = (v: unknown) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
   const header = 'ID,Name,Qty,Min Qty,Max Qty,Category,Type,Status,Location,Holder,Issued,Return Due,Cal Due,Wear %,SN,Spec\n';
   const body = Store.activeTools().map(t => [
-    q(t.id), q(t.name), parseInt(String(t.qty)) || 1, t.minQty || '', t.maxQty || '',
+    q(t.id), q(t.name), (t.qty ?? 1), t.minQty || '', t.maxQty || '',
     q(t.category), q(t.type), q(t.status), q(t.location),
     q(t.assigneeId ? Store.empName(t.assigneeId) : ''),
     q(fmtDate(t.assignedAt)), q(fmtDate(t.dueReturn)), q(fmtDate(t.calDue)),

@@ -92,7 +92,7 @@ export function analyzeKaizen(): KaizenRecommendation[] {
   if (hotCat) add(2, ['Tool Crib Manager'],
     `Average wear of "${hotCat[0]}" consumables exceeds 60% — schedule bulk replacement to minimize cam-out and scrap.`,
     `Средний износ расходки «${hotCat[0]}» выше 60% — запланируйте плановую замену партии против срыва шлицев и брака.`);
-  const lowStock = cons.filter(t => (t.minQty || 0) > 0 && (t.qty || 1) <= (t.minQty || 0));
+  const lowStock = cons.filter(t => (t.minQty || 0) > 0 && (t.qty ?? 1) <= (t.minQty || 0));
   if (lowStock.length) add(2, ['Administrator'],
     `Low stock on ${lowStock.length} consumable item(s) (${ids(lowStock)}) — approve a procurement request.`,
     `Низкий запас по ${lowStock.length} позициям расходки (${ids(lowStock)}) — утвердите заявку на закупку.`);

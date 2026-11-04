@@ -451,9 +451,9 @@ export class ToolModal {
         (document.getElementById('editToolCategory') as HTMLInputElement).value = tool.category || '';
         (document.getElementById('editToolSpec') as HTMLInputElement).value = tool.spec || '';
         (document.getElementById('editToolProgram') as HTMLSelectElement).value = tool.program || '';
-        (document.getElementById('editToolSn') as HTMLInputElement).value = tool.sn || '';
+        (document.getElementById('editToolSn') as HTMLInputElement).value = tool.serialNumber ?? tool.sn ?? '';
         (document.getElementById('editToolArticle') as HTMLInputElement).value = tool.article || '';
-        (document.getElementById('editToolQty') as HTMLInputElement).value = String(tool.qty || 1);
+        (document.getElementById('editToolQty') as HTMLInputElement).value = String(tool.qty ?? 1);
         (document.getElementById('editToolCalDue') as HTMLInputElement).value = tool.calDue || '';
         (document.getElementById('editToolInterval') as HTMLInputElement).value = tool.calIntervalDays ? String(tool.calIntervalDays) : '0';
         (document.getElementById('editToolMinQty') as HTMLInputElement).value = String(tool.minQty || 0);
@@ -485,7 +485,7 @@ export class ToolModal {
         const program = (document.getElementById('addToolProgram') as HTMLSelectElement).value;
         const sn = (document.getElementById('addToolSn') as HTMLInputElement).value.trim();
         const article = (document.getElementById('addToolArticle') as HTMLInputElement).value.trim();
-        const qty = parseInt((document.getElementById('addToolQty') as HTMLInputElement).value) || 1;
+        const qty = Number((document.getElementById('addToolQty') as HTMLInputElement).value);
         const calDueManual = (document.getElementById('addToolCalDue') as HTMLInputElement).value;
         const intervalDays = parseInt((document.getElementById('addToolInterval') as HTMLInputElement).value) || 0;
         const minQty = parseInt((document.getElementById('addToolMinQty') as HTMLInputElement).value) || 0;
@@ -495,6 +495,8 @@ export class ToolModal {
         const rack = (document.getElementById('addToolRack') as HTMLSelectElement).value;
         const shelf = (document.getElementById('addToolShelf') as HTMLSelectElement).value;
         const bin = (document.getElementById('addToolBin') as HTMLSelectElement).value;
+
+        if (!Number.isInteger(qty) || qty < 0) { toast(T('AUDIT_INVALID_QTY'), 'warning'); return; }
 
         if (!id || !name) {
             toast(T('TOOL_ID_NAME_REQUIRED'), 'danger');
@@ -571,7 +573,7 @@ export class ToolModal {
         const program = (document.getElementById('editToolProgram') as HTMLSelectElement).value;
         const sn = (document.getElementById('editToolSn') as HTMLInputElement).value.trim();
         const article = (document.getElementById('editToolArticle') as HTMLInputElement).value.trim();
-        const qty = parseInt((document.getElementById('editToolQty') as HTMLInputElement).value) || 1;
+        const qty = Number((document.getElementById('editToolQty') as HTMLInputElement).value);
         const calDue = (document.getElementById('editToolCalDue') as HTMLInputElement).value;
         const intervalDays = parseInt((document.getElementById('editToolInterval') as HTMLInputElement).value) || 0;
         const minQty = parseInt((document.getElementById('editToolMinQty') as HTMLInputElement).value) || 0;
@@ -581,6 +583,8 @@ export class ToolModal {
         const rack = (document.getElementById('editToolRack') as HTMLSelectElement).value;
         const shelf = (document.getElementById('editToolShelf') as HTMLSelectElement).value;
         const bin = (document.getElementById('editToolBin') as HTMLSelectElement).value;
+
+        if (!Number.isInteger(qty) || qty < 0) { toast(T('AUDIT_INVALID_QTY'), 'warning'); return; }
 
         if (!name) {
             toast(T('TOOL_NAME_REQUIRED'), 'danger');
@@ -596,7 +600,8 @@ export class ToolModal {
         tool.category = category;
         tool.spec = spec;
         tool.program = program || undefined;
-        tool.sn = sn || tool.sn;
+        tool.sn = sn || undefined;
+        tool.serialNumber = sn || undefined;
         tool.article = article;
         tool.qty = qty;
         tool.calDue = calDue || undefined;

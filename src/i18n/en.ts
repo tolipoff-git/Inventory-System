@@ -1,6 +1,11 @@
 import { FAQ_BODY_EN } from './faqContent';
 
 export const en: Record<string, string> = {
+  "AUDIT_INVALID_QTY": "Enter a valid quantity and nonnegative price.",
+  "AUDIT_UNAVAILABLE_TOOL": "This tool is unavailable for checkout.",
+  "AUDIT_ROOM_CHANGED": "Room switched to:",
+  "AUDIT_ROOM_FAILED": "Could not switch rooms. The previous room and local data were retained.",
+
   "PO_EXCEL_ALL": "Excel: all",
   "PO_PDF_ALL": "PDF: all",
   "PO_EXCEL_SELECTED": "Excel: selected",

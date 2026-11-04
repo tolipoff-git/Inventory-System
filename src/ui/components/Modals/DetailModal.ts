@@ -201,7 +201,7 @@ export class DetailModal {
         if (artEl) artEl.textContent = `Article / Part #: ${tool.article || 'N/A'}`;
 
         const qtyEl = document.getElementById('detQty');
-        if (qtyEl) qtyEl.textContent = String(tool.qty || 1);
+        if (qtyEl) qtyEl.textContent = String(tool.qty ?? 1);
 
         const wsp = Store.workstationAndPostOf(tool);
         const progName = tool.program || Store.programOf(wsp.ws);
@@ -443,7 +443,7 @@ h3 { font-size: 10pt; color: #0f172a; margin: 12px 0 6px; }
       <tr><td>Physical Location</td><td>${esc(tool.location || 'N/A')} ${esc(tool.address ? `[${tool.address.zone || ''} | ${tool.address.rack || ''} ${tool.address.shelf || ''}-${tool.address.bin || ''}]` : '')}</td></tr>
       <tr><td>Current Assignee / Custodian</td><td>${esc(assigneeName)}</td></tr>
       <tr><td>Program / Station</td><td>${esc(tool.program || Store.programOf(Store.workstationAndPostOf(tool).ws) || 'General Tool Crib')}</td></tr>
-      <tr><td>Quantity</td><td>${esc(String(tool.qty || 1))}</td></tr>
+      <tr><td>Quantity</td><td>${esc(String(tool.qty ?? 1))}</td></tr>
       <tr><td>Unit Value / Price</td><td>${esc(tool.price !== undefined ? '$' + tool.price.toFixed(2) : 'Not recorded')}</td></tr>
       <tr><td>Calibration Due</td><td>${esc(tool.calDue ? fmtDate(tool.calDue) : 'Not set')}</td></tr>
       <tr><td>Return Due</td><td>${esc(tool.dueReturn ? fmtDate(tool.dueReturn) : 'Open-ended')}</td></tr>
@@ -480,7 +480,7 @@ h3 { font-size: 10pt; color: #0f172a; margin: 12px 0 6px; }
     <tr><td>Wear % (Latest Audit)</td><td style="font-weight:bold;">${esc(String(Store.wearOf(tool)))}%</td><td>${esc((tool.audit_history && tool.audit_history.length > 0) ? (tool.audit_history[tool.audit_history.length - 1].notes || 'No notes') : 'No audit history')}</td></tr>
     <tr><td>Operational Status</td><td style="font-weight:bold; color:${tool.status === 'Overdue' ? '#dc2626' : (tool.status === 'Maintenance' ? '#d97706' : '#16a34a')};">${esc(tool.status || 'Unknown')}</td><td>${esc(tool.status === 'Overdue' ? 'Overdue — action required' : (tool.status === 'Maintenance' ? 'Under maintenance — do not issue' : 'In service'))}</td></tr>
     <tr><td>Commissioned / Accepted</td><td>${esc(tool.commissioned_date ? fmtDate(tool.commissioned_date) : 'Not recorded')}</td><td>ISO 9001 entry-into-service record</td></tr>
-    <tr><td>Quantity</td><td>${esc(String(tool.qty || 1))}</td><td>Active inventory count</td></tr>
+    <tr><td>Quantity</td><td>${esc(String(tool.qty ?? 1))}</td><td>Active inventory count</td></tr>
   </tbody>
 </table>
 
