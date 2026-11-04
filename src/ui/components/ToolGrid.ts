@@ -112,12 +112,16 @@ export class ToolGridComponent {
         const issuedCount = active.filter(t => t.assigneeId).length;
         const maintQueue = active.filter(t => t.status === 'Maintenance' || t.status === 'Overdue' || calSoon(t));
 
+        // Aggregate category stock once; the low-stock list must not scan all tools per row.
+        const stockByCategory = new Map<string, number>();
+        for (const tool of active) {
+            if (tool.status === 'Active') stockByCategory.set(tool.category, (stockByCategory.get(tool.category) ?? 0) + (tool.qty ?? 1));
+        }
         // Low stock consumables
         const lowStock: Record<string, string> = {};
         active.filter(isCons).forEach(t => {
             if (!t.minQty) return;
-            const inStock = active.filter(x => x.category === t.category && x.status === 'Active')
-                                  .reduce((sum, x) => sum + (x.qty || 1), 0);
+            const inStock = stockByCategory.get(t.category) ?? 0;
             if (inStock < t.minQty) lowStock[t.category] = `${inStock}/${t.minQty}`;
         });
         const lowStockHtml = Object.keys(lowStock).length
@@ -339,7 +343,7 @@ export class ToolGridComponent {
                 <div class="tool-header" data-action="tool-detail" data-id="${esc(tool.id)}" style="cursor:pointer;">
                     <div>
                         <div class="tool-title">${esc(tool.name)}</div>
-                        <div class="tool-id">${esc(tool.id)} · ${T('Qty')}: ${tool.qty || 1}</div>
+                        <div class="tool-id">${esc(tool.id)} · ${T('Qty')}: ${tool.qty ?? 1}</div>
                     </div>
                     <div class="status-badge ${esc(tool.status)}">${esc(T(tool.status))}</div>
                 </div>
@@ -388,7 +392,7 @@ export class ToolGridComponent {
             const permPct = totalCount ? Math.round((permCount / totalCount) * 100) : 0;
             const consPct = totalCount ? Math.round((consCount / totalCount) * 100) : 0;
             const needsMaintCount = tools.filter(t => t.status === 'Maintenance' || t.status === 'Calibration').length;
-            const lowStockCount = tools.filter(t => (parseInt(String(t.qty)) || 1) <= 2 || Store.wearOf(t) > 70).length;
+            const lowStockCount = tools.filter(t => ((t.qty ?? 1)) <= 2 || Store.wearOf(t) > 70).length;
             const overdueCount = tools.filter(t => t.status === 'Overdue').length;
 
             let html = `

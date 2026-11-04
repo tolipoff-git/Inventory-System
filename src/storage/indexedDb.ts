@@ -9,6 +9,8 @@ import { nowISO } from '../utils/formatters';
 import { SCHEMA_VERSION } from '../config/constants';
 
 export interface DBState {
+  /** Whether any persisted store/settings have been initialized. */
+  initialized?: boolean;
   tools: Tool[];
   personnel: Employee[];
   users: SystemUser[];
@@ -287,6 +289,7 @@ export const AppDB = {
           if (s && s.key) settingsMap[s.key] = s.value;
         }
         resolve({
+          initialized: Boolean(reqTools.result.length || reqPersonnel.result.length || reqUsers.result.length || reqSettings.result.length),
           tools: reqTools.result || [],
           personnel: reqPersonnel.result || [],
           users: reqUsers.result || [],

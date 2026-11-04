@@ -6,10 +6,10 @@
 // ============================================================================
 
 /**
- * Confirmation dialog. Falls back to `def` (default: true — proceed) when the
+ * Confirmation dialog. Falls back to `def` (default: false — cancel) when the
  * native window.confirm is unavailable, so destructive flows never throw.
  */
-export function windowConfirm(msg?: string, def: boolean = true): boolean {
+export function windowConfirm(msg?: string, def: boolean = false): boolean {
   if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
     return window.confirm(msg ?? '');
   }
@@ -19,12 +19,12 @@ export function windowConfirm(msg?: string, def: boolean = true): boolean {
 /**
  * Text input dialog. Falls back to `def` (default: empty string) when the
  * native window.prompt is unavailable, so callers always get a string.
- * An explicit native cancel (null) also resolves to `def ?? ''`.
+ * Explicit cancellation and unavailable dialogs return null.
  */
-export function windowPrompt(label: string, def?: string): string {
+export function windowPrompt(label: string, def?: string): string | null {
   if (typeof window !== 'undefined' && typeof window.prompt === 'function') {
     const r = window.prompt(label, def);
-    return r === null ? (def ?? '') : r;
+    return r;
   }
-  return def ?? '';
+  return null;
 }

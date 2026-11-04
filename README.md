@@ -1,9 +1,29 @@
-# 5S Tool Command Center — v3 (v135)
+# 5S Tool Command Center — v3 (v136 candidate)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
 Worker sync, built as a **modular TypeScript/Vite project** (migrated away from
 the original single-file monolith).
+
+---
+
+## v136 candidate — Audit corrections (draft, production remains v135)
+
+- Preserve local users, print queue and undo state during a sync pull. Seed demo inventory
+  only on a genuinely uninitialized database; retain deliberately empty inventories.
+- Archive departing-room state before a room switch; join the target using that room's
+  snapshot, reject stale in-flight responses, and retain/retry offline or trailing writes.
+- Keep zero quantities and serial-number aliases consistent across editing, cards and exports.
+  Validate receiving quantities, preserve cancellation, serialize order writes, roll failed
+  receipt commits back, and advance procurement revisions for comments/cancellation.
+- Resume privileged actions after login; keep the mandatory login gate visible on Escape.
+  Sanitize SOP, toast and tooltip HTML with an explicit updated DOMPurify dependency.
+- Embed a Cyrillic-capable font in the 5S certificate and export all notes with pagination.
+  Aggregate category stock once instead of rescanning all tools per consumable.
+- Verification: typecheck, lint, 198 tests, EN/RU parity, production build, browser regression
+  probes and PWA offline bootstrap. No production-room data was modified during QA.
+- Remaining design work: server-side concurrent-writer conflict control, strict sync schema,
+  global persistence-failure semantics, and modal accessibility/localization coverage.
 
 ---
 
