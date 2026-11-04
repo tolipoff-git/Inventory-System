@@ -43,9 +43,10 @@ class StoreManager {
    * that every mutation — whatever path it took — advances `updatedAt`. Without
    * this a forgotten `touch()` silently loses the edit on the next sync merge.
    */
-  private _persisted: { tools: Map<string, string>; personnel: Map<string, string> } = {
+  private _persisted: { tools: Map<string, string>; personnel: Map<string, string>; procurement: Map<string, string> } = {
     tools: new Map(),
     personnel: new Map(),
+    procurement: new Map(),
   };
 
   public users: SystemUser[] = [];
@@ -120,7 +121,9 @@ class StoreManager {
 
   public async load(): Promise<void> {
     const data = await AppDB.loadAll();
-    this.applyLoadedData(data);
+    this.applyLoadedData(data.initialized === false ? {
+      ...data, tools: structuredClone(SEED_TOOLS), users: structuredClone(SEED_USERS), workstations: [...SEED_WORKSTATIONS],
+    } : data);
     this.migrate();
     this.recomputeStatuses();
     // Everything above is normalization, not user intent — treat the result as
@@ -136,12 +139,12 @@ class StoreManager {
   }
 
   public applyLoadedData(data: Partial<DBState>): void {
-    this.tools = Array.isArray(data.tools) && data.tools.length ? data.tools : [...SEED_TOOLS];
+    this.tools = Array.isArray(data.tools) ? data.tools : structuredClone(SEED_TOOLS);
     this.personnel = Array.isArray(data.personnel) ? data.personnel : [];
-    this.users = Array.isArray(data.users) && data.users.length ? data.users : [...SEED_USERS];
+    this.users = Array.isArray(data.users) ? data.users : structuredClone(SEED_USERS);
     this.auditLog = Array.isArray(data.auditLog) ? data.auditLog : [];
     this.procurementLog = Array.isArray(data.procurementLog) ? data.procurementLog : [];
-    this.workstations = Array.isArray(data.workstations) && data.workstations.length ? data.workstations : [...SEED_WORKSTATIONS];
+    this.workstations = Array.isArray(data.workstations) ? data.workstations : [...SEED_WORKSTATIONS];
     
     // Normalize workposts
     if (Array.isArray(data.workposts)) {
@@ -428,6 +431,10 @@ class StoreManager {
     };
     stamp(this.tools, this._persisted.tools);
     stamp(this.personnel, this._persisted.personnel);
+    for (const order of this.procurementLog) {
+      const key = order.orderId || order.id;
+      if (key && JSON.stringify(order) !== this._persisted.procurement.get(key)) order.updatedAt = now;
+    }
   }
 
   /** Re-baseline the change detector against the current in-memory state. */
@@ -435,6 +442,7 @@ class StoreManager {
     this._persisted = {
       tools: new Map(this.tools.filter(t => t && t.id).map(t => [t.id, JSON.stringify(t)])),
       personnel: new Map(this.personnel.filter(p => p && p.id).map(p => [p.id, JSON.stringify(p)])),
+      procurement: new Map(this.procurementLog.map(p => [p.orderId || p.id || '', JSON.stringify(p)])),
     };
   }
 

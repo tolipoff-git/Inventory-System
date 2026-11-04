@@ -313,9 +313,14 @@ export function initSyncModalLogic(): void {
     const input = document.getElementById('syncRoomInput') as HTMLInputElement;
     if (!input || !input.value.trim()) return;
     const newRoom = input.value.trim().toUpperCase();
-    await SyncManagerInstance.changeRoom(newRoom);
-    updateModalContent();
-    toast(`☁️ Room switched to: ${newRoom}`);
+    try {
+      await SyncManagerInstance.changeRoom(newRoom);
+      updateModalContent();
+      toast(`☁️ ${T('AUDIT_ROOM_CHANGED')} ${esc(newRoom)}`);
+    } catch {
+      updateModalContent();
+      toast(T('AUDIT_ROOM_FAILED'), 'danger');
+    }
   };
 
   window.handleSyncTokenChange = () => {

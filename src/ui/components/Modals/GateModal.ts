@@ -159,11 +159,10 @@ export class GateModal {
             const success = await Auth.login(user, pass);
             if (success) {
                 toast(`Welcome ${user}!`, 'success');
+                const action = Auth.pendingAction;
+                const reqRole = Auth.pendingRole;
                 this.closeLoginPrompt();
-                if (Auth.pendingAction) {
-                    const action = Auth.pendingAction;
-                    const reqRole = Auth.pendingRole;
-                    Auth.clearPendingAction();
+                if (action) {
                     if (!reqRole || Auth.has(reqRole)) {
                         action();
                     } else {

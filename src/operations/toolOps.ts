@@ -192,6 +192,13 @@ export async function checkoutTool(
   let tool = Store.getTool(toolId);
   if (!tool) return { success: false, error: 'Tool not found' };
 
+  if (!Number.isInteger(issueQty) || issueQty <= 0 || !Number.isFinite(tool.qty ?? 1) || (tool.qty ?? 1) < issueQty) {
+    return { success: false, error: `Cannot issue more than available quantity (${tool.qty ?? 1})` };
+  }
+  if (['Maintenance', 'Retired', 'Decommissioned', 'Pending Delivery'].includes(tool.status)) {
+    return { success: false, error: T('AUDIT_UNAVAILABLE_TOOL') };
+  }
+
   if ((tool.status === 'Issued' || tool.status === 'Overdue') && tool.assigneeId) {
     return { success: false, error: 'Tool is already issued. Process a return first.' };
   }
@@ -212,12 +219,12 @@ export async function checkoutTool(
   }
   if (!emp) return { success: false, error: 'Employee not found' };
 
-  if (issueQty > (tool.qty || 1)) {
-    return { success: false, error: `Cannot issue more than available quantity (${tool.qty || 1})` };
+  if (issueQty > (tool.qty ?? 1)) {
+    return { success: false, error: `Cannot issue more than available quantity (${tool.qty ?? 1})` };
   }
 
-  if (issueQty < (tool.qty || 1)) {
-    tool.qty = (tool.qty || 1) - issueQty;
+  if (issueQty < (tool.qty ?? 1)) {
+    tool.qty = (tool.qty ?? 1) - issueQty;
     Store.touch(tool);
 
     const clone: Tool = JSON.parse(JSON.stringify(tool));

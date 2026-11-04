@@ -59,7 +59,7 @@ export function calculateKPIs(): InventoryKPIs {
 
     // Valuation
     const unitPrice = tool.price || tool.cost || 0;
-    const qty = tool.qty || 1;
+    const qty = tool.qty ?? 1;
     totalValuation += unitPrice * qty;
 
     // Consumables low stock

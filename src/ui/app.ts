@@ -531,6 +531,7 @@ export class AppUI {
         document.addEventListener('mousedown', (e) => {
             const target = e.target as HTMLElement;
             if (target.classList && target.classList.contains('modal-overlay')) {
+                if (target.id === 'mandatoryLoginModal') return;
                 if (target.id === 'loginModal') {
                     Auth.clearPendingAction();
                 }
@@ -543,6 +544,7 @@ export class AppUI {
                 const openModals = document.querySelectorAll('.modal-overlay.active');
                 if (openModals.length > 0) {
                     const topModal = openModals[openModals.length - 1];
+                    if (topModal.id === 'mandatoryLoginModal') return;
                     if (topModal.id === 'loginModal') {
                         Auth.clearPendingAction();
                     }
