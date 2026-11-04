@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'inv-inventory-';
-const CACHE_VERSION = 'v133-785d06e';
+const CACHE_VERSION = 'v134-ea1e8ca';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
 const ASSETS_TO_CACHE = [
   // Precache the scope root only: Cloudflare Assets answers a direct request for
