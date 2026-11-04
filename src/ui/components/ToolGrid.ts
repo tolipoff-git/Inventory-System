@@ -267,7 +267,7 @@ export class ToolGridComponent {
         const sopDocs = Store.approvedSops();
         const sopBody = sopDocs.length
             ? `
-            <div style="display:flex; flex-direction:column; gap:8px; justify-content:flex-start; height:100%; max-height:190px; overflow-y:auto;">
+            <div style="display:flex; flex-direction:column; gap:8px; justify-content:flex-start;">
                 ${sopDocs.map(s => `<button class="btn btn-muted" style="font-size:0.9rem; text-align:left;" data-sop="${esc(s.id)}" title="${esc(s.id)} · ${T('Revision')} ${esc(s.revision)}">📖 ${esc(s.id)} (${esc(getLanguage() === 'RU' ? s.titleRu : s.titleEn)})</button>`).join('')}
             </div>
         `

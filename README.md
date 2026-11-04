@@ -1,9 +1,20 @@
-# 5S Tool Command Center — v3 (v134)
+# 5S Tool Command Center — v3 (v135)
 
 Industrial inventory management, 5S compliance, and tool-tracking PWA with
 **zero backend maintenance** — pure client-side app + optional Cloudflare
 Worker sync, built as a **modular TypeScript/Vite project** (migrated away from
 the original single-file monolith).
+
+---
+
+## v135 — SOP hub uses its content height
+
+- Removed the nested SOP list's fixed 190 px height cap and inner scrollbar. All approved
+  standards now participate in the card's natural layout, with no hidden rows above unused
+  card space. The page scrolls normally when the list is longer than the screen.
+- Verified in Chromium with 4 and 12 long-title documents at 1440, 1280 and 390 px widths;
+  collapse/expand and opening the last document still work. Typecheck, lint, 177 tests,
+  EN/RU parity and production build passed.
 
 ---
 
