@@ -9,8 +9,8 @@ const headers = {
 /** Static-asset fetcher stub — must be async to satisfy `WorkerFetcher`. */
 const assets = { fetch: async () => new Response('x') };
 
-// The sync API is open (the room key is the access control) — same model as the
-// daily-walkthrough PWA. A `SYNC_SECRET`, if still configured, is not consulted.
+// Photo/sync access is gated by `SYNC_SECRET` (Bearer, constant time) unless the
+// deployment opts into `SYNC_AUTH_MODE=open` for local development.
 const photoEnv: Env = {
   ASSETS: assets,
   ALLOWED_ORIGIN: 'https://inventory.pages.dev',
@@ -56,12 +56,25 @@ describe('worker security surface', () => {
     expect(res.status).toBe(200);
   });
 
-  it('syncs with no Bearer token at all (the room key is the access control)', async () => {
-    // The old fail-closed gate returned 401 here because the client's default
-    // token is empty — which is why nothing ever synced.
+  it('rejects a token-less sync write with 401 when SYNC_SECRET is set', async () => {
     const req = new Request('https://inv.workers.dev/api/sync/inv_room_X', {
       method: 'POST',
       headers: { ...headers, Origin: 'https://inventory.pages.dev' },
+      body: JSON.stringify({ tools: [] }),
+    });
+    const res = await worker.fetch(req, {
+      ASSETS: assets,
+      ALLOWED_ORIGIN: 'https://inventory.pages.dev',
+      SYNC_SECRET: 'topsecret',
+    });
+    expect(res.status).toBe(401);
+    expect((await res.json()).error).toContain('Unauthorized');
+  });
+
+  it('accepts a sync write with the correct Bearer token', async () => {
+    const req = new Request('https://inv.workers.dev/api/sync/inv_room_X', {
+      method: 'POST',
+      headers: { ...headers, Origin: 'https://inventory.pages.dev', Authorization: 'Bearer topsecret' },
       body: JSON.stringify({ tools: [] }),
     });
     const res = await worker.fetch(req, {
@@ -73,7 +86,21 @@ describe('worker security surface', () => {
     expect((await res.json()).success).toBe(true);
   });
 
-  it('syncs with no SYNC_SECRET configured (zero-setup access model)', async () => {
+  it('rejects a wrong Bearer token with 401', async () => {
+    const req = new Request('https://inv.workers.dev/api/sync/inv_room_X', {
+      method: 'POST',
+      headers: { ...headers, Origin: 'https://inventory.pages.dev', Authorization: 'Bearer wrong-secret' },
+      body: JSON.stringify({ tools: [] }),
+    });
+    const res = await worker.fetch(req, {
+      ASSETS: assets,
+      ALLOWED_ORIGIN: 'https://inventory.pages.dev',
+      SYNC_SECRET: 'topsecret',
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('fails closed with 503 when SYNC_SECRET is not configured', async () => {
     const req = new Request('https://inv.workers.dev/api/sync/inv_room_X', {
       method: 'POST',
       headers: { ...headers, Origin: 'https://inventory.pages.dev' },
@@ -83,6 +110,23 @@ describe('worker security surface', () => {
       ASSETS: assets,
       ALLOWED_ORIGIN: 'https://inventory.pages.dev',
     });
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.error).toBe('sync_not_configured');
+    expect(body.message).toContain('SYNC_SECRET');
+  });
+
+  it('allows anonymous sync when SYNC_AUTH_MODE=open (local development)', async () => {
+    const req = new Request('https://inv.workers.dev/api/sync/inv_room_X', {
+      method: 'POST',
+      headers: { ...headers, Origin: 'https://inventory.pages.dev' },
+      body: JSON.stringify({ tools: [] }),
+    });
+    const res = await worker.fetch(req, {
+      ASSETS: assets,
+      ALLOWED_ORIGIN: 'https://inventory.pages.dev',
+      SYNC_AUTH_MODE: 'open',
+    });
     expect(res.status).toBe(200);
     expect((await res.json()).success).toBe(true);
   });
@@ -90,7 +134,7 @@ describe('worker security surface', () => {
   it('reports a retryable failure when the KV write is rejected', async () => {
     const req = new Request('https://inv.workers.dev/api/sync/inv_room_X', {
       method: 'POST',
-      headers: { ...headers, Origin: 'https://inventory.pages.dev' },
+      headers: { ...headers, Origin: 'https://inventory.pages.dev', Authorization: 'Bearer topsecret' },
       body: JSON.stringify({ tools: [] }),
     });
     const kv = {
@@ -103,6 +147,7 @@ describe('worker security surface', () => {
       ASSETS: assets,
       ALLOWED_ORIGIN: 'https://inventory.pages.dev',
       INVENTORY_KV: kv,
+      SYNC_SECRET: 'topsecret',
     });
     // Never claim success on a failed authoritative write — the client keeps the
     // payload pending and retries instead of marking it synced.
@@ -112,8 +157,13 @@ describe('worker security surface', () => {
     expect(body.retryable).toBe(true);
   });
 
-  it('serves a photo route without a token (404 when absent, not 401)', async () => {
+  it('rejects a token-less photo request with 401 when SYNC_SECRET is set', async () => {
     const res = await worker.fetch(photoReq('/api/photo/ROOM/ph1?raw=1'), photoEnv);
+    expect(res.status).toBe(401);
+  });
+
+  it('serves an authorized photo route (404 when the photo is absent)', async () => {
+    const res = await worker.fetch(photoReq('/api/photo/ROOM/ph1?raw=1', { Authorization: 'Bearer topsecret' }), photoEnv);
     expect(res.status).toBe(404);
   });
 
@@ -164,15 +214,25 @@ describe('worker security surface', () => {
     expect(res.status).toBe(413);
   });
 
-  it('accepts ?token= query param for browser image access (ignored, still served)', async () => {
+  it('accepts ?token= query param alongside the Bearer header (query token alone is not a credential)', async () => {
     const b64 = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).toString('base64');
-    const req = photoReq('/photo/ROOM/ph4?raw=1&token=topsecret');
+    const req = photoReq('/photo/ROOM/ph4?raw=1&token=topsecret', { Authorization: 'Bearer topsecret' });
     const kv = {
       get: async () => JSON.stringify({ url: `data:image/png;base64,${b64}` }),
       put: async () => {},
     };
     const res = await worker.fetch(req, { ...photoEnv, INVENTORY_KV: kv });
     expect(res.status).toBe(200);
+  });
+
+  it('does not accept a ?token= query param as a photo credential', async () => {
+    const req = photoReq('/photo/ROOM/ph4?raw=1&token=topsecret');
+    const kv = {
+      get: async () => JSON.stringify({ url: 'https://cdn.example.com/photos/a.png' }),
+      put: async () => {},
+    };
+    const res = await worker.fetch(req, { ...photoEnv, INVENTORY_KV: kv });
+    expect(res.status).toBe(401);
   });
 
   it('rejects SSRF-prone internal/private http photo URL', async () => {

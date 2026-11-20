@@ -244,12 +244,13 @@ grouped by the role that can act on it**.
   `localhost`/LAN address, because the sync API is whatever origin the app was loaded from —
   two devices on different hosts never exchange data. Sync also re-pulls on tab
   focus/visibility change, since phones suspend timers while backgrounded.
-- **Cloudflare Worker** (`/api/sync/:roomKey`) — **open by design**: the room key
-  namespaces the data and is the access control, so sync works out of the box with zero setup
-  (same model as the *Daily Walkthrough* PWA). A `SYNC_SECRET`, if configured, is optional; the
-  optional token field in the Sync dialog exists for deployments that want to add one later.
-  A failed KV write is reported as a **retryable** failure — the Worker never claims success
-  for data it did not store.
+- **Cloudflare Worker** (`/api/sync/:roomKey`) — **locked by default**: every sync and photo
+  request needs `Authorization: Bearer <SYNC_SECRET>` (compared in constant time). When
+  `SYNC_SECRET` is not set on the Worker the API **fails closed with 503** and says so; set
+  `SYNC_AUTH_MODE=open` only for zero-setup local development. Deployment order:
+  `npx wrangler secret put SYNC_SECRET` → deploy → enter the same token in the app's Sync dialog
+  on every device. A failed KV write is reported as a **retryable** failure — the Worker never
+  claims success for data it did not store.
 - **ntfy.sh SSE** — live push; **conflict resolver** = field-level
   later-wins-per-timestamp merge, history union.
 - **Tombstoned deletes** — removals travel as data (a `deletedAt` field or a registry

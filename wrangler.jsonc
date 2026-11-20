@@ -30,11 +30,13 @@
     // CORS allowlist for the PWA origin(s), e.g. "https://inventory.pages.dev"
     "ALLOWED_ORIGIN": "https://inventory-system.tolipoff.workers.dev"
   },
-  // SYNC_SECRET is OPTIONAL. The sync API is open by default (the room key
-  // namespaces the data — same model as the daily-walkthrough PWA, so sync works
-  // with zero setup). If SYNC_SECRET is set here, every device must supply the
-  // same Bearer token in the app's Sync dialog.
+  // SYNC_SECRET is REQUIRED in production: the sync and photo routes reject
+  // requests without a matching `Authorization: Bearer <SYNC_SECRET>` (401) and
+  // fail closed with 503 while the secret is missing. Set it with
   //   wrangler secret put SYNC_SECRET
+  // then enter the same token in the app's Sync dialog on every device.
+  // SYNC_AUTH_MODE=open disables the gate for LOCAL DEVELOPMENT only; never set
+  // it on the production Worker.
   // Route requests through the Worker first so static responses are returned by
   // `env.ASSETS.fetch` and receive BASELINE_SECURITY_HEADERS uniformly. Without
   // this the asset server answers directly and the HTML shell ships without the

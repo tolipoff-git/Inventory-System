@@ -65,6 +65,10 @@ working session; the per-release history below is the long-term record.
   partial sheet with two copies and −1 mm correction; first-install offline deep-link bootstrap.
   QA PDFs: Letter 612×792 pt, page counts 1/2/2, Cyrillic/spec text verified, visually checked.
   `tsconfig.json` includes tests; keep it that way.
+- **Sync lock (v137):** the Worker requires `SYNC_SECRET` on every `/api/sync/*`, `/api/photo/*`
+  and `/photo/...` request and **fails closed (503)** when it is absent. Deployment order:
+  `npx wrangler secret put SYNC_SECRET` → deploy → paste the same token into the Sync dialog on
+  every device. `SYNC_AUTH_MODE=open` is for local development only.
 - **Deploy:** push to `main` → Cloudflare Workers Build deploys. Release workflow is defined in
   `AGENTS.md` (bump version → README + handoff → `bash build.sh` → feature commit →
   `chore(pwa): refresh sw.js …` commit → push) — **run it without asking**.
@@ -196,6 +200,38 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
   back to level `M` would make the mark unsafe to scan.
 
 ## Recent Accomplishments (v49 – v133)
+
+### 0. Sync and Photos Locked by Default — Fail-Closed Gate Restored (v137 Release)
+- **Root cause:** the v126 change removed the `/api/sync/*` Bearer gate so that a client with an
+  empty default token could sync. That left the room data readable and writable by anyone who
+  knows the room key (the PWA is public), and the photo routes were fully open as well.
+- **Server (`src/worker/index.ts`):** `checkSyncAuth()` now gates every `/api/sync/*`, `/api/photo/*`
+  and `/photo/...` request before any KV access.
+  - `SYNC_SECRET` set → `Authorization: Bearer <secret>` required; the comparison hashes both
+    values with SHA-256 (WebCrypto) and XOR-walks the 32-byte digests without early return
+    (`secretsMatch()`), so no `===` comparison of the secret itself. Missing/wrong token →
+    `401 {"error":"Unauthorized: missing or invalid Bearer token"}` with `WWW-Authenticate: Bearer`.
+  - `SYNC_SECRET` absent → fail closed with `503 {"error":"sync_not_configured", message: ...}`,
+    telling the operator to set the secret. This is the new default.
+  - `SYNC_AUTH_MODE=open` → bypasses the gate; **local development only**. Nothing sensitive is
+    logged in any branch.
+  - Unchanged: CORS allowlist (`ALLOWED_ORIGIN`, no wildcard), baseline security headers, the
+    `OPTIONS` preflight path, the POST JSON parse/body handling and the retryable 503 on a failed
+    KV write. The query string is **not** a credential: `?token=` alone no longer authorises a
+    photo request (it is still emitted by the HTML viewer and ignored).
+- **Client:** already correct — `syncHeaders()` attaches `Authorization` only when
+  `localStorage.inv_sync_token` is non-empty, and the Sync modal maps 401/503 to explicit errors.
+  No client change was needed.
+- **Deployment order (required after this commit):**
+  1. `npx wrangler secret put SYNC_SECRET` (choose a long random token; never commit it).
+  2. `npm run deploy` (or the usual push-to-`main` build) — deploy the Worker with the gate.
+  3. On **every** device, open the app → Sync dialog → paste the same token → save. Until that
+     is done, sync/photo calls return 401; a Worker deployed without the secret returns 503.
+  `SYNC_AUTH_MODE=open` exists only to keep zero-setup local/dev runs working; do not set it on
+  the production Worker.
+- **Tests:** `tests/worker.test.ts` now pins 401 without token, 200 with the correct token, 401
+  with a wrong token, 503 without a secret, 200 with `SYNC_AUTH_MODE=open`, 401 for token-less
+  photo requests, and that `?token=` alone is not accepted.
 
 ### 0. Inherited-Audit P3.2 — Explicit `any` Eliminated From `src` (v133 Release)
 - `src/utils/errors.ts` → `toErrorMessage(unknown)`; ~12 catch sites converted to bare `catch (e)`
@@ -341,9 +377,11 @@ refactors (WeakMap DOM cache, lit-html, list virtualization) — see "Deferred A
 - **Tests:** `tests/worker.test.ts` re-pinned to the open model (no token → 200 + `success:true`;
   no `SYNC_SECRET` → 200; failed KV write → 503 + `retryable`; photo route without token → 404);
   `tests/syncPull.test.ts` asserts the Authorization header is **absent** when no token is set.
-- ⚠️ **Deliberate trade-off, recorded:** the sync API is unauthenticated. Anyone who knows a room
-  key can read/write that room's data. A real per-room lock (per-room tokens, or a signed room
-  URL) would have to be added on purpose — do not re-introduce the global `SYNC_SECRET` gate.
+- ⚠️ **Superseded in v137 — do not repeat this removal.** The open model left room data
+  readable/writable by anyone who knows the room key; the fail-closed `SYNC_SECRET` gate (plus the
+  `SYNC_AUTH_MODE=open` local-only escape hatch) is restored and documented in
+  "Sync and Photos Locked by Default — Fail-Closed Gate Restored" above. A per-room lock is still
+  an option, but do not remove the global gate.
 
 ### 0. Sync is Diagnosable — No More Silent “Synced” (v125 Release)
 - **Root cause found:** `pullSyncPayload()` returned `null` for *every* failure, and

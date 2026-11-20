@@ -14,6 +14,11 @@ export interface Env {
   INVENTORY_KV?: WorkerKVNamespace;
   KV?: WorkerKVNamespace;
   SYNC_SECRET?: string;
+  /**
+   * `open` disables the sync auth gate and is intended ONLY for local
+   * development. Every other value (or absence) keeps the gate fail-closed.
+   */
+  SYNC_AUTH_MODE?: string;
   /** Space or comma separated list of allowed browser origins (CORS). */
   ALLOWED_ORIGIN?: string;
 }
@@ -85,14 +90,17 @@ export default {
       );
     }
 
-    // Cloudflare Worker Photo Viewing Endpoint: /photo/:room/:photoId and /api/photo/:room/:photoId
+    // Sync and photo data are locked behind the shared room secret unless the
+    // deployment explicitly opts into `SYNC_AUTH_MODE=open` (local dev only).
+    const isSyncSurface = url.pathname.startsWith('/api/sync/');
     const photoMatch = url.pathname.match(PHOTO_ROUTE);
-    if (photoMatch) {
-      // Photos follow the same access model as sync: open, keyed by the room id
-      // that is part of the photo key. Browsers cannot set the Authorization
-      // header on navigation or <img> requests, so a token could not be required
-      // anyway.
+    if (isSyncSurface || photoMatch) {
+      const authFailure = await checkSyncAuth(request, env, securityHeaders);
+      if (authFailure) return authFailure;
+    }
 
+    // Cloudflare Worker Photo Viewing Endpoint: /photo/:room/:photoId and /api/photo/:room/:photoId
+    if (photoMatch) {
       const rawRoom = photoMatch[1];
       const rawPhotoId = photoMatch[2];
       const room = safeDecodeURIComponent(rawRoom);
@@ -259,15 +267,9 @@ export default {
         });
       }
 
-      // Access model (mirrors the daily-walkthrough PWA): the **room key**
-      // namespaces the data and is the access control — the endpoint is open, so
-      // sync works out of the box with zero setup.
-      //
-      // The previous fail-closed Bearer gate demanded a `SYNC_SECRET` that the
-      // client never had (its default token is empty), so every request returned
-      // 401 and nothing ever synced. A `SYNC_SECRET`, if still configured, is no
-      // longer consulted here; a real per-room lock would have to be added
-      // deliberately (see project_handoff.md).
+      // Access control was already enforced by checkSyncAuth() above: a Bearer
+      // token matching `SYNC_SECRET` (constant-time) or an explicitly open
+      // development deployment. The room key only namespaces the data.
 
       const rawKey = url.pathname.replace('/api/sync/', '');
       const key = safeDecodeURIComponent(rawKey);
@@ -503,6 +505,72 @@ function originIsAllowed(origin: string | null, allowlist: string | undefined): 
     .map(s => s.trim().toLowerCase())
     .filter(Boolean);
   return allowed.includes(origin.toLowerCase()) ? origin : null;
+}
+
+/**
+ * Gate for the sync and photo surfaces.
+ *
+ * - `SYNC_SECRET` set: require `Authorization: Bearer <secret>`, compared in
+ *   constant time. Missing/wrong token -> 401.
+ * - no secret: fail closed with 503 (the room lock is not configured) unless
+ *   `SYNC_AUTH_MODE === 'open'`, which preserves the zero-setup local/dev mode.
+ *
+ * Returns a ready-to-send error response, or null when the request may proceed.
+ * Nothing about the provided or expected secret is logged or echoed.
+ */
+async function checkSyncAuth(
+  request: Request,
+  env: Env,
+  responseHeaders: Record<string, string>
+): Promise<Response | null> {
+  const secret = (env.SYNC_SECRET || '').trim();
+  const header: Record<string, string> = {
+    ...responseHeaders,
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-store',
+  };
+
+  if (!secret) {
+    if ((env.SYNC_AUTH_MODE || '').trim().toLowerCase() === 'open') return null;
+    return new Response(
+      JSON.stringify({
+        error: 'sync_not_configured',
+        message:
+          'Sync is locked: SYNC_SECRET is not configured on this Worker. ' +
+          'Set it with `wrangler secret put SYNC_SECRET` and enter the same token in the app Sync dialog. ' +
+          'SYNC_AUTH_MODE=open disables this lock for local development only.',
+      }),
+      { status: 503, headers: header }
+    );
+  }
+
+  const authHeader = (request.headers.get('Authorization') || '').trim();
+  const match = /^Bearer[ \t]+(.+)$/i.exec(authHeader);
+  const provided = match ? match[1].trim() : '';
+  if (provided && (await secretsMatch(provided, secret))) return null;
+
+  return new Response(
+    JSON.stringify({ error: 'Unauthorized: missing or invalid Bearer token' }),
+    { status: 401, headers: { ...header, 'WWW-Authenticate': 'Bearer' } }
+  );
+}
+
+/**
+ * Constant-time secret comparison. Both values are hashed first so the compared
+ * buffers are always 32 bytes and the loop does not short-circuit; no early
+ * return on the first differing byte.
+ */
+async function secretsMatch(provided: string, expected: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest('SHA-256', encoder.encode(provided)),
+    crypto.subtle.digest('SHA-256', encoder.encode(expected)),
+  ]);
+  const left = new Uint8Array(a);
+  const right = new Uint8Array(b);
+  let diff = 0;
+  for (let i = 0; i < left.length; i++) diff |= left[i] ^ right[i];
+  return diff === 0;
 }
 
 function safeDecodeURIComponent(str: string): string | null {
